@@ -14,7 +14,7 @@
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
 
-  <link rel="stylesheet" href="./styles.css?v=20260507c">
+  <link rel="stylesheet" href="./styles.css?v=20260507e">
 </head>
 <body>
   <div class="app">
@@ -33,7 +33,10 @@
       <nav class="topbar-actions" aria-label="Site">
         <a href="./about.html">About</a>
         <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">GitHub</a>
-        <a class="cta-add-repo" href="./add.html">+ Add your repo</a>
+        <a class="cta-add-repo" href="./add.html" aria-label="Add your repo">
+          <span class="cta-add-repo-text">+ Add your repo</span>
+          <span class="cta-add-repo-icon" aria-hidden="true">+</span>
+        </a>
       </nav>
     </header>
 
@@ -75,6 +78,16 @@
             </div>
           </div>
           <div class="graph-status graph-state-loading graph-state-error" id="graph-status"></div>
+          <button
+            type="button"
+            class="legend-toggle graph-state-graph"
+            id="legend-toggle"
+            hidden
+            aria-expanded="false"
+            aria-controls="graph-legend">
+            <span class="legend-toggle-icon" aria-hidden="true">&#9636;</span>
+            <span class="legend-toggle-label">Show legend</span>
+          </button>
           <div class="graph-legend graph-state-graph" id="graph-legend" hidden aria-label="Node-type legend"></div>
           <div class="zoom-controls graph-state-graph" id="zoom-controls" hidden>
             <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
@@ -150,6 +163,6 @@
     <div id="diag" hidden></div>
   </div>
 
-  <script type="module" src="./app.js?v=20260507c"></script>
+  <script type="module" src="./app.js?v=20260507e"></script>
 </body>
 </html>

@@ -59,6 +59,24 @@ const KIND_ALIASES = {
 };
 
 // xyflow-inspired vis-network options.
+//
+// `widthConstraint.maximum` is set dynamically by the matchMedia listener
+// at the bottom of this module: 200 on desktop, 160 on phones (so long
+// labels like `scripts/validate.mjs` don't bleed past the canvas edge
+// once vis-network resizes). The listener calls `currentNetwork.setOptions`
+// when the viewport crosses the 800px breakpoint, so the constraint
+// updates without a re-render.
+const MOBILE_GRAPH_BP = '(max-width: 799.98px)';
+const NODE_MAX_WIDTH_DESKTOP = 200;
+const NODE_MAX_WIDTH_MOBILE = 160;
+
+function nodeMaxWidth() {
+  if (typeof window === 'undefined' || !window.matchMedia) return NODE_MAX_WIDTH_DESKTOP;
+  return window.matchMedia(MOBILE_GRAPH_BP).matches
+    ? NODE_MAX_WIDTH_MOBILE
+    : NODE_MAX_WIDTH_DESKTOP;
+}
+
 const NODE_OPTIONS = {
   shape: 'box',
   borderWidth: 1.5,
@@ -72,7 +90,7 @@ const NODE_OPTIONS = {
     vadjust: 0,
   },
   margin: { top: 8, right: 12, bottom: 8, left: 12 },
-  widthConstraint: { minimum: 80, maximum: 200 },
+  widthConstraint: { minimum: 80, maximum: NODE_MAX_WIDTH_DESKTOP },
   scaling: { min: 14, max: 28, label: { enabled: false } },
   shadow: { enabled: true, color: 'rgba(0,0,0,0.45)', size: 6, x: 0, y: 2 },
 };
@@ -575,6 +593,8 @@ function renderNetwork(vis, container, data) {
 
   // Build options; clone the shared NETWORK_OPTIONS so we never mutate it.
   const options = JSON.parse(JSON.stringify(NETWORK_OPTIONS));
+  // Apply current viewport-derived width cap (mobile uses 160).
+  options.nodes.widthConstraint = { minimum: 80, maximum: nodeMaxWidth() };
   if (PREFERS_REDUCED) {
     options.physics = { enabled: false };
     options.edges.smooth = { enabled: false };
@@ -686,6 +706,54 @@ function drawMinimap(canvas) {
     const y = offY + (p.y - minY) * scale;
     ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
   }
+}
+
+// ---- viewport-derived widthConstraint refresh -------------------------
+// When the viewport crosses the mobile breakpoint we want vis-network to
+// re-cap node widths to the new max (200 desktop / 160 mobile) so long
+// labels stop overflowing the canvas. setOptions({nodes:...}) on a live
+// network triggers a relayout pass internally; no re-render needed.
+
+let mobileGraphMql = null;
+let mobileGraphMqlListener = null;
+
+function attachMobileGraphMql() {
+  if (typeof window === 'undefined' || !window.matchMedia) return;
+  if (mobileGraphMql && mobileGraphMqlListener) return;
+  mobileGraphMql = window.matchMedia(MOBILE_GRAPH_BP);
+  mobileGraphMqlListener = () => {
+    if (!currentNetwork) return;
+    try {
+      currentNetwork.setOptions({
+        nodes: { widthConstraint: { minimum: 80, maximum: nodeMaxWidth() } },
+      });
+    } catch (_) { /* network may have been destroyed mid-callback */ }
+  };
+  // addEventListener exists on modern Safari; fall back to addListener.
+  if (mobileGraphMql.addEventListener) {
+    mobileGraphMql.addEventListener('change', mobileGraphMqlListener);
+  } else if (mobileGraphMql.addListener) {
+    mobileGraphMql.addListener(mobileGraphMqlListener);
+  }
+}
+
+function detachMobileGraphMql() {
+  if (!mobileGraphMql || !mobileGraphMqlListener) return;
+  if (mobileGraphMql.removeEventListener) {
+    mobileGraphMql.removeEventListener('change', mobileGraphMqlListener);
+  } else if (mobileGraphMql.removeListener) {
+    mobileGraphMql.removeListener(mobileGraphMqlListener);
+  }
+  mobileGraphMql = null;
+  mobileGraphMqlListener = null;
+}
+
+attachMobileGraphMql();
+
+// Detach on pagehide to be a tidy citizen on iOS Safari (which keeps pages
+// alive in the bfcache; without teardown, listeners can leak).
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', detachMobileGraphMql);
 }
 
 // ---- zoom controls (driven by app.js via custom events) ---------------

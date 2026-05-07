@@ -117,7 +117,8 @@ button { font-family: inherit; }
 .app {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  min-height: 100vh;
+  min-height: 100vh; /* fallback for browsers without dvh */
+  min-height: 100dvh;
 }
 
 /* Top bar */
@@ -257,6 +258,9 @@ button { font-family: inherit; }
   color: #1a1208;
   text-decoration: none;
 }
+/* Default: text label shown, icon-only fallback hidden. The icon is
+ * surfaced on narrow phones (handled at the mobile breakpoint). */
+.cta-add-repo .cta-add-repo-icon { display: none; }
 
 /* ---------- Main 3-pane layout ---------- */
 .workspace {
@@ -463,11 +467,18 @@ button { font-family: inherit; }
   min-height: 360px;
   overflow: hidden;
 }
+/* Inset the canvas inside the host so vis-network nodes near the edge
+ * don't bleed past the visible area. Floating chrome (legend, minimap,
+ * zoom-controls, tour) is positioned relative to .graph-host so it
+ * floats in the inset margin. */
 #graph-canvas {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 12px;
+  right: 16px;
+  bottom: 12px;
+  left: 16px;
+  width: auto;
+  height: auto;
 }
 
 /* ---------- Main pane state machine ---------------------------------------
@@ -516,6 +527,9 @@ button { font-family: inherit; }
   display: flex !important;
 }
 .main-pane[data-main-state="graph"] .graph-host > #tour-start:not([hidden]) {
+  display: inline-flex !important;
+}
+.main-pane[data-main-state="graph"] .graph-host > #legend-toggle:not([hidden]) {
   display: inline-flex !important;
 }
 .graph-status {
@@ -615,6 +629,39 @@ button { font-family: inherit; }
   pointer-events: none;
 }
 .graph-legend[hidden] { display: none; }
+
+/* Legend collapse/expand toggle. Always rendered alongside the legend on
+ * mobile (the toggle controls whether .graph-legend is visible). On
+ * desktop the legend is shown by default and the toggle stays hidden. */
+.legend-toggle {
+  display: none;
+  position: absolute;
+  bottom: var(--space-3);
+  left: var(--space-3);
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 5;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-card);
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.legend-toggle:hover { border-color: var(--color-accent); color: var(--color-accent-bright); }
+.legend-toggle[hidden] { display: none; }
+.legend-toggle-icon {
+  display: inline-flex;
+  font-size: 11px;
+  line-height: 1;
+}
 .legend-chip {
   --c: var(--color-text-muted);
   display: inline-flex;
@@ -677,8 +724,14 @@ button { font-family: inherit; }
   box-shadow: var(--shadow-card);
 }
 #graph-minimap[hidden] { display: none; }
-@media (max-width: 700px) {
-  #graph-minimap { width: 96px; height: 70px; }
+/* Phones: minimap is more clutter than help; hide entirely. The state-
+ * machine rule above only adds display:block for non-hidden #graph-minimap,
+ * so we override with display:none !important to win against it. */
+@media (max-width: 699.98px) {
+  #graph-minimap,
+  .main-pane[data-main-state="graph"] .graph-host > #graph-minimap:not([hidden]) {
+    display: none !important;
+  }
 }
 
 /* Zoom controls */
@@ -982,8 +1035,21 @@ button { font-family: inherit; }
   opacity: 0.5;
 }
 
-/* ---------- Mobile (<800px) ---------- */
+/* ---------- Mobile (<800px) ----------
+ * Topbar stacks into two rows:
+ *   Row 1: brand + nav (About / GitHub / + Add icon)
+ *   Row 2: full-width search input
+ * Sidebar collapses into a short horizontal-scroll strip beneath the
+ * topbar (~96px tall, 240px-min cards). Legend docks to the bottom of
+ * the graph pane behind a "Show legend" toggle (collapsed by default
+ * so it never covers the canvas). Minimap is hidden on phones via the
+ * <700px rule above. */
 @media (max-width: 799.98px) {
+  /* Two-row topbar (matches the "stack into two rows" spec):
+   *   Row 1 = brand on the left, nav (About, GitHub, + Add) on the right
+   *   Row 2 = full-width search input
+   * The "+ Add your repo" CTA collapses to a single "+" icon under 480px
+   * (further down in this stylesheet). */
   .topbar {
     grid-template-columns: 1fr auto;
     grid-template-areas:
@@ -991,39 +1057,76 @@ button { font-family: inherit; }
       "search search";
     padding: var(--space-2) var(--space-3);
     gap: var(--space-2);
+    row-gap: var(--space-2);
   }
   .brand { grid-area: brand; }
-  .topbar-actions { grid-area: actions; gap: var(--space-2); }
-  .topbar-actions a:not(.cta-add-repo) { display: none; }
-  .topbar-search { grid-area: search; width: 100%; }
+  .topbar-actions {
+    grid-area: actions;
+    gap: var(--space-3);
+    justify-self: end;
+    flex-wrap: nowrap;
+  }
+  .topbar-search {
+    grid-area: search;
+    width: 100%;
+    justify-self: stretch;
+  }
+  .topbar-search input[type="search"] {
+    width: 100%;
+    min-width: 0;
+  }
 
   /* Stack: graph fills viewport; sidebar becomes a horizontal strip below. */
   .workspace,
   .workspace.has-detail {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: auto 1fr;
   }
-  .main-pane { order: 1; min-height: 0; }
+  /* Sidebar above main on mobile so users see the entries strip first
+   * (matches the "horizontal-scroll strip below the topbar" spec). */
+  .main-pane { order: 2; min-height: 0; }
   .sidebar {
-    order: 2;
+    order: 1;
     border-right: 0;
-    border-top: 1px solid var(--color-border-subtle);
-    border-bottom: 0;
-    max-height: 180px;
+    border-top: 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+    /* ~96px tall: ~22px head + ~70px scroll strip. */
+    max-height: 96px;
+    min-height: 96px;
     background: var(--color-surface);
   }
   .sidebar-head {
-    padding: var(--space-2) var(--space-3);
+    /* On mobile the head row is a single-line meta strip; full filter
+     * controls would chew up vertical space. */
+    padding: 4px var(--space-3);
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    border-bottom: 0;
   }
+  .sidebar-head .sidebar-format,
+  .sidebar-head .status-filter { display: none; }
   .sidebar-list {
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: var(--space-2) var(--space-3);
+    padding: 4px var(--space-3) var(--space-2);
     gap: var(--space-2);
     -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
   }
-  .entry-card { min-width: 240px; flex-shrink: 0; }
+  .entry-card {
+    min-width: 240px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    /* Compact cards inside the 96px strip. */
+    padding: 8px var(--space-3);
+    gap: 4px;
+  }
+  .entry-card-desc {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
 
   .graph-host {
     min-height: 0;
@@ -1038,6 +1141,29 @@ button { font-family: inherit; }
   /* Show the floating "Details" pill */
   .details-pill:not([hidden]) { display: inline-flex; }
 
+  /* Legend on mobile: hidden by default; toggle reveals a single-line,
+   * horizontally scrollable strip docked to the bottom of the graph pane. */
+  .graph-legend {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: calc(100% - var(--space-4) * 2);
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: 56px; /* clear the legend-toggle pill */
+    padding: 6px 0;
+    /* Allow horizontal scroll touch even though chips are pointer-events:none */
+    pointer-events: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .graph-legend::-webkit-scrollbar { display: none; }
+  .legend-chip { flex-shrink: 0; pointer-events: auto; }
+  /* The legend-toggle is only meaningful on mobile. */
+  .legend-toggle:not([hidden]) {
+    display: inline-flex;
+  }
+
   /* Mobile detail-pane = bottom sheet (~70vh) */
   .detail-pane.is-sheet {
     position: fixed;
@@ -1045,8 +1171,8 @@ button { font-family: inherit; }
     right: 0;
     bottom: 0;
     top: auto;
-    height: 70vh;
-    max-height: 70vh;
+    height: 70dvh;
+    max-height: 70dvh;
     width: 100%;
     border-left: 0;
     border-top: 1px solid var(--color-border-medium);
@@ -1071,6 +1197,26 @@ button { font-family: inherit; }
   }
 
 }
+
+/* Narrow phones (<480px): collapse the "+ Add your repo" CTA to an icon-
+ * only button so the row-1 actions strip (About, GitHub, +) doesn't crowd
+ * the brand mark. The hidden text remains in the DOM for accessibility
+ * (aria-label is set on the anchor itself). */
+@media (max-width: 479.98px) {
+  .cta-add-repo {
+    padding: 6px 10px;
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 32px;
+    justify-content: center;
+  }
+  .cta-add-repo .cta-add-repo-text { display: none; }
+  .cta-add-repo .cta-add-repo-icon { display: inline-flex; }
+  /* Tighten brand spacing so the topbar doesn't wrap on a 320px viewport. */
+  .brand-mark { font-size: 18px; }
+  .brand-mark .brand-emoji { font-size: 16px; }
+}
+
 /* "Pick an entry below" CTA — only painted into the DOM on mobile, but
  * leaving safe defaults here in case the breakpoint shifts. */
 .pick-entry-cta {
@@ -1093,7 +1239,7 @@ button { font-family: inherit; }
 }
 @keyframes bounce-down {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(4px); }
+  50%      { transform: translateY(-4px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .pick-entry-arrow { animation: none; }
@@ -1139,6 +1285,13 @@ button { font-family: inherit; }
   transform: translateY(-1px);
 }
 .tour-start-btn[hidden] { display: none; }
+/* While a tour is in progress, keep the "Start tour" button hidden
+ * regardless of state-machine class rules. The tour controller in
+ * app.js sets/unsets data-tour-running on <body>. */
+body[data-tour-running="true"] .tour-start-btn,
+body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host > #tour-start {
+  display: none !important;
+}
 .tour-start-icon {
   display: inline-flex;
   font-size: 11px;
@@ -1329,7 +1482,7 @@ button { font-family: inherit; }
     top: auto;
     transform: translateX(0) translateY(100%);
     width: 100%;
-    max-height: 50vh;
+    max-height: 50dvh;
     border-radius: 16px 16px 0 0;
     border-left: 0;
     border-right: 0;

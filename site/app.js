@@ -4,9 +4,9 @@
 // rendered via textContent / createElement / attribute setters — never
 // innerHTML with untrusted data.
 
-import { prepareGraph, commitGraph, clearGraph } from './viewer.js?v=20260507c';
+import { prepareGraph, commitGraph, clearGraph } from './viewer.js?v=20260507e';
 
-const PAGE_VERSION = '20260507c';
+const PAGE_VERSION = '20260507e';
 const MOBILE_BREAKPOINT = 800;
 
 function isMobile() {
@@ -538,6 +538,8 @@ function setMainState(name) {
     if (startBtn) startBtn.hidden = true;
     const legend = document.getElementById('graph-legend');
     if (legend) legend.hidden = true;
+    const legendToggle = document.getElementById('legend-toggle');
+    if (legendToggle) legendToggle.hidden = true;
     const zc = document.getElementById('zoom-controls');
     if (zc) zc.hidden = true;
   }
@@ -550,8 +552,9 @@ function resetGraphArea() {
 }
 
 // On mobile, when the graph pane is shown but no entry is selected, surface
-// a "Pick an entry below" CTA pointing at the sidebar strip. We add it lazily
-// to the existing empty-state markup so the desktop copy stays untouched.
+// a "Pick an entry above" CTA pointing at the sidebar strip (which now sits
+// above the graph pane on mobile). We add it lazily to the existing empty-
+// state markup so the desktop copy stays untouched.
 function refreshEmptyStateCta() {
   const empty = document.getElementById('graph-empty');
   if (!empty) return;
@@ -560,8 +563,8 @@ function refreshEmptyStateCta() {
   if (!isMobile()) return;
   if (state.entries.length === 0) return; // fallback-notice already covers
   const cta = el('div', { className: 'pick-entry-cta' }, [
-    el('span', { className: 'pick-entry-arrow', text: '↓', attrs: { 'aria-hidden': 'true' } }),
-    el('span', { text: 'Pick an entry below' }),
+    el('span', { className: 'pick-entry-arrow', text: '↑', attrs: { 'aria-hidden': 'true' } }),
+    el('span', { text: 'Pick an entry above' }),
   ]);
   empty.appendChild(cta);
 }
@@ -670,6 +673,9 @@ const Tour = (() => {
     idx = 0;
     playing = true;
     stopTimer();
+    if (typeof document !== 'undefined' && document.body) {
+      delete document.body.dataset.tourRunning;
+    }
     const sb = startBtn();
     if (sb) sb.hidden = steps.length === 0;
     const p = panel();
@@ -692,6 +698,11 @@ const Tour = (() => {
     active = true;
     idx = 0;
     playing = !tourPrefersReducedMotion();
+    // Expose tour-running state to CSS so the Start-tour button stays
+    // hidden while the panel is open.
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.dataset.tourRunning = 'true';
+    }
     const p = panel();
     if (p) {
       p.hidden = false;
@@ -711,6 +722,9 @@ const Tour = (() => {
     if (!active && (!panel() || panel().hidden)) return;
     active = false;
     stopTimer();
+    if (typeof document !== 'undefined' && document.body) {
+      delete document.body.dataset.tourRunning;
+    }
     const p = panel();
     if (p) {
       p.classList.remove('is-open');
@@ -838,8 +852,14 @@ const Tour = (() => {
   return { attach, start, exit, next, prev, jumpTo, togglePlay, isActive, isPlaying, handleVisibility };
 })();
 
+// Legend collapse/expand state. On mobile the legend is hidden by default
+// (so it never covers the canvas) and only revealed via the toggle. On
+// desktop the legend renders in-place and the toggle stays hidden.
+let legendExpanded = false;
+
 function renderLegend(items) {
   const legend = document.getElementById('graph-legend');
+  const toggle = document.getElementById('legend-toggle');
   legend.replaceChildren();
   for (const item of items) {
     // xyflow-style chip: <div class="legend-chip" style="--c: #...;">
@@ -855,7 +875,29 @@ function renderLegend(items) {
     ]);
     legend.appendChild(chip);
   }
-  legend.hidden = items.length === 0;
+  // Default: collapsed on mobile, expanded on desktop. The toggle is
+  // only surfaced on mobile (the desktop layout shows the legend chips
+  // in-place at bottom-left and a toggle would just be noise).
+  if (items.length === 0) {
+    legend.hidden = true;
+    if (toggle) toggle.hidden = true;
+    return;
+  }
+  legendExpanded = !isMobile();
+  applyLegendVisibility();
+  if (toggle) toggle.hidden = !isMobile();
+}
+
+function applyLegendVisibility() {
+  const legend = document.getElementById('graph-legend');
+  const toggle = document.getElementById('legend-toggle');
+  if (!legend) return;
+  legend.hidden = !legendExpanded;
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', legendExpanded ? 'true' : 'false');
+    const lbl = toggle.querySelector('.legend-toggle-label');
+    if (lbl) lbl.textContent = legendExpanded ? 'Hide legend' : 'Show legend';
+  }
 }
 
 // ---------- wiring ----------
@@ -929,6 +971,20 @@ function bindDetail() {
 }
 
 function handleResize() {
+  // Recompute legend visibility based on the new viewport — collapsed on
+  // mobile, expanded on desktop. Only adjust if a legend is currently
+  // active (chips have been rendered); the toggle button itself is shown
+  // on mobile and hidden on desktop.
+  const toggle = document.getElementById('legend-toggle');
+  const legend = document.getElementById('graph-legend');
+  if (legend && legend.children.length > 0) {
+    const wantExpanded = !isMobile();
+    if (wantExpanded !== legendExpanded) {
+      legendExpanded = wantExpanded;
+      applyLegendVisibility();
+    }
+    if (toggle) toggle.hidden = !isMobile();
+  }
   const entry = getSelectedEntry();
   if (!entry) {
     // No selection — make sure stray UI isn't hanging around.
@@ -1016,6 +1072,15 @@ function bindZoom() {
   inBtn.addEventListener('click', () => window.dispatchEvent(new CustomEvent('uq-zoom', { detail: { dir: 'in' } })));
   outBtn.addEventListener('click', () => window.dispatchEvent(new CustomEvent('uq-zoom', { detail: { dir: 'out' } })));
   fitBtn.addEventListener('click', () => window.dispatchEvent(new CustomEvent('uq-zoom', { detail: { dir: 'fit' } })));
+}
+
+function bindLegendToggle() {
+  const toggle = document.getElementById('legend-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', () => {
+    legendExpanded = !legendExpanded;
+    applyLegendVisibility();
+  });
 }
 
 function bindTour() {
@@ -1153,6 +1218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindDetail();
     bindZoom();
     bindTour();
+    bindLegendToggle();
     loadRegistry();
     updateDiagPanel();
   } catch (err) {
