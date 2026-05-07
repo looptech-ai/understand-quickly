@@ -1,0 +1,50 @@
+name: Bug report
+description: Something is broken in the registry, browser, MCP server, or workflows.
+title: "[bug] <short summary>"
+labels: ["bug"]
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One sentence describing what's wrong.
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did it break?
+      options:
+        - Agent fetch (curl / SDK)
+        - Pages browser
+        - MCP server
+        - CLI / scripts
+        - GitHub Actions / CI
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered list. Include URLs or commands you ran.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / output
+      description: Paste any console output, error messages, or workflow logs.
+      render: shell

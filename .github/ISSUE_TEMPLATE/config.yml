@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Browse the registry
+    url: https://amacsmith.github.io/understand-quickly/
+    about: See what's already indexed before opening a new issue.
+  - name: Add your repo (preferred path)
+    url: https://github.com/amacsmith/understand-quickly/blob/main/CONTRIBUTING.md
+    about: A PR is faster than an issue for most additions.

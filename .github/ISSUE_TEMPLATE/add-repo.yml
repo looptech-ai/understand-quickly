@@ -1,0 +1,59 @@
+name: Add my repo
+description: Request that your repo be indexed by understand-quickly.
+title: "[add] <owner>/<repo>"
+labels: ["add-repo"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A PR is usually faster than an issue. See [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md). Use this form only if you can't open one.
+  - type: input
+    id: id
+    attributes:
+      label: Repo id
+      description: Must match `owner/repo`.
+      placeholder: yourname/yourrepo
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Graph format
+      options:
+        - understand-anything@1
+        - gitnexus@1
+        - code-review-graph@1
+        - generic@1
+    validations:
+      required: true
+  - type: input
+    id: graph_url
+    attributes:
+      label: graph_url
+      description: Must start with `https://`.
+      placeholder: https://raw.githubusercontent.com/yourname/yourrepo/main/.understand-anything/knowledge-graph.json
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: One line, ≤ 200 chars.
+    validations:
+      required: true
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      description: Comma-separated, optional.
+      placeholder: python, agents
+  - type: checkboxes
+    id: instant_refresh
+    attributes:
+      label: Optional add-ons
+      options:
+        - label: I'll also drop the publish workflow into my repo for instant-refresh on push.
+  - type: markdown
+    attributes:
+      value: |
+        Reminder: a PR adding the entry to `registry.json` is faster than this form.
