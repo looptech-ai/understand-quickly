@@ -4,7 +4,7 @@
 // rendered via textContent / createElement / attribute setters — never
 // innerHTML with untrusted data.
 
-import { prepareGraph, commitGraph, clearGraph, getCurrentNetwork } from './viewer.js?v=20260507c';
+import { prepareGraph, commitGraph, clearGraph } from './viewer.js?v=20260507c';
 
 const PAGE_VERSION = '20260507c';
 const MOBILE_BREAKPOINT = 800;
