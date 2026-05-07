@@ -1,0 +1,264 @@
+{
+  "_comment_top": "Reconstruction of code_review_graph.visualization.export_graph_data() output for code-review-graph v2.3.2 run against its own repo. Field shapes verified against graph.py:node_to_dict/edge_to_dict (lines ~1340-1360), visualization.py:export_graph_data (lines ~95-170), flows.py:get_flows (lines ~571-610), communities.py:get_communities (lines ~719-765), and GraphStats dataclass at graph.py:127. Upstream does NOT emit a top-level 'metadata' block today — the schema treats it as optional, and we omit it here to match real output. Embedded into the visualize HTML via json.dumps(data, default=str) (visualization.py:406), so all fields appear with native JSON types. _comment_* keys are not part of the upstream shape — they document inference.",
+  "nodes": [
+    {
+      "_comment": "DOCUMENTED: keys come straight from node_to_dict() at graph.py:1340. params/return_type/community_id added in export_graph_data() at visualization.py:135-138.",
+      "id": 1,
+      "kind": "File",
+      "name": "graph.py",
+      "qualified_name": "code_review_graph/graph.py",
+      "file_path": "code_review_graph/graph.py",
+      "line_start": null,
+      "line_end": null,
+      "language": "python",
+      "parent_name": null,
+      "is_test": 0,
+      "params": null,
+      "return_type": null,
+      "community_id": 3
+    },
+    {
+      "id": 2,
+      "kind": "Class",
+      "name": "GraphStore",
+      "qualified_name": "code_review_graph/graph.py::GraphStore",
+      "file_path": "code_review_graph/graph.py",
+      "line_start": 142,
+      "line_end": 1320,
+      "language": "python",
+      "parent_name": null,
+      "is_test": 0,
+      "params": null,
+      "return_type": null,
+      "community_id": 3
+    },
+    {
+      "id": 3,
+      "kind": "Function",
+      "name": "upsert_node",
+      "qualified_name": "code_review_graph/graph.py::GraphStore.upsert_node",
+      "file_path": "code_review_graph/graph.py",
+      "line_start": 169,
+      "line_end": 198,
+      "language": "python",
+      "parent_name": "GraphStore",
+      "is_test": 0,
+      "params": "self, node: NodeInfo, file_hash: str = ''",
+      "return_type": "int",
+      "community_id": 3
+    },
+    {
+      "id": 4,
+      "kind": "Function",
+      "name": "export_graph_data",
+      "qualified_name": "code_review_graph/visualization.py::export_graph_data",
+      "file_path": "code_review_graph/visualization.py",
+      "line_start": 95,
+      "line_end": 168,
+      "language": "python",
+      "parent_name": null,
+      "is_test": 0,
+      "params": "store: GraphStore",
+      "return_type": "dict",
+      "community_id": 5
+    },
+    {
+      "id": 5,
+      "kind": "Function",
+      "name": "export_graphml",
+      "qualified_name": "code_review_graph/exports.py::export_graphml",
+      "file_path": "code_review_graph/exports.py",
+      "line_start": 21,
+      "line_end": 78,
+      "language": "python",
+      "parent_name": null,
+      "is_test": 0,
+      "params": "store: GraphStore, output_path: Path",
+      "return_type": "Path",
+      "community_id": 5
+    },
+    {
+      "id": 6,
+      "kind": "Function",
+      "name": "main",
+      "qualified_name": "code_review_graph/cli.py::main",
+      "file_path": "code_review_graph/cli.py",
+      "line_start": 800,
+      "line_end": 990,
+      "language": "python",
+      "parent_name": null,
+      "is_test": 0,
+      "params": "argv: list[str] | None = None",
+      "return_type": "int",
+      "community_id": 1
+    },
+    {
+      "id": 7,
+      "kind": "Test",
+      "name": "test_export_graphml_smoke",
+      "qualified_name": "tests/test_exports.py::test_export_graphml_smoke",
+      "file_path": "tests/test_exports.py",
+      "line_start": 12,
+      "line_end": 38,
+      "language": "python",
+      "parent_name": null,
+      "is_test": 1,
+      "params": "tmp_path",
+      "return_type": "None",
+      "community_id": null
+    }
+  ],
+  "edges": [
+    {
+      "_comment": "DOCUMENTED: shape from edge_to_dict() at graph.py:1351. confidence/confidence_tier columns come from the edges table schema at graph.py:48-58 (defaults: 1.0 / 'EXTRACTED').",
+      "id": 1,
+      "kind": "CONTAINS",
+      "source": "code_review_graph/graph.py",
+      "target": "code_review_graph/graph.py::GraphStore",
+      "file_path": "code_review_graph/graph.py",
+      "line": 142,
+      "confidence": 1.0,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 2,
+      "kind": "CONTAINS",
+      "source": "code_review_graph/graph.py::GraphStore",
+      "target": "code_review_graph/graph.py::GraphStore.upsert_node",
+      "file_path": "code_review_graph/graph.py",
+      "line": 169,
+      "confidence": 1.0,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 3,
+      "kind": "CALLS",
+      "source": "code_review_graph/visualization.py::export_graph_data",
+      "target": "code_review_graph/graph.py::GraphStore.upsert_node",
+      "file_path": "code_review_graph/visualization.py",
+      "line": 117,
+      "confidence": 0.91,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 4,
+      "kind": "IMPORTS_FROM",
+      "source": "code_review_graph/exports.py::export_graphml",
+      "target": "code_review_graph/visualization.py::export_graph_data",
+      "file_path": "code_review_graph/exports.py",
+      "line": 11,
+      "confidence": 1.0,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 5,
+      "kind": "CALLS",
+      "source": "code_review_graph/cli.py::main",
+      "target": "code_review_graph/exports.py::export_graphml",
+      "file_path": "code_review_graph/cli.py",
+      "line": 902,
+      "confidence": 0.88,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 6,
+      "kind": "TESTED_BY",
+      "source": "code_review_graph/exports.py::export_graphml",
+      "target": "tests/test_exports.py::test_export_graphml_smoke",
+      "file_path": "tests/test_exports.py",
+      "line": 12,
+      "confidence": 0.6,
+      "confidence_tier": "INFERRED"
+    },
+    {
+      "id": 7,
+      "kind": "REFERENCES",
+      "source": "code_review_graph/visualization.py::export_graph_data",
+      "target": "code_review_graph/graph.py::GraphStore",
+      "file_path": "code_review_graph/visualization.py",
+      "line": 22,
+      "confidence": 0.55,
+      "confidence_tier": "AMBIGUOUS"
+    }
+  ],
+  "stats": {
+    "_comment": "DOCUMENTED: dataclasses.asdict(GraphStats) per visualization.py:163. Field set exact, last_updated may be null on a fresh DB.",
+    "total_nodes": 7,
+    "total_edges": 7,
+    "nodes_by_kind": {
+      "File": 1,
+      "Class": 1,
+      "Function": 4,
+      "Test": 1
+    },
+    "edges_by_kind": {
+      "CONTAINS": 2,
+      "CALLS": 2,
+      "IMPORTS_FROM": 1,
+      "TESTED_BY": 1,
+      "REFERENCES": 1
+    },
+    "languages": ["python"],
+    "files_count": 4,
+    "last_updated": "2026-05-07T09:42:11Z"
+  },
+  "flows": [
+    {
+      "_comment": "DOCUMENTED: shape from flows.py:get_flows() rows 590-606. created_at/updated_at are SQLite timestamps stored as floats.",
+      "id": 1,
+      "name": "cli.main -> graphml export",
+      "entry_point_id": 6,
+      "depth": 3,
+      "node_count": 3,
+      "file_count": 3,
+      "criticality": 0.74,
+      "path": [
+        "code_review_graph/cli.py::main",
+        "code_review_graph/exports.py::export_graphml",
+        "code_review_graph/visualization.py::export_graph_data"
+      ],
+      "created_at": 1714760000.0,
+      "updated_at": 1714763400.0
+    }
+  ],
+  "communities": [
+    {
+      "_comment": "DOCUMENTED: shape from communities.py:get_communities() rows 750-762.",
+      "id": 1,
+      "name": "cli",
+      "level": 0,
+      "cohesion": 0.38,
+      "size": 1,
+      "dominant_language": "python",
+      "description": "Command-line entry surface",
+      "members": ["code_review_graph/cli.py::main"]
+    },
+    {
+      "id": 3,
+      "name": "graph-store",
+      "level": 0,
+      "cohesion": 0.66,
+      "size": 3,
+      "dominant_language": "python",
+      "description": "SQLite-backed graph storage",
+      "members": [
+        "code_review_graph/graph.py",
+        "code_review_graph/graph.py::GraphStore",
+        "code_review_graph/graph.py::GraphStore.upsert_node"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "exports",
+      "level": 0,
+      "cohesion": 0.51,
+      "size": 2,
+      "dominant_language": "python",
+      "description": "Graph export pipelines (GraphML/Cypher/Obsidian)",
+      "members": [
+        "code_review_graph/visualization.py::export_graph_data",
+        "code_review_graph/exports.py::export_graphml"
+      ]
+    }
+  ]
+}

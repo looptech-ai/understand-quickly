@@ -1,0 +1,93 @@
+{
+  "nodes": [
+    {
+      "id": "mod:registry",
+      "kind": "module",
+      "label": "@understand-quickly/registry",
+      "path": ".",
+      "summary": "Root module of the understand-quickly registry: a static catalog that points at code-graph exports across formats and validates them in CI."
+    },
+    {
+      "id": "file:registry-json",
+      "kind": "file",
+      "label": "registry.json",
+      "path": "registry.json",
+      "summary": "Source-of-truth catalog of registered graphs. Each entry declares id/owner/repo/format/graph_url/description/tags; sync.mjs fetches graph_url and validates it against the declared format's schema."
+    },
+    {
+      "id": "file:validate",
+      "kind": "file",
+      "label": "scripts/validate.mjs",
+      "path": "scripts/validate.mjs",
+      "summary": "Static validator: walks registry.json, fetches each entry's graph_url, and runs Ajv against the matching schema in schemas/<format>.json. Exits non-zero on any failure."
+    },
+    {
+      "id": "file:sync",
+      "kind": "file",
+      "label": "scripts/sync.mjs",
+      "path": "scripts/sync.mjs",
+      "summary": "Sync runner used by the GitHub Actions workflow. Fetches every entry, schema-validates it, captures status (ok/pending/failed), and writes a status snapshot consumed by the README renderer."
+    },
+    {
+      "id": "file:render",
+      "kind": "file",
+      "label": "scripts/render-readme.mjs",
+      "path": "scripts/render-readme.mjs",
+      "summary": "Regenerates the entry table in README.md between the AUTO-RENDERED markers, using the latest status snapshot from sync."
+    },
+    {
+      "id": "fn:loadRegistry",
+      "kind": "function",
+      "label": "loadRegistry",
+      "path": "scripts/validate.mjs:14",
+      "summary": "Reads registry.json from disk, asserts schema_version === 1, returns the entries array."
+    },
+    {
+      "id": "fn:validateEntry",
+      "kind": "function",
+      "label": "validateEntry",
+      "path": "scripts/validate.mjs:42",
+      "summary": "Validates a single entry: HEADs graph_url, fetches body, parses JSON, looks up Ajv compiled schema for entry.format, returns {status, errors}."
+    },
+    {
+      "id": "fn:renderTable",
+      "kind": "function",
+      "label": "renderTable",
+      "path": "scripts/render-readme.mjs:31",
+      "summary": "Builds the markdown rows for the README. Each row shows id, format, status badge (ok/pending/failed), and last-checked timestamp."
+    },
+    {
+      "id": "concept:format",
+      "kind": "concept",
+      "label": "Graph Format",
+      "summary": "An entry's `format` is a versioned identifier like 'understand-anything@1' or 'gitnexus@1'. A matching schema must live at schemas/<format>.json and a fixture pair (ok.json + bad.json) under schemas/__fixtures__/<format>/."
+    },
+    {
+      "id": "concept:pipeline",
+      "kind": "concept",
+      "label": "Ingest Pipeline",
+      "summary": "fetch graph_url -> schema-validate against declared format -> snapshot status -> render README. Demo entries point at fixtures hosted on this repo's own Pages site to exercise every stage end-to-end."
+    }
+  ],
+  "edges": [
+    { "from": "mod:registry", "to": "file:registry-json", "kind": "contains" },
+    { "from": "mod:registry", "to": "file:validate", "kind": "contains" },
+    { "from": "mod:registry", "to": "file:sync", "kind": "contains" },
+    { "from": "mod:registry", "to": "file:render", "kind": "contains" },
+    { "from": "file:validate", "to": "fn:loadRegistry", "kind": "defines" },
+    { "from": "file:validate", "to": "fn:validateEntry", "kind": "defines" },
+    { "from": "file:render", "to": "fn:renderTable", "kind": "defines" },
+    { "from": "fn:validateEntry", "to": "file:registry-json", "kind": "reads" },
+    { "from": "fn:renderTable", "to": "file:registry-json", "kind": "reads" },
+    { "from": "file:sync", "to": "fn:validateEntry", "kind": "calls" },
+    { "from": "concept:pipeline", "to": "file:sync", "kind": "implemented-by" },
+    { "from": "concept:pipeline", "to": "file:validate", "kind": "implemented-by" },
+    { "from": "concept:pipeline", "to": "file:render", "kind": "implemented-by" },
+    { "from": "concept:format", "to": "file:registry-json", "kind": "described-by" }
+  ],
+  "metadata": {
+    "tool": "understand-anything",
+    "tool_version": "0.4.0",
+    "generated_at": "2026-05-07T00:00:00Z"
+  }
+}

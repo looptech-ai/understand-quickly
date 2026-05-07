@@ -1,0 +1,31 @@
+{
+  "name": "@understand-quickly/registry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Public registry of code-knowledge graphs for AI agents.",
+  "author": "Alex Macdonald-Smith <Alex.Mac@LoopTech.AI>",
+  "license": "MIT",
+  "homepage": "https://looptech-ai.github.io/understand-quickly/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/looptech-ai/understand-quickly.git"
+  },
+  "bugs": {
+    "url": "https://github.com/looptech-ai/understand-quickly/issues"
+  },
+  "type": "module",
+  "engines": { "node": ">=20.0.0" },
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "sync": "node scripts/sync.mjs",
+    "render": "node scripts/render-readme.mjs",
+    "test": "node --test 'scripts/__tests__/*.test.mjs'",
+    "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 80 node --test 'scripts/__tests__/*.test.mjs'",
+    "smoke": "node scripts/sync.mjs --registry tests/registry-smoke.json --dry-run"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "c8": "^10.1.2"
+  }
+}

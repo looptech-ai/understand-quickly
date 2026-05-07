@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-07T08:02:44.542Z",
+  "entries": [
+    {
+      "id": "understand-quickly/demo-understand-anything",
+      "owner": "understand-quickly",
+      "repo": "demo-understand-anything",
+      "default_branch": "main",
+      "format": "understand-anything@1",
+      "graph_url": "https://looptech-ai.github.io/understand-quickly/schemas/__fixtures__/understand-anything/real-sample.json",
+      "description": "Demo entry: a hand-built sample knowledge graph in the understand-anything@1 shape.",
+      "tags": [
+        "demo",
+        "understand-anything"
+      ],
+      "miss_count": 0,
+      "status": "ok",
+      "last_error": null,
+      "last_synced": "2026-05-07T08:02:44.156Z",
+      "last_sha": "8076fa075a94ade41b2df7f3a8f1f6a8ace220f609ec5823be51e47ab30b418b",
+      "size_bytes": 4366
+    },
+    {
+      "id": "understand-quickly/demo-gitnexus",
+      "owner": "understand-quickly",
+      "repo": "demo-gitnexus",
+      "default_branch": "main",
+      "format": "gitnexus@1",
+      "graph_url": "https://looptech-ai.github.io/understand-quickly/schemas/__fixtures__/gitnexus/real-sample.json",
+      "description": "Demo entry: a sample GitNexus graph modeled on its own codebase.",
+      "tags": [
+        "demo",
+        "gitnexus"
+      ],
+      "status": "ok",
+      "miss_count": 0,
+      "last_error": null,
+      "last_sha": "5c9a843fa7ffda007cc4ef4fce80beb54bbdd5d8995db06b8db606980c07239a",
+      "size_bytes": 8713,
+      "last_synced": "2026-05-07T08:02:44.348Z"
+    },
+    {
+      "id": "understand-quickly/demo-code-review-graph",
+      "owner": "understand-quickly",
+      "repo": "demo-code-review-graph",
+      "default_branch": "main",
+      "format": "code-review-graph@1",
+      "graph_url": "https://looptech-ai.github.io/understand-quickly/schemas/__fixtures__/code-review-graph/real-sample.json",
+      "description": "Demo entry: a sample code-review-graph export covering files, classes, and tests.",
+      "tags": [
+        "demo",
+        "code-review-graph"
+      ],
+      "status": "ok",
+      "miss_count": 0,
+      "last_error": null,
+      "last_sha": "db43045f1341c8ba1f20c666497bc78500fad64b411ed8a8b6836e958d58fb39",
+      "size_bytes": 8545,
+      "last_synced": "2026-05-07T08:02:44.542Z"
+    }
+  ]
+}

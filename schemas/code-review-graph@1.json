@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://understand-quickly.dev/schemas/code-review-graph@1.json",
+  "title": "code-review-graph@1",
+  "description": "Knowledge-graph payload produced by tirth8205/code-review-graph (https://github.com/tirth8205/code-review-graph). The tool persists to SQLite under .code-review-graph/, but its visualize/export pipeline serializes the graph to JSON via code_review_graph.visualization.export_graph_data(). That dict shape is what this schema describes.",
+  "type": "object",
+  "required": ["nodes", "edges", "stats"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "description": "Code-symbol nodes. Shape from code_review_graph.graph.node_to_dict + community_id/params/return_type added by export_graph_data.",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "name", "qualified_name", "file_path"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "kind": {
+            "type": "string",
+            "enum": ["File", "Class", "Function", "Type", "Test"]
+          },
+          "name": { "type": "string", "minLength": 1 },
+          "qualified_name": { "type": "string", "minLength": 1 },
+          "file_path": { "type": "string" },
+          "line_start": { "type": ["integer", "null"], "minimum": 0 },
+          "line_end": { "type": ["integer", "null"], "minimum": 0 },
+          "language": { "type": ["string", "null"] },
+          "parent_name": { "type": ["string", "null"] },
+          "params": { "type": ["string", "null"] },
+          "return_type": { "type": ["string", "null"] },
+          "is_test": {
+            "description": "0/1 from SQLite or boolean once normalised.",
+            "type": ["boolean", "integer"],
+            "enum": [false, true, 0, 1]
+          },
+          "community_id": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Relations between symbols. Shape from code_review_graph.graph.edge_to_dict.",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "source", "target"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "CALLS",
+              "IMPORTS_FROM",
+              "INHERITS",
+              "IMPLEMENTS",
+              "CONTAINS",
+              "TESTED_BY",
+              "DEPENDS_ON",
+              "REFERENCES"
+            ]
+          },
+          "source": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "file_path": { "type": "string" },
+          "line": { "type": "integer", "minimum": 0 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "confidence_tier": {
+            "type": "string",
+            "enum": ["EXTRACTED", "INFERRED", "AMBIGUOUS"]
+          }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "description": "GraphStats dataclass (code_review_graph.graph.GraphStats).",
+      "required": [
+        "total_nodes",
+        "total_edges",
+        "nodes_by_kind",
+        "edges_by_kind",
+        "languages",
+        "files_count"
+      ],
+      "properties": {
+        "total_nodes": { "type": "integer", "minimum": 0 },
+        "total_edges": { "type": "integer", "minimum": 0 },
+        "nodes_by_kind": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "edges_by_kind": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "files_count": { "type": "integer", "minimum": 0 },
+        "last_updated": { "type": ["string", "null"] }
+      }
+    },
+    "flows": {
+      "type": "array",
+      "description": "Stored flows (code_review_graph.flows.get_flows). Empty array when the flows table is missing or unpopulated.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "entry_point_id": { "type": ["integer", "null"] },
+          "depth": { "type": ["integer", "null"], "minimum": 0 },
+          "node_count": { "type": ["integer", "null"], "minimum": 0 },
+          "file_count": { "type": ["integer", "null"], "minimum": 0 },
+          "criticality": { "type": ["number", "null"] },
+          "path": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "created_at": { "type": ["string", "number", "null"] },
+          "updated_at": { "type": ["string", "number", "null"] }
+        }
+      }
+    },
+    "communities": {
+      "type": "array",
+      "description": "Detected communities (code_review_graph.communities.get_communities).",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "size", "members"],
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "level": { "type": ["integer", "null"] },
+          "cohesion": { "type": ["number", "null"] },
+          "size": { "type": "integer", "minimum": 0 },
+          "dominant_language": { "type": "string" },
+          "description": { "type": "string" },
+          "members": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional ingestion metadata. Not emitted by upstream today, but ingestors are expected to fill it.",
+      "properties": {
+        "tool": { "const": "code-review-graph" },
+        "tool_version": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "mode": {
+      "type": "string",
+      "description": "Set when the payload comes from an aggregated render (community/file modes in visualization.py).",
+      "enum": ["full", "community", "file"]
+    },
+    "community_details": {
+      "type": "object",
+      "description": "Per-community drill-down nodes/edges, present only in community-aggregated exports."
+    }
+  }
+}

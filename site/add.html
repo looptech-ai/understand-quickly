@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>understand-quickly · Add your repo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Two-click registration for understand-quickly. Fill four fields, open a pre-filled GitHub issue, and the bot opens the PR.">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./add.css">
+</head>
+<body>
+  <div class="add-page">
+    <header class="add-header">
+      <a class="add-back" href="./">&larr; back to registry</a>
+      <h1>Add your repo</h1>
+      <p class="add-subtitle">Two clicks. The bot does the rest.</p>
+    </header>
+
+    <main>
+      <form id="add-form" class="add-form" novalidate>
+        <!-- Repo id -->
+        <fieldset class="field">
+          <label for="f-id" class="field-label">
+            Repo id
+            <span class="field-required" aria-hidden="true">*</span>
+          </label>
+          <p class="field-hint">
+            The GitHub <code>owner/repo</code> slug. Must match
+            <code>^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$</code>.
+          </p>
+          <input
+            type="text"
+            id="f-id"
+            name="id"
+            class="text-input"
+            placeholder="yourname/yourrepo"
+            autocomplete="off"
+            spellcheck="false"
+            required>
+          <p class="field-error" id="err-id" hidden></p>
+        </fieldset>
+
+        <!-- Format -->
+        <fieldset class="field">
+          <legend class="field-label">
+            Format
+            <span class="field-required" aria-hidden="true">*</span>
+          </legend>
+          <p class="field-hint">Pick the producer that emits your knowledge graph.</p>
+          <div class="radio-list" role="radiogroup" aria-label="Graph format">
+            <label class="radio-card">
+              <input type="radio" name="format" value="understand-anything@1" required>
+              <span class="radio-title"><code>understand-anything@1</code></span>
+              <span class="radio-desc">Knowledge graph from <a href="https://github.com/Lum1104/Understand-Anything" rel="noopener" target="_blank">Lum1104/Understand-Anything</a>.</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="format" value="gitnexus@1">
+              <span class="radio-title"><code>gitnexus@1</code></span>
+              <span class="radio-desc">Knowledge graph from <a href="https://github.com/abhigyanpatwari/GitNexus" rel="noopener" target="_blank">abhigyanpatwari/GitNexus</a>.</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="format" value="code-review-graph@1">
+              <span class="radio-title"><code>code-review-graph@1</code></span>
+              <span class="radio-desc">Knowledge graph from <a href="https://github.com/tirth8205/code-review-graph" rel="noopener" target="_blank">tirth8205/code-review-graph</a>.</span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="format" value="generic@1">
+              <span class="radio-title"><code>generic@1</code></span>
+              <span class="radio-desc">Any <code>{nodes, edges}</code> graph (escape hatch).</span>
+            </label>
+          </div>
+          <p class="field-error" id="err-format" hidden></p>
+        </fieldset>
+
+        <!-- graph_url -->
+        <fieldset class="field">
+          <label for="f-url" class="field-label">
+            graph_url
+            <span class="field-required" aria-hidden="true">*</span>
+          </label>
+          <p class="field-hint">
+            Public <code>https://</code> URL to the JSON graph file. We auto-suggest a path based on
+            your repo id and the format you picked &mdash; edit if your file lives elsewhere.
+          </p>
+          <input
+            type="url"
+            id="f-url"
+            name="graph_url"
+            class="text-input"
+            placeholder="https://raw.githubusercontent.com/yourname/yourrepo/main/.understand-anything/knowledge-graph.json"
+            autocomplete="off"
+            spellcheck="false"
+            required>
+          <p class="field-error" id="err-url" hidden></p>
+        </fieldset>
+
+        <!-- Description -->
+        <fieldset class="field">
+          <label for="f-desc" class="field-label">
+            Description
+            <span class="field-required" aria-hidden="true">*</span>
+          </label>
+          <p class="field-hint">One line. Max 200 characters.</p>
+          <textarea
+            id="f-desc"
+            name="description"
+            class="text-input"
+            rows="2"
+            maxlength="200"
+            placeholder="Multi-agent toolkit with built-in tracing, demos, and python sandbox."
+            required></textarea>
+          <p class="char-counter" aria-live="polite">
+            <span id="desc-count">0</span> / 200
+          </p>
+          <p class="field-error" id="err-desc" hidden></p>
+        </fieldset>
+
+        <!-- Tags -->
+        <fieldset class="field">
+          <label for="f-tags" class="field-label">Tags</label>
+          <p class="field-hint">
+            Optional. Type a tag and press <kbd>Enter</kbd> or <kbd>,</kbd>. Click a chip to remove.
+          </p>
+          <div id="chip-host" class="chip-host">
+            <ul id="chip-list" class="chip-list" aria-label="Tags"></ul>
+            <input
+              type="text"
+              id="f-tags"
+              class="chip-input"
+              placeholder="python, agents"
+              autocomplete="off"
+              spellcheck="false">
+          </div>
+        </fieldset>
+
+        <!-- Instant refresh -->
+        <fieldset class="field">
+          <label class="checkbox-row">
+            <input type="checkbox" id="f-refresh" name="instant_refresh">
+            <span>
+              <strong>Instant refresh.</strong>
+              Yes, I&rsquo;ll add the publish workflow to my repo for instant updates on push.
+            </span>
+          </label>
+        </fieldset>
+
+        <!-- Preview -->
+        <fieldset class="field">
+          <button type="button" id="toggle-preview" class="btn-link" aria-expanded="false" aria-controls="json-preview">
+            Preview JSON &darr;
+          </button>
+          <pre id="json-preview" class="json-preview" hidden><code></code></pre>
+        </fieldset>
+
+        <!-- Actions -->
+        <div class="actions">
+          <button type="submit" id="submit-btn" class="btn btn-primary" disabled>
+            Open issue &rarr; bot opens PR
+          </button>
+          <button type="button" id="copy-btn" class="btn">
+            Copy as JSON for direct PR
+          </button>
+        </div>
+        <p class="copy-status" id="copy-status" aria-live="polite" hidden></p>
+        <p class="manual-hint">
+          Prefer a manual PR? Open
+          <a href="https://github.com/looptech-ai/understand-quickly/blob/main/CONTRIBUTING.md" rel="noopener" target="_blank">CONTRIBUTING.md</a>
+          and add the entry to <code>registry.json</code> directly.
+        </p>
+      </form>
+
+      <section class="faq">
+        <h2>FAQ</h2>
+        <details>
+          <summary>Don&rsquo;t have a graph yet?</summary>
+          <p>
+            Run any of the supported tools first &mdash; see
+            <a href="./about.html#supported-formats" rel="noopener">Supported formats</a>
+            on the README for setup links and example outputs.
+          </p>
+        </details>
+        <details>
+          <summary>Don&rsquo;t want to open a GitHub issue?</summary>
+          <p>
+            Click <strong>Copy as JSON for direct PR</strong> above, then open a PR yourself per
+            <a href="https://github.com/looptech-ai/understand-quickly/blob/main/CONTRIBUTING.md" rel="noopener" target="_blank">CONTRIBUTING.md</a>.
+            A direct PR is usually faster than an issue.
+          </p>
+        </details>
+        <details>
+          <summary>Why a bot, not direct write access?</summary>
+          <p>
+            Same gate as awesome-lists: a maintainer review on every entry keeps quality high and the
+            registry trustworthy for downstream agents. The bot just removes the typing.
+          </p>
+        </details>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>MIT &middot; <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">source</a></span>
+    </footer>
+  </div>
+
+  <script type="module" src="./add.js"></script>
+</body>
+</html>

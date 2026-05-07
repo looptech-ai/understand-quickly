@@ -1,0 +1,77 @@
+name: add-from-issue
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  parse-and-pr:
+    if: contains(github.event.issue.labels.*.name, 'add-repo')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+
+      # Issue body is untrusted user input. We pass it through an env var
+      # (never interpolated into a shell-quoted run: line) and write it to a
+      # tempfile, where the parser handles it as plain text. No shell expansion.
+      - name: Write issue body to file
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: printf '%s' "$ISSUE_BODY" > /tmp/issue-body.md
+
+      - name: Parse + validate
+        id: parse
+        run: |
+          if node scripts/issue-to-entry.mjs --body-file=/tmp/issue-body.md --registry=registry.json --dry-run > /tmp/entry.json 2> /tmp/parse.err; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            cat /tmp/entry.json
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            REASON=$(cat /tmp/parse.err | head -c 600)
+            { echo "reason<<EOF"; echo "$REASON"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment failure
+        if: steps.parse.outputs.ok != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          REASON: ${{ steps.parse.outputs.reason }}
+        run: |
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Couldn't auto-build a PR from this issue:
+
+          \`\`\`
+          $REASON
+          \`\`\`
+
+          Edit the issue and the bot will retry."
+
+      - name: Open PR
+        if: steps.parse.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          ID=$(jq -r .id /tmp/entry.json)
+          BRANCH="add/$(echo "$ID" | tr '/' '-')"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          node scripts/issue-to-entry.mjs --body-file=/tmp/issue-body.md --registry=registry.json
+          git add registry.json
+          git commit -m "add: $ID
+
+          Closes #$ISSUE"
+          git push -u origin "$BRANCH"
+          PR_URL=$(gh pr create --title "add: $ID" --body "Resolves #$ISSUE. Auto-built from the linked issue. Validation already passed." --base main --head "$BRANCH")
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Opened PR: $PR_URL"

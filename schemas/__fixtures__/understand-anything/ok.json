@@ -1,0 +1,14 @@
+{
+  "nodes": [
+    { "id": "n1", "kind": "file", "label": "src/index.ts", "path": "src/index.ts" },
+    { "id": "n2", "kind": "function", "label": "main", "path": "src/index.ts:1" }
+  ],
+  "edges": [
+    { "from": "n1", "to": "n2", "kind": "contains" }
+  ],
+  "metadata": {
+    "tool": "understand-anything",
+    "tool_version": "0.4.0",
+    "generated_at": "2026-05-07T00:00:00Z"
+  }
+}

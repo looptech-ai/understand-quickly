@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://understand-quickly.dev/schemas/understand-anything@1.json",
+  "type": "object",
+  "required": ["nodes", "edges"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "label"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string", "enum": ["file", "function", "class", "module", "concept"] },
+          "label": { "type": "string" },
+          "path": { "type": "string" },
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "kind"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "kind": { "type": "string" }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "tool": { "const": "understand-anything" },
+        "tool_version": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

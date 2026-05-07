@@ -1,0 +1,79 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'registry.json'
+      - 'README.md'
+      - 'schemas/**'
+      - 'docs/**'
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Stage site
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+
+          # Copy data + schemas + docs
+          cp registry.json _site/
+          cp -r schemas _site/
+          cp -r docs _site/
+          cp README.md _site/README.md
+
+          # Copy static site assets (index.html, app.js, viewer.js, styles.css, about.html)
+          cp -r site/. _site/
+
+          # Pre-render README -> _site/about.html, splicing the rendered body
+          # between the BEGIN/END markers in site/about.html.
+          npx -y marked@14 README.md > _readme.html
+          node -e '
+            const fs = require("fs");
+            const tpl = fs.readFileSync("site/about.html", "utf8");
+            const body = fs.readFileSync("_readme.html", "utf8");
+            const begin = "<!-- BEGIN README -->";
+            const end = "<!-- END README -->";
+            const i = tpl.indexOf(begin);
+            const j = tpl.indexOf(end);
+            if (i === -1 || j === -1) {
+              throw new Error("about.html missing BEGIN/END README markers");
+            }
+            const out = tpl.slice(0, i + begin.length) + "\n" + body + "\n" + tpl.slice(j);
+            fs.writeFileSync("_site/about.html", out);
+          '
+          rm _readme.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

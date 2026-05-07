@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>understand-quickly · registry browser</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Public, machine-readable registry of code-knowledge graphs. Browse entries, inspect graphs, copy raw URLs for agents.">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <div>
+        <h1><span class="brand-emoji" aria-hidden="true">&#129504;</span>understand-quickly</h1>
+        <p class="tagline">A public, machine-readable registry of code-knowledge graphs.</p>
+      </div>
+      <nav aria-label="Site">
+        <a class="cta-add-repo" href="./add.html">+ Add your repo</a>
+        <a href="./about.html">About</a>
+        <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">GitHub</a>
+      </nav>
+    </header>
+
+    <section class="endpoints" aria-label="Agent endpoints">
+      <strong>Agent endpoints</strong><br>
+      <code>GET <a href="./registry.json">./registry.json</a></code> &mdash; canonical index<br>
+      <code>GET <a href="./schemas/">./schemas/</a></code> &mdash; JSON Schemas
+    </section>
+
+    <main id="main">
+      <div id="error" class="error-banner" hidden role="alert"></div>
+
+      <form class="toolbar" id="toolbar" role="search" aria-label="Filter registry entries" onsubmit="return false;">
+        <input
+          type="search"
+          id="q"
+          placeholder="Search id, description, or tags…"
+          autocomplete="off"
+          aria-label="Search entries">
+        <label class="visually-hidden" for="format">Format</label>
+        <select id="format" aria-label="Filter by format">
+          <option value="">All formats</option>
+        </select>
+      </form>
+
+      <fieldset class="status-filter" id="status-filter" aria-label="Filter by status">
+        <legend class="visually-hidden">Status</legend>
+        <!-- populated by app.js -->
+      </fieldset>
+
+      <p class="results-meta" id="results-meta" aria-live="polite"></p>
+
+      <section id="cards" class="card-grid" aria-label="Registry entries"></section>
+
+      <section id="empty" class="empty" hidden>
+        <h2>No entries yet</h2>
+        <p>The registry is empty right now. Have a knowledge graph for a public repo?</p>
+        <p>
+          <a href="https://github.com/looptech-ai/understand-quickly#add-your-repo" rel="noopener">
+            Read the &ldquo;Add your repo&rdquo; guide &rarr;
+          </a>
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>MIT &middot; <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">source</a></span>
+      <span id="generated-at"></span>
+    </footer>
+  </div>
+
+  <div class="modal" id="viewer" role="dialog" aria-modal="true" aria-labelledby="viewer-title" hidden>
+    <div class="modal-content">
+      <header class="modal-head">
+        <div>
+          <h2 id="viewer-title">Graph</h2>
+          <div class="modal-meta" id="viewer-meta"></div>
+        </div>
+        <button type="button" class="modal-close" id="viewer-close" aria-label="Close graph viewer">&times;</button>
+      </header>
+      <div class="modal-body">
+        <div id="graph-canvas" aria-label="Force-directed graph" role="img"></div>
+        <div class="modal-status" id="viewer-status" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

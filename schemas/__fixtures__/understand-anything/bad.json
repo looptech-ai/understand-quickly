@@ -1,0 +1,6 @@
+{
+  "nodes": [
+    { "id": "n1", "kind": "asteroid", "label": "src/index.ts" }
+  ],
+  "edges": []
+}

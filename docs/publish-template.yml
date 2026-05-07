@@ -1,0 +1,23 @@
+# Drop this file into your repo as
+#   .github/workflows/understand-quickly-publish.yml
+# and add a fine-grained PAT named UNDERSTAND_QUICKLY_TOKEN to your repo secrets.
+# The PAT only needs `repository_dispatch` permission on understand-quickly/registry.
+name: understand-quickly publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.understand-anything/**'
+      - '.gitnexus/**'
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
+          repository: understand-quickly/registry
+          event-type: sync-entry
+          client-payload: '{"id":"${{ github.repository }}"}'

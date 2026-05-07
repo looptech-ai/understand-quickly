@@ -1,0 +1,32 @@
+name: validate
+
+on:
+  pull_request:
+    paths:
+      - 'registry.json'
+      - 'schemas/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Validate (full registry; CI scale fine at MVP size)
+        run: npm run validate
+
+      - name: Run unit + integration tests
+        run: npm test

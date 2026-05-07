@@ -1,0 +1,88 @@
+name: sync
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  repository_dispatch:
+    types: [sync-entry]
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'Single entry id (owner/repo) to sync'
+        required: false
+        type: string
+      revalidate:
+        description: 'Resync all entries even if unchanged'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sync-${{ github.event.client_payload.id || github.event.inputs.id || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Resolve target id
+        id: target
+        env:
+          DISPATCH_ID: ${{ github.event.client_payload.id }}
+          INPUT_ID: ${{ github.event.inputs.id }}
+        run: |
+          ID="${DISPATCH_ID:-$INPUT_ID}"
+          if [[ -n "$ID" && ! "$ID" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "rejecting malformed id: $ID" >&2
+            exit 1
+          fi
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke (dry-run; cron only)
+        if: github.event_name == 'schedule'
+        run: npm run smoke
+
+      - name: Sync
+        env:
+          TARGET_ID: ${{ steps.target.outputs.id }}
+        run: |
+          if [ -n "$TARGET_ID" ]; then
+            node scripts/sync.mjs --only "$TARGET_ID"
+          else
+            node scripts/sync.mjs
+          fi
+
+      - name: Render README inline (default GITHUB_TOKEN push won't trigger render.yml)
+        run: npm run render
+
+      - name: Commit changes
+        id: commit
+        run: |
+          if git diff --quiet registry.json README.md; then
+            echo "no changes"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registry.json README.md
+          git commit -m "chore(sync): update registry and README"
+          git push
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger pages redeploy
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main

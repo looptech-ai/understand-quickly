@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://understand-quickly.dev/schemas/gitnexus@1.json",
+  "title": "GitNexus knowledge graph (v1)",
+  "description": "First-class schema for the JSON shape produced by GitNexus (https://github.com/abhigyanpatwari/GitNexus). The canonical wire format wraps the graph in a top-level `graph` object whose `nodes` and `links` arrays mirror GitNexus's GraphNode and GraphRelationship structures. Field names (`label`, `type`, `confidence`, `reason`, `properties.filePath`, etc.) are taken from `gitnexus-shared/src/graph/types.ts`. Both arrays accept additional properties so upstream can add fields without breaking validation.",
+  "type": "object",
+  "required": ["graph"],
+  "additionalProperties": true,
+  "properties": {
+    "graph": {
+      "type": "object",
+      "required": ["nodes", "links"],
+      "additionalProperties": true,
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "links": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/link" }
+        },
+        "directed": { "type": "boolean" },
+        "multigraph": { "type": "boolean" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "tool": { "type": "string", "pattern": "^gitnexus(@.+)?$" },
+        "tool_version": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "repo": { "type": "string" },
+        "commit": { "type": "string" },
+        "stats": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "files": { "type": "integer", "minimum": 0 },
+            "nodes": { "type": "integer", "minimum": 0 },
+            "edges": { "type": "integer", "minimum": 0 },
+            "communities": { "type": "integer", "minimum": 0 },
+            "processes": { "type": "integer", "minimum": 0 },
+            "embeddings": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": {
+          "description": "GitNexus NodeLabel. Open-ended: upstream adds new labels regularly (e.g. multi-language Struct/Macro/Trait, Route, Tool, Process). Common values are listed in `examples` for tooling discoverability.",
+          "type": "string",
+          "minLength": 1,
+          "examples": [
+            "Project", "Package", "Module", "Folder", "File",
+            "Class", "Function", "Method", "Variable",
+            "Interface", "Enum", "Decorator", "Import", "Type",
+            "CodeElement", "Community", "Process",
+            "Struct", "Macro", "Typedef", "Union", "Namespace",
+            "Trait", "Impl", "TypeAlias", "Const", "Static",
+            "Property", "Record", "Delegate", "Annotation",
+            "Constructor", "Template", "Section", "Route", "Tool"
+          ]
+        },
+        "type": {
+          "description": "Alternate field name for `label`, used by some exporters (D3/Sigma-style). At least one of `label` or `type` SHOULD be present, but neither is strictly required so the schema accepts minimal stubs.",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "language": { "type": "string" },
+        "properties": {
+          "description": "Native GitNexus NodeProperties bag. Mirrors gitnexus-shared/src/graph/types.ts NodeProperties.",
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "name": { "type": "string" },
+            "filePath": { "type": "string" },
+            "startLine": { "type": "integer", "minimum": 0 },
+            "endLine": { "type": "integer", "minimum": 0 },
+            "language": { "type": "string" },
+            "isExported": { "type": "boolean" },
+            "visibility": { "type": "string" },
+            "returnType": { "type": "string" },
+            "declaredType": { "type": "string" },
+            "parameterCount": { "type": "integer", "minimum": 0 },
+            "level": { "type": "integer", "minimum": 0 },
+            "isStatic": { "type": "boolean" },
+            "isReadonly": { "type": "boolean" },
+            "isAbstract": { "type": "boolean" },
+            "isFinal": { "type": "boolean" },
+            "isVirtual": { "type": "boolean" },
+            "isOverride": { "type": "boolean" },
+            "isAsync": { "type": "boolean" },
+            "isPartial": { "type": "boolean" },
+            "annotations": { "type": "array", "items": { "type": "string" } },
+            "heuristicLabel": { "type": "string" },
+            "cohesion": { "type": "number" },
+            "symbolCount": { "type": "integer", "minimum": 0 },
+            "keywords": { "type": "array", "items": { "type": "string" } },
+            "description": { "type": "string" },
+            "enrichedBy": { "type": "string", "enum": ["heuristic", "llm"] },
+            "processType": { "type": "string", "enum": ["intra_community", "cross_community"] },
+            "stepCount": { "type": "integer", "minimum": 0 },
+            "communities": { "type": "array", "items": { "type": "string" } },
+            "entryPointId": { "type": "string" },
+            "terminalId": { "type": "string" },
+            "entryPointScore": { "type": "number" },
+            "entryPointReason": { "type": "string" },
+            "responseKeys": { "type": "array", "items": { "type": "string" } },
+            "errorKeys": { "type": "array", "items": { "type": "string" } },
+            "middleware": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "link": {
+      "type": "object",
+      "required": ["source", "target"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "source": {
+          "description": "Source node id. Mirrors GitNexus's GraphRelationship.sourceId; renamed to `source` in the wire format to match common D3/graph-JSON conventions.",
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "description": "Target node id. Mirrors GitNexus's GraphRelationship.targetId.",
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "description": "GitNexus RelationshipType. Common values listed in `examples`; new types may be added upstream so the value is open-ended.",
+          "type": "string",
+          "minLength": 1,
+          "examples": [
+            "CONTAINS", "CALLS", "INHERITS",
+            "METHOD_OVERRIDES", "METHOD_IMPLEMENTS",
+            "IMPORTS", "USES", "DEFINES", "DECORATES",
+            "IMPLEMENTS", "EXTENDS",
+            "HAS_METHOD", "HAS_PROPERTY", "ACCESSES",
+            "MEMBER_OF", "STEP_IN_PROCESS",
+            "HANDLES_ROUTE", "FETCHES", "HANDLES_TOOL",
+            "ENTRY_POINT_OF", "WRAPS", "QUERIES"
+          ]
+        },
+        "relation": {
+          "description": "Alias for `type` accepted by some exporters.",
+          "type": "string"
+        },
+        "weight": { "type": "number" },
+        "confidence": {
+          "description": "GraphRelationship.confidence — 0..1 likelihood emitted by the resolution pipeline.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reason": { "type": "string" },
+        "step": { "type": "integer", "minimum": 0 },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "weight"],
+            "additionalProperties": true,
+            "properties": {
+              "kind": { "type": "string" },
+              "weight": { "type": "number" },
+              "note": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

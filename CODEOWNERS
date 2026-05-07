@@ -1,0 +1,9 @@
+# Default owner for everything in the repo.
+*       @amacsmith
+
+# Schemas, scripts, and CI need extra eyes — call out so future contributors
+# know these are higher-stakes paths.
+/schemas/   @amacsmith
+/scripts/   @amacsmith
+/.github/   @amacsmith
+/mcp/       @amacsmith

@@ -1,0 +1,34 @@
+{
+  "name": "@understand-quickly/cli",
+  "version": "0.1.0",
+  "description": "One-shot CLI to register a repo with the understand-quickly registry.",
+  "type": "module",
+  "bin": {
+    "understand-quickly": "bin/understand-quickly.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "test": "node --test 'tests/*.test.mjs'"
+  },
+  "keywords": [
+    "understand-quickly",
+    "knowledge-graph",
+    "registry",
+    "cli"
+  ],
+  "license": "MIT",
+  "author": "Alex Macdonald-Smith <Alex.Mac@LoopTech.AI>",
+  "homepage": "https://github.com/looptech-ai/understand-quickly/tree/main/cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/looptech-ai/understand-quickly.git",
+    "directory": "cli"
+  }
+}
