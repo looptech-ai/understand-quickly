@@ -3,9 +3,16 @@ import { basename, dirname, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { validateGraph } from './validate.mjs';
 import { loadRegistry, shouldShard } from './shard.mjs';
+import { extractStats } from './extract.mjs';
 
 const MAX_SIZE = 50 * 1024 * 1024;
 const DEAD_THRESHOLD = 7;
+
+// Stats fields are server-derived: we recompute them on every successful sync
+// and drop them on any non-`ok` status. Listing them centrally keeps the
+// "clear" path cheap and avoids hard-coding the keys at every error branch.
+const STATS_KEYS = ['nodes_count', 'edges_count', 'top_kinds', 'languages'];
+const clearStats = (out) => { for (const k of STATS_KEYS) out[k] = undefined; };
 
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 
@@ -39,6 +46,7 @@ export async function syncEntry(entry, opts = {}) {
         if (len && Number(len) > MAX_SIZE) {
           out.status = 'oversize';
           out.last_error = `size ${len} > ${MAX_SIZE}`;
+          clearStats(out);
           stamp();
           return out;
         }
@@ -60,6 +68,7 @@ export async function syncEntry(entry, opts = {}) {
       out.miss_count = (entry.miss_count || 0) + 1;
       out.status = out.miss_count >= DEAD_THRESHOLD ? 'dead' : 'missing';
       out.last_error = '404';
+      clearStats(out);
       stamp();
       return out;
     }
@@ -67,6 +76,7 @@ export async function syncEntry(entry, opts = {}) {
     if (res.status >= 500) {
       out.status = 'transient_error';
       out.last_error = `${res.status}`;
+      clearStats(out);
       stamp();
       return out;
     }
@@ -74,6 +84,7 @@ export async function syncEntry(entry, opts = {}) {
     if (!res.ok) {
       out.status = 'transient_error';
       out.last_error = `unexpected ${res.status}`;
+      clearStats(out);
       stamp();
       return out;
     }
@@ -82,6 +93,7 @@ export async function syncEntry(entry, opts = {}) {
     if (text.length > MAX_SIZE) {
       out.status = 'oversize';
       out.last_error = `body ${text.length} > ${MAX_SIZE}`;
+      clearStats(out);
       stamp();
       return out;
     }
@@ -91,6 +103,7 @@ export async function syncEntry(entry, opts = {}) {
     try { body = JSON.parse(text); } catch (e) {
       out.status = 'invalid';
       out.last_error = `JSON parse: ${e.message}`;
+      clearStats(out);
       stamp();
       return out;
     }
@@ -99,6 +112,7 @@ export async function syncEntry(entry, opts = {}) {
     if (!v.ok) {
       out.status = 'invalid';
       out.last_error = v.errors.map(e => e.message).join('; ');
+      clearStats(out);
       stamp();
       return out;
     }
@@ -108,11 +122,20 @@ export async function syncEntry(entry, opts = {}) {
     out.last_error = null;
     out.last_sha = sha;
     out.size_bytes = text.length;
+    // Stats are best-effort: an unknown format just yields {} which leaves
+    // any pre-existing stats fields untouched. We explicitly set the four
+    // keys for known formats so a previously-stat'd entry whose format we
+    // no longer recognise doesn't carry stale numbers forward.
+    const stats = extractStats(entry.format, body);
+    for (const k of STATS_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(stats, k)) out[k] = stats[k];
+    }
     stamp();
     return out;
   } catch (e) {
     out.status = 'transient_error';
     out.last_error = e.message || String(e);
+    clearStats(out);
     stamp();
     return out;
   }

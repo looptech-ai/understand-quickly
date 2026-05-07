@@ -260,3 +260,184 @@ test('shard: missing registry.json throws', () => {
 test('shard: loadRegistry requires a root', () => {
   assert.throws(() => loadRegistry({}), /root is required/);
 });
+
+// ---------------------------------------------------------------------------
+// Per-entry stats (extract.mjs wired through syncEntry). These cover each
+// first-class format on the success path, plus the "stats are cleared on a
+// non-ok status" contract from the spec.
+// ---------------------------------------------------------------------------
+
+test('stats: understand-anything@1 200 ok yields nodes_count/edges_count/top_kinds/languages', async () => {
+  const body = JSON.stringify({
+    nodes: [
+      { id: 'n1', kind: 'function', label: 'a' },
+      { id: 'n2', kind: 'function', label: 'b' },
+      { id: 'n3', kind: 'file', label: 'src/x.ts' }
+    ],
+    edges: [{ from: 'n1', to: 'n2', kind: 'calls' }]
+  });
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry({ ...baseEntry }, { fetchImpl: f, now: () => new Date('2026-05-07T00:00:00Z') });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.nodes_count, 3);
+  assert.equal(r.edges_count, 1);
+  assert.deepEqual(r.top_kinds, [
+    { kind: 'function', count: 2 },
+    { kind: 'file', count: 1 }
+  ]);
+  assert.deepEqual(r.languages, []);
+});
+
+test('stats: gitnexus@1 derives languages from properties + lowercases labels', async () => {
+  const body = JSON.stringify({
+    graph: {
+      nodes: [
+        { id: 'p', label: 'Project' },
+        { id: 'f1', label: 'File', properties: { language: 'TypeScript' } },
+        { id: 'f2', label: 'File', properties: { language: 'typescript' } },
+        { id: 'fn', label: 'Function', properties: { language: 'Python' } }
+      ],
+      links: [
+        { source: 'p', target: 'f1', type: 'CONTAINS' },
+        { source: 'p', target: 'f2', type: 'CONTAINS' }
+      ]
+    }
+  });
+  const entry = { ...baseEntry, format: 'gitnexus@1' };
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry(entry, { fetchImpl: f, now: () => new Date('2026-05-07T00:00:00Z') });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.nodes_count, 4);
+  assert.equal(r.edges_count, 2);
+  // Labels are lowercased + counted; sorted desc by count, ties alphabetical.
+  assert.deepEqual(r.top_kinds, [
+    { kind: 'file', count: 2 },
+    { kind: 'function', count: 1 },
+    { kind: 'project', count: 1 }
+  ]);
+  assert.deepEqual(r.languages, ['python', 'typescript']);
+});
+
+test('stats: code-review-graph@1 pulls languages from stats and lowercases kinds', async () => {
+  const body = JSON.stringify({
+    nodes: [
+      { id: 1, kind: 'File', name: 'x.py', qualified_name: 'x.py', file_path: 'x.py' },
+      { id: 2, kind: 'Function', name: 'main', qualified_name: 'x.py::main', file_path: 'x.py' },
+      { id: 3, kind: 'Function', name: 'helper', qualified_name: 'x.py::helper', file_path: 'x.py' }
+    ],
+    edges: [
+      { id: 1, kind: 'CONTAINS', source: 'x.py', target: 'x.py::main' }
+    ],
+    stats: {
+      total_nodes: 3, total_edges: 1, nodes_by_kind: {}, edges_by_kind: {},
+      languages: ['Python'], files_count: 1
+    }
+  });
+  const entry = { ...baseEntry, format: 'code-review-graph@1' };
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry(entry, { fetchImpl: f, now: () => new Date('2026-05-07T00:00:00Z') });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.nodes_count, 3);
+  assert.equal(r.edges_count, 1);
+  assert.deepEqual(r.top_kinds, [
+    { kind: 'function', count: 2 },
+    { kind: 'file', count: 1 }
+  ]);
+  assert.deepEqual(r.languages, ['python']);
+});
+
+test('stats: generic@1 emits zero counts and empty arrays', async () => {
+  const body = JSON.stringify({ nodes: [], edges: [] });
+  const entry = { ...baseEntry, format: 'generic@1' };
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry(entry, { fetchImpl: f, now: () => new Date('2026-05-07T00:00:00Z') });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.nodes_count, 0);
+  assert.equal(r.edges_count, 0);
+  assert.deepEqual(r.top_kinds, []);
+  assert.deepEqual(r.languages, []);
+});
+
+test('stats: gitnexus@1 also picks up metadata.languages', async () => {
+  const body = JSON.stringify({
+    graph: {
+      nodes: [
+        { id: 'p', label: 'Project' },
+        { id: 'f', label: 'File', properties: { language: 'go' } }
+      ],
+      links: []
+    },
+    metadata: { languages: ['Go', 'Rust'] }
+  });
+  const entry = { ...baseEntry, format: 'gitnexus@1' };
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry(entry, { fetchImpl: f, now: () => new Date('2026-05-07T00:00:00Z') });
+  assert.equal(r.status, 'ok');
+  assert.deepEqual(r.languages, ['go', 'rust']);
+});
+
+test('stats: code-review-graph@1 supports stats.languages as an object', async () => {
+  const body = JSON.stringify({
+    nodes: [{ id: 1, kind: 'File', name: 'x.py', qualified_name: 'x.py', file_path: 'x.py' }],
+    edges: [],
+    stats: {
+      total_nodes: 1, total_edges: 0,
+      nodes_by_kind: {}, edges_by_kind: {},
+      // Object form -- spec says we should accept either array or object keys.
+      languages: { Python: 100, JavaScript: 50 },
+      files_count: 1
+    }
+  });
+  const entry = { ...baseEntry, format: 'code-review-graph@1' };
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  // Note: this body won't pass the strict code-review-graph@1 schema (which
+  // declares languages as an array). We're only exercising the extractor
+  // here, so we drop the schema check by routing through `extractStats`
+  // directly — re-import for the assertion.
+  const { extractStats } = await import('../extract.mjs');
+  const stats = extractStats(entry.format, JSON.parse(body));
+  assert.deepEqual(stats.languages, ['javascript', 'python']);
+  // Suppress unused-var lint for f.
+  void f;
+});
+
+test('stats: extractStats returns {} for unknown formats', async () => {
+  const { extractStats } = await import('../extract.mjs');
+  const stats = extractStats('not-a-real-format@99', { nodes: [], edges: [] });
+  assert.deepEqual(stats, {});
+});
+
+test('stats: previously-stat\'d entry that now fails schema clears stats fields', async () => {
+  const bad = JSON.stringify({ nodes: [{ id: 'n1', kind: 'asteroid', label: 'x' }], edges: [] });
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(bad, { status: 200 })
+  });
+  const stale = {
+    ...baseEntry,
+    nodes_count: 42,
+    edges_count: 17,
+    top_kinds: [{ kind: 'function', count: 9 }],
+    languages: ['python']
+  };
+  const r = await syncEntry(stale, { fetchImpl: f, now: () => new Date('2026-05-07T00:00:00Z') });
+  assert.equal(r.status, 'invalid');
+  // Spec: stats fields must be undefined so JSON.stringify drops them. We
+  // serialise + reparse to assert the user-visible shape.
+  const round = JSON.parse(JSON.stringify(r));
+  assert.equal('nodes_count' in round, false);
+  assert.equal('edges_count' in round, false);
+  assert.equal('top_kinds' in round, false);
+  assert.equal('languages' in round, false);
+});

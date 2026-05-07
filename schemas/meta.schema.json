@@ -37,7 +37,27 @@
         },
         "last_error": { "type": ["string", "null"] },
         "miss_count": { "type": "integer", "minimum": 0, "default": 0 },
-        "renamed_to": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+        "renamed_to": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+        "nodes_count": { "type": "integer", "minimum": 0 },
+        "edges_count": { "type": "integer", "minimum": 0 },
+        "top_kinds": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["kind", "count"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "languages": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "type": "string", "minLength": 1 }
+        }
       }
     }
   }

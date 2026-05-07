@@ -66,17 +66,20 @@ jobs:
       - name: Render README inline (default GITHUB_TOKEN push won't trigger render.yml)
         run: npm run render
 
+      - name: Aggregate cross-graph stats
+        run: node scripts/aggregate.mjs --registry registry.json --out site/stats.json
+
       - name: Commit changes
         id: commit
         run: |
-          if git diff --quiet registry.json README.md; then
+          if git diff --quiet registry.json README.md site/stats.json; then
             echo "no changes"
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add registry.json README.md
+          git add registry.json README.md site/stats.json
           git commit -m "chore(sync): update registry and README"
           git push
           echo "pushed=true" >> "$GITHUB_OUTPUT"
