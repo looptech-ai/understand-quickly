@@ -145,6 +145,8 @@ npm run render     # regenerate README table
 - [ ] `entries/<a-z>.json` shard split when index passes 1k entries.
 - [ ] Per-entry semantic search.
 
+A stub MCP server lives in [`mcp/`](./mcp/) — exposes `list_repos`, `get_graph`, and `search_concepts` over stdio for Claude Desktop, Codex, and other MCP clients. See [`mcp/README.md`](./mcp/README.md) for setup.
+
 ## License
 
 MIT © 2026 Mac Macdonald-Smith. See [LICENSE](LICENSE).
