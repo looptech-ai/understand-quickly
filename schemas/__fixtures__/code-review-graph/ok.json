@@ -1,0 +1,226 @@
+{
+  "nodes": [
+    {
+      "id": 1,
+      "kind": "File",
+      "name": "cli.py",
+      "qualified_name": "code_review_graph/cli.py",
+      "file_path": "code_review_graph/cli.py",
+      "line_start": 1,
+      "line_end": 1024,
+      "language": "python",
+      "parent_name": null,
+      "params": null,
+      "return_type": null,
+      "is_test": 0,
+      "community_id": 0
+    },
+    {
+      "id": 2,
+      "kind": "Function",
+      "name": "main",
+      "qualified_name": "code_review_graph/cli.py::main",
+      "file_path": "code_review_graph/cli.py",
+      "line_start": 800,
+      "line_end": 990,
+      "language": "python",
+      "parent_name": null,
+      "params": "argv: list[str] | None = None",
+      "return_type": "int",
+      "is_test": 0,
+      "community_id": 0
+    },
+    {
+      "id": 3,
+      "kind": "Class",
+      "name": "GraphStore",
+      "qualified_name": "code_review_graph/graph.py::GraphStore",
+      "file_path": "code_review_graph/graph.py",
+      "line_start": 142,
+      "line_end": 1320,
+      "language": "python",
+      "parent_name": null,
+      "params": null,
+      "return_type": null,
+      "is_test": 0,
+      "community_id": 1
+    },
+    {
+      "id": 4,
+      "kind": "Function",
+      "name": "upsert_node",
+      "qualified_name": "code_review_graph/graph.py::GraphStore.upsert_node",
+      "file_path": "code_review_graph/graph.py",
+      "line_start": 200,
+      "line_end": 240,
+      "language": "python",
+      "parent_name": "GraphStore",
+      "params": "self, node: NodeInfo, file_hash: str = ''",
+      "return_type": "int",
+      "is_test": 0,
+      "community_id": 1
+    },
+    {
+      "id": 5,
+      "kind": "Function",
+      "name": "export_graph_data",
+      "qualified_name": "code_review_graph/visualization.py::export_graph_data",
+      "file_path": "code_review_graph/visualization.py",
+      "line_start": 95,
+      "line_end": 170,
+      "language": "python",
+      "parent_name": null,
+      "params": "store: GraphStore",
+      "return_type": "dict",
+      "is_test": 0,
+      "community_id": 2
+    },
+    {
+      "id": 6,
+      "kind": "Test",
+      "name": "test_upsert_node_inserts_then_updates",
+      "qualified_name": "tests/test_graph.py::test_upsert_node_inserts_then_updates",
+      "file_path": "tests/test_graph.py",
+      "line_start": 42,
+      "line_end": 71,
+      "language": "python",
+      "parent_name": null,
+      "params": "tmp_path",
+      "return_type": "None",
+      "is_test": 1,
+      "community_id": null
+    }
+  ],
+  "edges": [
+    {
+      "id": 1,
+      "kind": "CONTAINS",
+      "source": "code_review_graph/cli.py",
+      "target": "code_review_graph/cli.py::main",
+      "file_path": "code_review_graph/cli.py",
+      "line": 800,
+      "confidence": 1.0,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 2,
+      "kind": "CALLS",
+      "source": "code_review_graph/cli.py::main",
+      "target": "code_review_graph/visualization.py::export_graph_data",
+      "file_path": "code_review_graph/cli.py",
+      "line": 925,
+      "confidence": 0.92,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 3,
+      "kind": "CONTAINS",
+      "source": "code_review_graph/graph.py::GraphStore",
+      "target": "code_review_graph/graph.py::GraphStore.upsert_node",
+      "file_path": "code_review_graph/graph.py",
+      "line": 200,
+      "confidence": 1.0,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 4,
+      "kind": "IMPORTS_FROM",
+      "source": "code_review_graph/visualization.py::export_graph_data",
+      "target": "code_review_graph/graph.py::GraphStore",
+      "file_path": "code_review_graph/visualization.py",
+      "line": 22,
+      "confidence": 1.0,
+      "confidence_tier": "EXTRACTED"
+    },
+    {
+      "id": 5,
+      "kind": "CALLS",
+      "source": "tests/test_graph.py::test_upsert_node_inserts_then_updates",
+      "target": "code_review_graph/graph.py::GraphStore.upsert_node",
+      "file_path": "tests/test_graph.py",
+      "line": 55,
+      "confidence": 0.85,
+      "confidence_tier": "INFERRED"
+    },
+    {
+      "id": 6,
+      "kind": "TESTED_BY",
+      "source": "code_review_graph/graph.py::GraphStore.upsert_node",
+      "target": "tests/test_graph.py::test_upsert_node_inserts_then_updates",
+      "file_path": "tests/test_graph.py",
+      "line": 55,
+      "confidence": 0.7,
+      "confidence_tier": "INFERRED"
+    }
+  ],
+  "stats": {
+    "total_nodes": 6,
+    "total_edges": 6,
+    "nodes_by_kind": {
+      "File": 1,
+      "Class": 1,
+      "Function": 3,
+      "Test": 1
+    },
+    "edges_by_kind": {
+      "CONTAINS": 2,
+      "CALLS": 2,
+      "IMPORTS_FROM": 1,
+      "TESTED_BY": 1
+    },
+    "languages": ["python"],
+    "files_count": 3,
+    "last_updated": "2026-05-07T10:14:00Z"
+  },
+  "flows": [
+    {
+      "id": 1,
+      "name": "cli.main -> visualize",
+      "entry_point_id": 2,
+      "depth": 3,
+      "node_count": 4,
+      "file_count": 2,
+      "criticality": 0.78,
+      "path": [
+        "code_review_graph/cli.py::main",
+        "code_review_graph/visualization.py::export_graph_data",
+        "code_review_graph/graph.py::GraphStore"
+      ],
+      "created_at": 1714800000.0,
+      "updated_at": 1714900000.0
+    }
+  ],
+  "communities": [
+    {
+      "id": 0,
+      "name": "cli",
+      "level": 0,
+      "cohesion": 0.42,
+      "size": 2,
+      "dominant_language": "python",
+      "description": "Command-line entry surface",
+      "members": [
+        "code_review_graph/cli.py",
+        "code_review_graph/cli.py::main"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "graph-store",
+      "level": 0,
+      "cohesion": 0.61,
+      "size": 2,
+      "dominant_language": "python",
+      "description": "SQLite-backed graph storage",
+      "members": [
+        "code_review_graph/graph.py::GraphStore",
+        "code_review_graph/graph.py::GraphStore.upsert_node"
+      ]
+    }
+  ],
+  "metadata": {
+    "tool": "code-review-graph",
+    "tool_version": "2.3.2",
+    "generated_at": "2026-05-07T10:14:00Z"
+  }
+}

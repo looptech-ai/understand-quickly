@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "id": 1,
+      "kind": "Asteroid",
+      "name": "cli.py",
+      "qualified_name": "code_review_graph/cli.py",
+      "file_path": "code_review_graph/cli.py"
+    }
+  ],
+  "edges": [
+    {
+      "id": 1,
+      "kind": "ORBITS",
+      "source": "code_review_graph/cli.py",
+      "target": "code_review_graph/cli.py",
+      "confidence_tier": "GUESSED"
+    }
+  ],
+  "stats": {
+    "total_nodes": 1,
+    "total_edges": 1,
+    "nodes_by_kind": {},
+    "edges_by_kind": {},
+    "languages": [],
+    "files_count": 1
+  }
+}
