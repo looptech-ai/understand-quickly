@@ -50,6 +50,27 @@ Tools like [Understand-Anything](https://github.com/Lum1104/Understand-Anything)
 - **Freshness:** nightly cron resyncs every entry; source repos can opt-in to instant refresh via `repository_dispatch`.
 - **Cost:** zero. GitHub Actions only.
 
+## Zero cost
+
+This entire registry runs on free GitHub services. There is no backend, no database, no LLM provider on the registry side. The infra spend is **$0/month** today and we plan to keep it there.
+
+| Service | What we use it for | Plan | Notional cost |
+| --- | --- | --- | --- |
+| GitHub Actions | nightly sync, PR validation, README render, Pages build | free tier | $0 |
+| GitHub Pages | host `registry.json`, schemas, browser UI | free tier | $0 |
+| Source repos | hold the actual graph JSON | their own | $0 from us |
+| jsdelivr / unpkg CDN | fonts + `vis-network` for the browser | free public CDN | $0 |
+| LLM compute | **never on the registry** — graphs are produced upstream | n/a | $0 |
+
+**Estimated Actions usage:** ~1 minute per nightly sync × 30 days + ~1 minute per Pages build per PR. Comfortably inside the 2,000-minute free tier even on private repos. Once the repo goes public, Actions and Pages are unmetered.
+
+**What would change this?**
+- A registry-side LLM (e.g. for embeddings) — explicitly out of scope. Search lives in the source-repo graphs, not here.
+- Migrating to a hosted DB — only if we outgrow git as storage; sharded JSON (see roadmap) buys us a long runway first.
+- Custom domain on Pages — optional, ~$10/year if we ever want it.
+
+Contributions that would push us off the free tier are reviewed under that lens.
+
 ## Agent quickstart
 
 ```bash
@@ -95,11 +116,12 @@ Drop [`docs/publish-template.yml`](./docs/publish-template.yml) into your repo a
 
 ## Supported formats
 
-| Format | Source tool | Status |
+| Format | Source tool | Tier |
 | --- | --- | --- |
 | `understand-anything@1` | [Understand-Anything](https://github.com/Lum1104/Understand-Anything) | first-class |
-| `gitnexus@1` | [GitNexus](https://github.com/abhigyanpatwari/GitNexus) | parity |
-| `generic@1` | any `{nodes, edges}` graph | escape hatch |
+| `gitnexus@1` | [GitNexus](https://github.com/abhigyanpatwari/GitNexus) | first-class |
+| `code-review-graph@1` | [code-review-graph](https://github.com/tirth8205/code-review-graph) | first-class |
+| `generic@1` | any `{nodes, edges}` graph | fallback |
 
 Adding a new format = PR `schemas/<name>@<int>.json` + an `ok` and `bad` fixture under `schemas/__fixtures__/<name>/`.
 
@@ -140,10 +162,12 @@ npm run render     # regenerate README table
 
 ## Roadmap
 
-- [ ] Thin MCP server wrapping `registry.json` (separate repo).
-- [ ] Static GitHub Pages browser with embedded graph viewer.
-- [ ] `entries/<a-z>.json` shard split when index passes 1k entries.
-- [ ] Per-entry semantic search.
+- [x] Static GitHub Pages browser with embedded graph viewer — live at <https://amacsmith.github.io/understand-quickly/>.
+- [x] Per-entry semantic search — substring search across `id`/`description`/`tags` in the browser; cross-graph search in the MCP server.
+- [x] Thin MCP server wrapping `registry.json` — see [`mcp/`](./mcp/) (stub).
+- [x] `entries/<a-z>.json` shard split — read-path implemented; auto-write triggers when index passes 1k entries.
+- [ ] Real upstream samples for every first-class format under `schemas/__fixtures__/<format>/real-sample.json`.
+- [ ] Public-org rebrand once the above is battle-tested.
 
 A stub MCP server lives in [`mcp/`](./mcp/) — exposes `list_repos`, `get_graph`, and `search_concepts` over stdio for Claude Desktop, Codex, and other MCP clients. See [`mcp/README.md`](./mcp/README.md) for setup.
 
