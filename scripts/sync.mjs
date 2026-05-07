@@ -1,6 +1,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { basename, dirname, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { validateGraph } from './validate.mjs';
+import { loadRegistry, shouldShard } from './shard.mjs';
 
 const MAX_SIZE = 50 * 1024 * 1024;
 const DEAD_THRESHOLD = 7;
@@ -124,7 +126,28 @@ async function main() {
   const regIdx = args.indexOf('--registry');
   const regPath = regIdx >= 0 ? args[regIdx + 1] : 'registry.json';
 
-  const registry = JSON.parse(readFileSync(regPath, 'utf8'));
+  // Use the sharded read path so any future entries/<a-z0-9>.json shards are
+  // transparently merged. Today the write path still targets `regPath` only
+  // (the canonical top-level file). When we cross the threshold we just warn.
+  //
+  // The sharded loader looks for `<root>/registry.json` + `<root>/entries/`,
+  // so it only applies when --registry points at a file literally named
+  // `registry.json`. For an arbitrary --registry path (e.g. the smoke
+  // fixture at tests/registry-smoke.json) we fall back to the legacy direct
+  // read so power-user overrides keep working.
+  const absReg = resolve(regPath);
+  const useShardedLoader = basename(absReg) === 'registry.json';
+  let registry;
+  if (useShardedLoader) {
+    registry = loadRegistry({ root: dirname(absReg) });
+    if (shouldShard(registry)) {
+      console.warn(
+        `[shard] registry has ${registry.entries.length} entries (> 1000); consider sharding into entries/<a-z>.json`
+      );
+    }
+  } else {
+    registry = JSON.parse(readFileSync(regPath, 'utf8'));
+  }
   const targets = onlyId ? registry.entries.filter(e => e.id === onlyId) : registry.entries;
 
   const updated = [];

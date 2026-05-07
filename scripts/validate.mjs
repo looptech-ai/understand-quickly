@@ -2,6 +2,7 @@ import Ajv from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { loadRegistry } from './shard.mjs';
 
 const SCHEMAS_DIR = 'schemas';
 const META_PATH = join(SCHEMAS_DIR, 'meta.schema.json');
@@ -78,7 +79,10 @@ export async function fetchAndValidate(entry, fetchImpl = fetch) {
 }
 
 async function main() {
-  const registry = JSON.parse(readFileSync('registry.json', 'utf8'));
+  // Read via the sharded loader so PR-time validation also covers any shards
+  // that exist on disk. If there are no shards (the common case today) this
+  // behaves identically to a plain `readFileSync('registry.json')`.
+  const registry = loadRegistry({ root: process.cwd() });
   const r = validateRegistry(registry);
   if (!r.ok) {
     console.error('REGISTRY INVALID:');
