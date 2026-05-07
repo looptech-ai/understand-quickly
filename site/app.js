@@ -916,7 +916,6 @@ const Tour = (() => {
   let triggerEl = null;
   let speed = 1; // 0.5 / 1 / 1.5 / 2
   let voiceOn = false;
-  let voiceUtter = null;
   let outlineExpanded = true;
   // Cache of the entry whose detail pane was visible before the tour
   // started — restored on exit.
@@ -1219,7 +1218,6 @@ const Tour = (() => {
       const text = raw.length > 360 ? `${raw.slice(0, 357)}...` : raw;
       const utter = new window.SpeechSynthesisUtterance(text);
       utter.rate = 1;
-      voiceUtter = utter;
       window.speechSynthesis.speak(utter);
     } catch (_) { /* noop */ }
   }
@@ -1227,7 +1225,6 @@ const Tour = (() => {
   function cancelSpeak() {
     if (!tourSpeechSupported()) return;
     try { window.speechSynthesis.cancel(); } catch (_) { /* noop */ }
-    voiceUtter = null;
   }
 
   function currentStep() {
