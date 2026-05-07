@@ -8,6 +8,7 @@ on:
       - 'README.md'
       - 'schemas/**'
       - 'docs/**'
+      - 'site/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -32,40 +33,36 @@ jobs:
 
       - name: Stage site
         run: |
+          set -euo pipefail
           mkdir -p _site
+
+          # Copy data + schemas + docs
           cp registry.json _site/
           cp -r schemas _site/
           cp -r docs _site/
           cp README.md _site/README.md
 
-          # Pre-render README -> index.html at build time (no client-side JS,
-          # avoids innerHTML XSS surface)
-          npx -y marked@14 README.md > _site/_readme.html
+          # Copy static site assets (index.html, app.js, viewer.js, styles.css, about.html)
+          cp -r site/. _site/
 
-          cat > _site/index.html <<HTML
-          <!doctype html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <title>understand-quickly</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.5.1/github-markdown-light.min.css">
-            <style>
-              body { box-sizing: border-box; min-width: 200px; max-width: 980px; margin: 0 auto; padding: 32px 45px; }
-              .endpoints { background:#f6f8fa; border:1px solid #d0d7de; border-radius:6px; padding:12px 16px; margin-bottom:24px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; }
-              .endpoints code { background:transparent; padding:0; }
-            </style>
-          </head>
-          <body class="markdown-body">
-            <div class="endpoints">
-              <strong>Agent endpoints</strong><br>
-              <code>GET <a href="./registry.json">./registry.json</a></code> — canonical index<br>
-              <code>GET <a href="./schemas/">./schemas/</a></code> — JSON Schemas
-            </div>
-          HTML
-          cat _site/_readme.html >> _site/index.html
-          echo "</body></html>" >> _site/index.html
-          rm _site/_readme.html
+          # Pre-render README -> _site/about.html, splicing the rendered body
+          # between the BEGIN/END markers in site/about.html.
+          npx -y marked@14 README.md > _readme.html
+          node -e '
+            const fs = require("fs");
+            const tpl = fs.readFileSync("site/about.html", "utf8");
+            const body = fs.readFileSync("_readme.html", "utf8");
+            const begin = "<!-- BEGIN README -->";
+            const end = "<!-- END README -->";
+            const i = tpl.indexOf(begin);
+            const j = tpl.indexOf(end);
+            if (i === -1 || j === -1) {
+              throw new Error("about.html missing BEGIN/END README markers");
+            }
+            const out = tpl.slice(0, i + begin.length) + "\n" + body + "\n" + tpl.slice(j);
+            fs.writeFileSync("_site/about.html", out);
+          '
+          rm _readme.html
 
       - uses: actions/upload-pages-artifact@v3
         with:

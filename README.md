@@ -12,7 +12,7 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 
 > **Status:** private MVP under [`amacsmith/understand-quickly`](https://github.com/amacsmith/understand-quickly). Will move to a public org once core flows are battle-tested. Live registry at <https://amacsmith.github.io/understand-quickly/>.
 
-[**Browse entries ↓**](#registry) · [**Add your repo**](#add-your-repo) · [**Agent quickstart**](#agent-quickstart) · [**Design spec**](docs/superpowers/specs/2026-05-07-understand-quickly-registry-design.md)
+[**Browse the registry →**](https://amacsmith.github.io/understand-quickly/) · [**Add your repo**](#add-your-repo) · [**Agent quickstart**](#agent-quickstart) · [**Design spec**](docs/superpowers/specs/2026-05-07-understand-quickly-registry-design.md)
 
 </div>
 
