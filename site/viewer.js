@@ -1,14 +1,17 @@
 // understand-quickly — graph viewer.
 // Lazy-loads vis-network from a pinned CDN, fetches the entry's graph_url,
 // normalizes node/edge shapes per format, and renders an in-pane
-// force-directed graph using a node-type color palette.
+// graph using a node-type color palette.
+//
+// State: a `Viewer` instance encapsulates one vis-network instance + its
+// data sets, hidden-node tracking, hover-focus state, and layout choice.
+// app.js can hold up to two Viewer instances at once for compare mode.
 
 const VIS_NETWORK_URL =
   'https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js';
 
 let visLoader = null;
-let currentNetwork = null;
-let currentContainer = null;
+let primaryViewer = null; // Viewer | null
 let minimapTimer = null;
 
 const PREFERS_REDUCED = typeof window !== 'undefined'
@@ -16,8 +19,6 @@ const PREFERS_REDUCED = typeof window !== 'undefined'
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ----- node-type colour palette ----------------------------------------
-// Mirrors the --node-* tokens in styles.css. Resolved here so the canvas
-// (which does not consume CSS variables) uses the same colors.
 const NODE_COLORS = {
   file:      '#4a7c9b',
   function:  '#5a9e6f',
@@ -38,11 +39,9 @@ const NODE_COLORS = {
   topic:     '#c9b06c',
   source:    '#8a8a8a',
 };
-const FALLBACK_COLOR = '#6b5f53'; // --color-text-muted
+const FALLBACK_COLOR = '#6b5f53';
 
-// Aliases for label/kind strings produced by the various formats.
 const KIND_ALIASES = {
-  // gitnexus types (Project, Package, ...)
   project:   'module',
   package:   'module',
   method:    'function',
@@ -53,19 +52,9 @@ const KIND_ALIASES = {
   interface: 'class',
   enum:      'schema',
   type:      'schema',
-  // code-review-graph kinds — `test` visually shares the function color but
-  // gets a star-prefix label below, so we still resolve it to function here.
   test:      'function',
 };
 
-// xyflow-inspired vis-network options.
-//
-// `widthConstraint.maximum` is set dynamically by the matchMedia listener
-// at the bottom of this module: 200 on desktop, 160 on phones (so long
-// labels like `scripts/validate.mjs` don't bleed past the canvas edge
-// once vis-network resizes). The listener calls `currentNetwork.setOptions`
-// when the viewport crosses the 800px breakpoint, so the constraint
-// updates without a re-render.
 const MOBILE_GRAPH_BP = '(max-width: 799.98px)';
 const NODE_MAX_WIDTH_DESKTOP = 200;
 const NODE_MAX_WIDTH_MOBILE = 160;
@@ -77,35 +66,37 @@ function nodeMaxWidth() {
     : NODE_MAX_WIDTH_DESKTOP;
 }
 
-const NODE_OPTIONS = {
-  shape: 'box',
-  borderWidth: 1.5,
-  shapeProperties: { borderRadius: 8 },
-  font: {
-    color: '#f5f0eb',
-    face: 'Inter, system-ui, sans-serif',
-    size: 13,
-    bold: { color: '#f5f0eb' },
-    multi: false,
-    vadjust: 0,
-  },
-  margin: { top: 8, right: 12, bottom: 8, left: 12 },
-  widthConstraint: { minimum: 80, maximum: NODE_MAX_WIDTH_DESKTOP },
-  scaling: { min: 14, max: 28, label: { enabled: false } },
-  shadow: { enabled: true, color: 'rgba(0,0,0,0.45)', size: 6, x: 0, y: 2 },
-};
+function buildNodeOptions() {
+  return {
+    shape: 'box',
+    borderWidth: 1.5,
+    shapeProperties: { borderRadius: 8 },
+    font: {
+      color: '#f5f0eb',
+      face: 'Inter, system-ui, sans-serif',
+      size: 13,
+      bold: { color: '#f5f0eb' },
+      multi: false,
+      vadjust: 0,
+    },
+    margin: { top: 8, right: 12, bottom: 8, left: 12 },
+    widthConstraint: { minimum: 80, maximum: nodeMaxWidth() },
+    scaling: { min: 14, max: 28, label: { enabled: false } },
+    shadow: { enabled: true, color: 'rgba(0,0,0,0.45)', size: 6, x: 0, y: 2 },
+  };
+}
 
-const EDGE_OPTIONS = {
-  color: { color: 'rgba(212,165,116,0.35)', highlight: '#d4a574', hover: '#e8c49a' },
-  width: 1,
-  selectionWidth: 1.5,
-  smooth: { enabled: true, type: 'continuous', roundness: 0.4 },
-  arrows: {
-    to: { enabled: true, scaleFactor: 0.5, type: 'arrow' },
-  },
-};
+function buildEdgeOptions() {
+  return {
+    color: { color: 'rgba(212,165,116,0.35)', highlight: '#d4a574', hover: '#e8c49a' },
+    width: 1,
+    selectionWidth: 1.5,
+    smooth: { enabled: true, type: 'continuous', roundness: 0.4 },
+    arrows: { to: { enabled: true, scaleFactor: 0.5, type: 'arrow' } },
+  };
+}
 
-const PHYSICS_OPTIONS = {
+const PHYSICS_FORCE = {
   enabled: true,
   solver: 'forceAtlas2Based',
   forceAtlas2Based: {
@@ -120,22 +111,56 @@ const PHYSICS_OPTIONS = {
   timestep: 0.4,
 };
 
-const NETWORK_OPTIONS = {
-  autoResize: true,
-  nodes: NODE_OPTIONS,
-  edges: EDGE_OPTIONS,
-  physics: PHYSICS_OPTIONS,
-  interaction: {
-    hover: true,
-    tooltipDelay: 120,
-    zoomSpeed: 0.7,
-    multiselect: false,
-    navigationButtons: true,
-    keyboard: { enabled: true },
-  },
-  layout: { improvedLayout: false },
-  configure: { enabled: false },
-};
+function buildNetworkOptions(layout) {
+  const options = {
+    autoResize: true,
+    nodes: buildNodeOptions(),
+    edges: buildEdgeOptions(),
+    interaction: {
+      hover: true,
+      tooltipDelay: 120,
+      zoomSpeed: 0.7,
+      multiselect: false,
+      navigationButtons: true,
+      keyboard: { enabled: true },
+    },
+    layout: { improvedLayout: false },
+    configure: { enabled: false },
+    physics: { ...PHYSICS_FORCE },
+  };
+  if (PREFERS_REDUCED) {
+    options.physics = { enabled: false };
+    options.edges.smooth = { enabled: false };
+  }
+  if (layout === 'hierarchy') {
+    options.layout = {
+      improvedLayout: false,
+      hierarchical: {
+        enabled: true,
+        direction: 'UD',
+        sortMethod: 'directed',
+        nodeSpacing: 150,
+        levelSeparation: 120,
+      },
+    };
+    options.physics = { enabled: false };
+  } else if (layout === 'tree') {
+    options.layout = {
+      improvedLayout: false,
+      hierarchical: {
+        enabled: true,
+        direction: 'LR',
+        sortMethod: 'hubsize',
+        nodeSpacing: 130,
+        levelSeparation: 150,
+      },
+    };
+    options.physics = { enabled: false };
+  } else if (layout === 'circle') {
+    options.physics = { enabled: false };
+  }
+  return options;
+}
 
 function resolveKind(raw) {
   if (raw == null) return null;
@@ -145,7 +170,6 @@ function resolveKind(raw) {
   return null;
 }
 
-// Darken a hex color toward black by `pct` (0..1) for the node stroke.
 function darkenHex(hex, pct = 0.25) {
   const m = /^#([0-9a-f]{6})$/i.exec(hex);
   if (!m) return hex;
@@ -164,6 +188,16 @@ function truncateLabel(text, max = 28) {
   const s = String(text);
   if (s.length <= max) return s;
   return s.slice(0, Math.max(0, max - 1)) + '…';
+}
+
+// Hash community id -> hue 0..359 for gitnexus@1 community ring tint.
+function hashHue(value) {
+  const s = String(value);
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h) % 360;
 }
 
 function loadVisNetwork() {
@@ -186,7 +220,6 @@ function loadVisNetwork() {
 
 // ---- format detection + normalization ----------------------------------
 
-/** Detect format from the registry entry first; fall back to graph shape. */
 function detectFormat(entry, graph) {
   const declared = entry && entry.format;
   if (declared === 'understand-anything@1') return 'understand-anything@1';
@@ -194,7 +227,6 @@ function detectFormat(entry, graph) {
   if (declared === 'code-review-graph@1') return 'code-review-graph@1';
   if (declared === 'generic@1') return 'generic@1';
 
-  // Shape heuristics
   if (graph && graph.graph && Array.isArray(graph.graph.nodes) && Array.isArray(graph.graph.links)) {
     return 'gitnexus@1';
   }
@@ -222,13 +254,16 @@ function normalizeUnderstandAnything(graph) {
       label: n.label != null ? n.label : String(n.id),
       title: [n.kind, n.path, n.summary].filter(Boolean).join('\n'),
       _kind: n.kind != null ? n.kind : null,
+      _raw: n,
     }));
   const edges = graph.edges
     .filter((e) => e && e.from != null && e.to != null)
-    .map((e) => ({
+    .map((e, i) => ({
+      id: `e${i}`,
       from: String(e.from),
       to: String(e.to),
       label: e.kind,
+      _raw: e,
     }));
   return { nodes, edges };
 }
@@ -248,14 +283,17 @@ function normalizeGitNexus(graph) {
         label: display,
         title: [kind, props.path, props.summary].filter(Boolean).join('\n'),
         _kind: kind,
+        _raw: n,
       };
     });
   const edges = inner.links
     .filter((e) => e && e.source != null && e.target != null)
-    .map((e) => ({
+    .map((e, i) => ({
+      id: `e${i}`,
       from: String(e.source),
       to: String(e.target),
       label: (e.type != null ? e.type : (e.kind != null ? e.kind : e.label)),
+      _raw: e,
     }));
   return { nodes, edges };
 }
@@ -270,19 +308,21 @@ function normalizeCodeReviewGraph(graph) {
       title: [n.kind, n.qualified_name, n.file_path].filter(Boolean).join('\n'),
       _kind: n.kind != null ? n.kind : null,
       _isTest: n.kind && /^test$/i.test(String(n.kind)),
+      _raw: n,
     }));
   const edges = graph.edges
     .filter((e) => e && (e.from != null || e.source != null) && (e.to != null || e.target != null))
-    .map((e) => {
+    .map((e, i) => {
       const fromRaw = (e.from != null ? e.from : e.source);
       const toRaw = (e.to != null ? e.to : e.target);
       return {
+        id: `e${i}`,
         from: String(fromRaw),
         to: String(toRaw),
         label: (e.kind != null ? e.kind : e.type),
+        _raw: e,
       };
     });
-  // code-review-graph edges reference nodes by qualified_name; map back to id.
   const qmap = new Map();
   graph.nodes.forEach((n) => {
     if (!n) return;
@@ -304,13 +344,16 @@ function normalizeGeneric(graph) {
       label: (n.label != null ? n.label : (n.name != null ? n.name : String(n.id))),
       title: (n.title != null ? n.title : (n.kind != null ? n.kind : (n.type != null ? n.type : ''))),
       _kind: (n.kind != null ? n.kind : (n.type != null ? n.type : null)),
+      _raw: n,
     }));
   const edges = graph.edges
     .filter((e) => e && (e.from != null || e.source != null) && (e.to != null || e.target != null))
-    .map((e) => ({
+    .map((e, i) => ({
+      id: `e${i}`,
       from: String(e.from != null ? e.from : e.source),
       to: String(e.to != null ? e.to : e.target),
       label: (e.kind != null ? e.kind : (e.type != null ? e.type : e.label)),
+      _raw: e,
     }));
   return { nodes, edges };
 }
@@ -326,21 +369,8 @@ function normalize(format, graph) {
 }
 
 // ---- guided-tour step extraction ----------------------------------------
-// Per-format extraction of human-readable steps. Each returned step is
-// { id, label, kind, text }, where:
-//   id    — node id (matches what vis-network knows)
-//   label — short display label (mono in panel)
-//   kind  — node-type key (used to color the chip)
-//   text  — prose description shown to the user
-//
-// Order:
-//   • understand-anything@1 / gitnexus@1 / generic@1: as-listed
-//   • code-review-graph@1: by kind precedence (File → Class → Function →
-//     Test → Type), then alphabetical within each kind
-// Cap at 25 steps; if more, sample evenly.
 
 const TOUR_STEP_CAP = 25;
-
 const CRG_KIND_ORDER = ['file', 'class', 'function', 'test', 'type'];
 
 function sampleEvenly(arr, max) {
@@ -356,14 +386,12 @@ function sampleEvenly(arr, max) {
 function buildTourSteps(format, rawGraph, normalized) {
   if (!normalized || !Array.isArray(normalized.nodes)) return [];
 
-  // Build a map id -> normalized node for label/kind fallbacks.
   const normById = new Map();
   for (const n of normalized.nodes) normById.set(String(n.id), n);
 
   let steps = [];
 
   if (format === 'understand-anything@1') {
-    // Step text = node.summary if present, else node.label. Order: as-listed.
     const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
     steps = src.filter((n) => n && n.id != null).map((n) => {
       const id = String(n.id);
@@ -376,7 +404,6 @@ function buildTourSteps(format, rawGraph, normalized) {
       };
     });
   } else if (format === 'gitnexus@1') {
-    // Text = properties.description ?? properties.name ?? label. As-listed.
     const inner = rawGraph && rawGraph.graph;
     const src = inner && Array.isArray(inner.nodes) ? inner.nodes : [];
     steps = src.filter((n) => n && n.id != null).map((n) => {
@@ -394,8 +421,6 @@ function buildTourSteps(format, rawGraph, normalized) {
       };
     });
   } else if (format === 'code-review-graph@1') {
-    // Text = node.summary if present, else `${kind} ${qualified_name||name||id}`.
-    // Order: by CRG_KIND_ORDER, then alpha within kind.
     const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
     const raw = src.filter((n) => n && n.id != null).map((n) => {
       const id = String(n.id);
@@ -422,7 +447,6 @@ function buildTourSteps(format, rawGraph, normalized) {
     });
     steps = raw.map(({ _sortKind, _sortLabel, ...rest }) => rest);
   } else {
-    // generic@1: text = label || id. As-listed.
     const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
     steps = src.filter((n) => n && n.id != null).map((n) => {
       const id = String(n.id);
@@ -438,7 +462,6 @@ function buildTourSteps(format, rawGraph, normalized) {
     });
   }
 
-  // Drop steps whose id we don't know about (defensive).
   steps = steps.filter((s) => normById.has(s.id));
 
   if (steps.length > TOUR_STEP_CAP) {
@@ -447,25 +470,605 @@ function buildTourSteps(format, rawGraph, normalized) {
   return steps;
 }
 
-// ---- public API ---------------------------------------------------------
+// Given normalized {nodes,edges} + format, produce the full step set
+// (un-capped) so personas can re-rank/filter, or sample to TOUR_STEP_CAP.
+function buildAllNodeSteps(format, rawGraph, normalized) {
+  // Same as buildTourSteps but without the cap, for re-ranking by persona.
+  const normById = new Map();
+  for (const n of normalized.nodes) normById.set(String(n.id), n);
 
-/**
- * Render the graph for `entry` into `container`. Returns {legend, steps,
- * network} so the app can show a per-color legend and drive the guided
- * tour off the same node set.
- */
-export async function openGraph(entry, container) {
-  const prepared = await prepareGraph(entry);
-  return commitGraph(prepared, container);
+  let steps = [];
+  if (format === 'understand-anything@1') {
+    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
+    steps = src.filter((n) => n && n.id != null).map((n) => ({
+      id: String(n.id),
+      label: n.label != null ? String(n.label) : String(n.id),
+      kind: resolveKind(n.kind),
+      text: n.summary || n.label || String(n.id),
+      _summaryLen: n.summary ? n.summary.length : 0,
+    }));
+  } else if (format === 'gitnexus@1') {
+    const inner = rawGraph && rawGraph.graph;
+    const src = inner && Array.isArray(inner.nodes) ? inner.nodes : [];
+    steps = src.filter((n) => n && n.id != null).map((n) => {
+      const props = n.properties || {};
+      const kindRaw = n.label != null ? n.label : n.type;
+      const display = props.name != null ? props.name : (n.name != null ? n.name : String(n.id));
+      const text = props.description || props.name || (n.label != null ? String(n.label) : String(n.id));
+      return {
+        id: String(n.id),
+        label: String(display),
+        kind: resolveKind(kindRaw),
+        text: String(text),
+        _summaryLen: (props.description || '').length,
+      };
+    });
+  } else if (format === 'code-review-graph@1') {
+    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
+    steps = src.filter((n) => n && n.id != null).map((n) => {
+      const display = n.name != null ? String(n.name) : (n.qualified_name != null ? String(n.qualified_name) : String(n.id));
+      const fallbackText = `${n.kind || ''} ${n.qualified_name || n.name || String(n.id)}`.trim();
+      return {
+        id: String(n.id),
+        label: display,
+        kind: resolveKind(n.kind),
+        text: n.summary ? String(n.summary) : fallbackText,
+        _summaryLen: n.summary ? n.summary.length : 0,
+      };
+    });
+  } else {
+    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
+    steps = src.filter((n) => n && n.id != null).map((n) => {
+      const label = n.label != null ? String(n.label) : (n.name != null ? String(n.name) : String(n.id));
+      return {
+        id: String(n.id),
+        label,
+        kind: resolveKind(n.kind != null ? n.kind : n.type),
+        text: label,
+        _summaryLen: 0,
+      };
+    });
+  }
+  return steps.filter((s) => normById.has(s.id));
 }
 
-/**
- * Stage 1: fetch the entry's graph_url and load the vis-network library.
- * Returns the data needed to render — but does NOT touch the DOM. This
- * lets the caller flip its state machine between "loading" and "graph"
- * before we actually render, so the container has real dimensions when
- * vis-network measures it.
- */
+const PM_KINDS = new Set(['concept', 'module', 'service', 'endpoint', 'pipeline']);
+const JUNIOR_ORDER = ['file', 'function', 'class', 'module', 'concept', 'service'];
+
+export function reorderTourStepsForPersona(format, rawGraph, normalized, persona, defaultSteps) {
+  if (persona === 'default' || !persona) return defaultSteps;
+  const all = buildAllNodeSteps(format, rawGraph, normalized);
+  if (!all.length) return defaultSteps;
+
+  // Compute degree centrality from normalized.edges
+  const deg = new Map();
+  for (const e of normalized.edges) {
+    deg.set(e.from, (deg.get(e.from) || 0) + 1);
+    deg.set(e.to, (deg.get(e.to) || 0) + 1);
+  }
+
+  let ranked;
+  if (persona === 'architect') {
+    ranked = all.slice().sort((a, b) => (deg.get(b.id) || 0) - (deg.get(a.id) || 0));
+  } else if (persona === 'junior') {
+    ranked = all.slice().sort((a, b) => {
+      const ai = JUNIOR_ORDER.indexOf(a.kind || '');
+      const bi = JUNIOR_ORDER.indexOf(b.kind || '');
+      const aRank = ai === -1 ? JUNIOR_ORDER.length : ai;
+      const bRank = bi === -1 ? JUNIOR_ORDER.length : bi;
+      if (aRank !== bRank) return aRank - bRank;
+      return (a.label || '').localeCompare(b.label || '');
+    });
+  } else if (persona === 'pm') {
+    const matching = all.filter((s) => s.kind && PM_KINDS.has(s.kind));
+    const rest = all.filter((s) => !(s.kind && PM_KINDS.has(s.kind)));
+    matching.sort((a, b) => (b._summaryLen || 0) - (a._summaryLen || 0));
+    rest.sort((a, b) => (b._summaryLen || 0) - (a._summaryLen || 0));
+    ranked = matching.concat(rest);
+  } else {
+    ranked = all;
+  }
+
+  // Strip helper fields and cap.
+  ranked = ranked.map(({ _summaryLen, ...rest }) => rest);
+  if (ranked.length > TOUR_STEP_CAP) ranked = sampleEvenly(ranked, TOUR_STEP_CAP);
+  return ranked;
+}
+
+// ---- Viewer class ------------------------------------------------------
+
+class Viewer {
+  constructor(container) {
+    this.container = container;
+    this.network = null;
+    this.nodesDS = null;
+    this.edgesDS = null;
+    this.allNodes = []; // decorated objects (one-time built)
+    this.allEdges = [];
+    this.normalized = null;
+    this.format = null;
+    this.entry = null;
+    this.layout = 'force';
+    this.hidden = new Set(); // node ids the user has hidden
+    this.kindHidden = new Set(); // legend-toggled-off kinds
+    this.spotlightActive = false;
+    this.spotlightHops = 2;
+    this.spotlightAnchor = null;
+    this.minDegree = 0;
+    this.degreeMap = new Map();
+    this.maxDegree = 0;
+    this._hoverFocusId = null;
+    this._hoverFrame = 0;
+    this._kindByNode = new Map();
+    this._origColors = new Map();
+    this._communityHueByNode = new Map();
+  }
+
+  destroy() {
+    if (this.network) {
+      try { this.network.destroy(); } catch (_) { /* noop */ }
+      this.network = null;
+    }
+    if (this.container) this.container.replaceChildren();
+  }
+
+  // Apply a vis-network setOptions for new layout, mutate this.layout
+  setLayout(layout) {
+    if (!this.network) return;
+    this.layout = layout;
+    if (layout === 'circle') {
+      const ids = this.allNodes.map((n) => n.id).filter((id) => !this.hidden.has(id));
+      const N = Math.max(1, ids.length);
+      const R = Math.max(180, 22 * N);
+      const positions = {};
+      ids.forEach((id, i) => {
+        const theta = (2 * Math.PI * i) / N;
+        positions[id] = { x: R * Math.cos(theta), y: R * Math.sin(theta) };
+      });
+      // Clear hierarchical first
+      try {
+        this.network.setOptions({
+          layout: { improvedLayout: false, hierarchical: { enabled: false } },
+          physics: { enabled: false },
+        });
+      } catch (_) { /* noop */ }
+      // Move nodes
+      for (const id of ids) {
+        try { this.network.moveNode(id, positions[id].x, positions[id].y); } catch (_) { /* noop */ }
+      }
+      try { this.network.fit({ animation: !PREFERS_REDUCED }); } catch (_) { /* noop */ }
+      return;
+    }
+    const opts = buildNetworkOptions(layout);
+    // Only push the layout/physics changes on layout switch.
+    try {
+      this.network.setOptions({
+        layout: opts.layout,
+        physics: opts.physics,
+        edges: { smooth: opts.edges.smooth },
+      });
+      this.network.fit({ animation: !PREFERS_REDUCED });
+    } catch (_) { /* noop */ }
+  }
+
+  // Compute degree map from current edges.
+  _computeDegrees() {
+    this.degreeMap.clear();
+    this.maxDegree = 0;
+    for (const e of this.allEdges) {
+      this.degreeMap.set(e.from, (this.degreeMap.get(e.from) || 0) + 1);
+      this.degreeMap.set(e.to, (this.degreeMap.get(e.to) || 0) + 1);
+    }
+    for (const v of this.degreeMap.values()) {
+      if (v > this.maxDegree) this.maxDegree = v;
+    }
+  }
+
+  _buildAdjacency() {
+    const adj = new Map();
+    for (const n of this.allNodes) adj.set(n.id, new Set());
+    for (const e of this.allEdges) {
+      if (adj.has(e.from)) adj.get(e.from).add(e.to);
+      if (adj.has(e.to)) adj.get(e.to).add(e.from);
+    }
+    return adj;
+  }
+
+  // Apply the current visibility predicate (hidden, kindHidden, minDegree,
+  // spotlight) to all nodes and edges in one batched update.
+  applyVisibility() {
+    if (!this.nodesDS || !this.edgesDS) return;
+    const visible = new Set();
+    let spotlightSet = null;
+    if (this.spotlightActive && this.spotlightAnchor) {
+      spotlightSet = this._kHopNeighborhood(this.spotlightAnchor, this.spotlightHops);
+    }
+    const updates = [];
+    for (const n of this.allNodes) {
+      const id = n.id;
+      let hidden = false;
+      if (this.hidden.has(id)) hidden = true;
+      const kind = this._kindByNode.get(id);
+      if (!hidden && kind && this.kindHidden.has(kind)) hidden = true;
+      if (!hidden && this.minDegree > 0 && (this.degreeMap.get(id) || 0) < this.minDegree) hidden = true;
+      if (!hidden && spotlightSet && !spotlightSet.has(id)) hidden = true;
+      if (!hidden) visible.add(id);
+      updates.push({ id, hidden });
+    }
+    this.nodesDS.update(updates);
+    // Edges: hide if either endpoint hidden
+    const edgeUpdates = [];
+    for (const e of this.allEdges) {
+      const hidden = !visible.has(e.from) || !visible.has(e.to);
+      edgeUpdates.push({ id: e.id, hidden });
+    }
+    this.edgesDS.update(edgeUpdates);
+    // Notify outside listeners (e.g. min-degree caption)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('uq-visibility-changed', {
+        detail: {
+          hiddenCount: this.hidden.size,
+          totalNodes: this.allNodes.length,
+          minDegree: this.minDegree,
+        },
+      }));
+    }
+  }
+
+  _kHopNeighborhood(anchorId, k) {
+    const adj = this._adj || (this._adj = this._buildAdjacency());
+    const out = new Set([anchorId]);
+    let frontier = new Set([anchorId]);
+    for (let i = 0; i < k; i++) {
+      const next = new Set();
+      for (const id of frontier) {
+        const nbrs = adj.get(id);
+        if (!nbrs) continue;
+        for (const nb of nbrs) {
+          if (!out.has(nb)) {
+            out.add(nb);
+            next.add(nb);
+          }
+        }
+      }
+      if (next.size === 0) break;
+      frontier = next;
+    }
+    return out;
+  }
+
+  // Hover focus: full opacity for hovered node + 1-hop, dim everything else.
+  hoverFocus(id) {
+    if (this._hoverFocusId === id) return;
+    this._hoverFocusId = id;
+    if (this._hoverFrame) cancelAnimationFrame(this._hoverFrame);
+    this._hoverFrame = requestAnimationFrame(() => this._applyHoverFocus());
+  }
+
+  hoverBlur() {
+    if (this._hoverFocusId === null) return;
+    this._hoverFocusId = null;
+    if (this._hoverFrame) cancelAnimationFrame(this._hoverFrame);
+    this._hoverFrame = requestAnimationFrame(() => this._applyHoverFocus());
+  }
+
+  _applyHoverFocus() {
+    if (!this.nodesDS || !this.edgesDS) return;
+    const id = this._hoverFocusId;
+    if (id == null) {
+      // Restore original colors.
+      const updates = [];
+      for (const n of this.allNodes) {
+        const orig = this._origColors.get(n.id);
+        if (!orig) continue;
+        updates.push({ id: n.id, color: orig.color, opacity: 1 });
+      }
+      this.nodesDS.update(updates);
+      const edgeUpdates = [];
+      for (const e of this.allEdges) {
+        edgeUpdates.push({ id: e.id, color: { opacity: 1 } });
+      }
+      this.edgesDS.update(edgeUpdates);
+      return;
+    }
+    const adj = this._adj || (this._adj = this._buildAdjacency());
+    const focus = new Set([id]);
+    const nbrs = adj.get(id);
+    if (nbrs) for (const n of nbrs) focus.add(n);
+    const updates = [];
+    for (const n of this.allNodes) {
+      const orig = this._origColors.get(n.id);
+      if (!orig) continue;
+      const isFocus = focus.has(n.id);
+      updates.push({
+        id: n.id,
+        color: orig.color,
+        opacity: isFocus ? 1 : 0.15,
+      });
+    }
+    this.nodesDS.update(updates);
+    const edgeUpdates = [];
+    for (const e of this.allEdges) {
+      const isFocus = focus.has(e.from) && focus.has(e.to);
+      edgeUpdates.push({ id: e.id, color: { opacity: isFocus ? 1 : 0.15 } });
+    }
+    this.edgesDS.update(edgeUpdates);
+  }
+
+  // Toggle visibility for a kind. Returns the new hidden set state.
+  toggleKind(kind, hide) {
+    if (hide == null) hide = !this.kindHidden.has(kind);
+    if (hide) this.kindHidden.add(kind); else this.kindHidden.delete(kind);
+    this.applyVisibility();
+    return hide;
+  }
+
+  resetKindFilters() {
+    this.kindHidden.clear();
+    this.applyVisibility();
+  }
+
+  // Hide a single node id; mark "Restore hidden" CTA.
+  hideNode(id) {
+    this.hidden.add(id);
+    this.applyVisibility();
+  }
+
+  restoreHidden() {
+    this.hidden.clear();
+    this.applyVisibility();
+  }
+
+  setMinDegree(v) {
+    this.minDegree = Math.max(0, Math.floor(v));
+    this.applyVisibility();
+  }
+
+  setSpotlight(active, hops, anchorId) {
+    this.spotlightActive = !!active;
+    if (typeof hops === 'number') this.spotlightHops = Math.max(1, Math.min(4, Math.floor(hops)));
+    if (anchorId !== undefined) this.spotlightAnchor = anchorId;
+    this.applyVisibility();
+  }
+
+  // Search. Returns array of matched node ids.
+  search(query) {
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return [];
+    const matches = [];
+    for (const n of this.allNodes) {
+      const idLower = String(n.id).toLowerCase();
+      const labelLower = String(n.label || '').toLowerCase();
+      const titleLower = String(n.title || '').toLowerCase();
+      if (idLower.includes(q) || labelLower.includes(q) || titleLower.includes(q)) {
+        matches.push(n.id);
+      }
+    }
+    return matches;
+  }
+
+  // Apply pulse effect to a set of node ids by temporarily setting a
+  // bright accent color. Restores after duration.
+  pulse(ids) {
+    if (!this.nodesDS || PREFERS_REDUCED) return;
+    const accent = '#e8c49a';
+    const updates = ids.map((id) => ({ id, color: { background: accent, border: '#fff' } }));
+    this.nodesDS.update(updates);
+    setTimeout(() => {
+      const restore = ids.map((id) => {
+        const orig = this._origColors.get(id);
+        return { id, color: orig ? orig.color : undefined };
+      });
+      this.nodesDS.update(restore);
+    }, 600);
+  }
+
+  // BFS shortest path from src -> dst (undirected).
+  shortestPath(src, dst) {
+    if (src === dst) return [src];
+    const adj = this._adj || (this._adj = this._buildAdjacency());
+    const prev = new Map();
+    prev.set(src, null);
+    const queue = [src];
+    while (queue.length) {
+      const cur = queue.shift();
+      const nbrs = adj.get(cur);
+      if (!nbrs) continue;
+      for (const nb of nbrs) {
+        if (prev.has(nb)) continue;
+        if (this.hidden.has(nb)) continue;
+        prev.set(nb, cur);
+        if (nb === dst) {
+          const path = [];
+          let n = dst;
+          while (n != null) {
+            path.unshift(n);
+            n = prev.get(n);
+          }
+          return path;
+        }
+        queue.push(nb);
+      }
+    }
+    return null;
+  }
+
+  highlightPath(path) {
+    if (!path || !this.nodesDS || !this.edgesDS) return;
+    const pathIds = new Set(path);
+    const pathEdges = new Set();
+    for (let i = 0; i < path.length - 1; i++) {
+      pathEdges.add(`${path[i]}|${path[i + 1]}`);
+      pathEdges.add(`${path[i + 1]}|${path[i]}`);
+    }
+    const accent = '#e8c49a';
+    const nodeUpdates = [];
+    for (const n of this.allNodes) {
+      const orig = this._origColors.get(n.id);
+      if (!orig) continue;
+      const inPath = pathIds.has(n.id);
+      nodeUpdates.push({
+        id: n.id,
+        color: inPath ? { background: accent, border: '#fff' } : orig.color,
+        opacity: inPath ? 1 : 0.2,
+      });
+    }
+    this.nodesDS.update(nodeUpdates);
+    const edgeUpdates = [];
+    for (const e of this.allEdges) {
+      const k = `${e.from}|${e.to}`;
+      const inPath = pathEdges.has(k);
+      edgeUpdates.push({
+        id: e.id,
+        color: inPath
+          ? { color: '#e8c49a', highlight: '#fff', opacity: 1 }
+          : { opacity: 0.15 },
+        width: inPath ? 3 : 1,
+      });
+    }
+    this.edgesDS.update(edgeUpdates);
+  }
+
+  clearPathHighlight() {
+    this._applyHoverFocus(); // restores all to current hover state (i.e. none)
+    // Reset edge widths
+    if (!this.edgesDS) return;
+    const edgeUpdates = this.allEdges.map((e) => ({ id: e.id, width: 1 }));
+    this.edgesDS.update(edgeUpdates);
+  }
+
+  // Drive view to fit a set of nodes
+  focusNodes(ids) {
+    if (!this.network || !ids || !ids.length) return;
+    try {
+      this.network.fit({
+        nodes: ids,
+        animation: PREFERS_REDUCED ? false : { duration: 400, easingFunction: 'easeInOutQuad' },
+      });
+    } catch (_) { /* noop */ }
+  }
+}
+
+// ---- decoration: build vNodes/vEdges + legend + format flair ---------
+
+function decorate(normalized, format, viewer) {
+  const counts = new Map();
+  const ordered = [];
+  const isCRG = format === 'code-review-graph@1';
+  const isGitnexus = format === 'gitnexus@1';
+
+  const vNodes = normalized.nodes.map((n) => {
+    const resolved = resolveKind(n._kind);
+    const fill = resolved ? NODE_COLORS[resolved] : FALLBACK_COLOR;
+    const stroke = darkenHex(fill, 0.25);
+    const labelKey = resolved != null ? resolved : 'other';
+    if (!counts.has(labelKey)) {
+      counts.set(labelKey, 0);
+      ordered.push({ label: labelKey, color: fill, kind: resolved });
+    }
+    counts.set(labelKey, counts.get(labelKey) + 1);
+
+    const isTest = isCRG && n._isTest;
+    const baseLabel = truncateLabel(n.label, 28);
+    const display = isTest ? `★ ${baseLabel}` : baseLabel;
+    const tooltip = n.title || n.label || undefined;
+
+    // gitnexus@1 community ring
+    let borderColor = stroke;
+    let borderWidth = 1.5;
+    if (isGitnexus) {
+      const props = n._raw && n._raw.properties ? n._raw.properties : {};
+      const comm = props.community_id != null ? props.community_id
+                   : (props.community != null ? props.community
+                   : (props.cluster_id != null ? props.cluster_id : null));
+      if (comm != null) {
+        const hue = hashHue(comm);
+        borderColor = `hsl(${hue}, 60%, 55%)`;
+        borderWidth = 3;
+        viewer._communityHueByNode.set(String(n.id), { id: comm, hue });
+      }
+    }
+
+    const colorObj = {
+      background: fill,
+      border: borderColor,
+      highlight: { background: fill, border: '#e8c49a' },
+      hover: { background: fill, border: '#e8c49a' },
+    };
+
+    const node = {
+      id: n.id,
+      label: display,
+      title: tooltip,
+      color: colorObj,
+      borderWidth,
+    };
+
+    if (viewer) {
+      viewer._kindByNode.set(n.id, resolved || null);
+      viewer._origColors.set(n.id, { color: { ...colorObj } });
+    }
+
+    return node;
+  });
+
+  const vEdges = normalized.edges.map((e) => {
+    const edge = {
+      id: e.id,
+      from: e.from,
+      to: e.to,
+      title: e.label || undefined,
+    };
+    // code-review-graph@1: edge style by confidence_tier
+    if (format === 'code-review-graph@1' && e._raw) {
+      const tier = e._raw.confidence_tier
+                || (e._raw.metadata && e._raw.metadata.confidence_tier);
+      if (tier === 'INFERRED') {
+        edge.dashes = [6, 4];
+      } else if (tier === 'AMBIGUOUS') {
+        edge.dashes = [2, 4];
+      } else if (tier === 'EXTRACTED') {
+        edge.dashes = false;
+      }
+    }
+    return edge;
+  });
+
+  // Communities chip set for legend (gitnexus@1)
+  const communities = new Map();
+  if (isGitnexus && viewer) {
+    for (const [, info] of viewer._communityHueByNode) {
+      const key = `community:${info.id}`;
+      if (!communities.has(key)) {
+        communities.set(key, { count: 0, hue: info.hue, id: info.id });
+      }
+      communities.get(key).count += 1;
+    }
+  }
+
+  const legend = ordered.map((item) => ({
+    label: item.label,
+    color: item.color,
+    kind: item.kind,
+    count: counts.get(item.label),
+  })).sort((a, b) => b.count - a.count);
+
+  const communityLegend = [...communities.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8) // cap to 8 community chips so legend doesn't explode
+    .map((c) => ({
+      label: `community ${c.id}`,
+      color: `hsl(${c.hue}, 60%, 55%)`,
+      kind: null,
+      community: c.id,
+      count: c.count,
+    }));
+
+  return { vNodes, vEdges, legend: legend.concat(communityLegend) };
+}
+
+// ---- public API --------------------------------------------------------
+
 export async function prepareGraph(entry) {
   const [graph, vis] = await Promise.all([
     fetchGraph(entry.graph_url),
@@ -479,47 +1082,115 @@ export async function prepareGraph(entry) {
       'Expected nodes/edges (or graph.nodes/graph.links for gitnexus@1).',
     );
   }
-  const { vNodes, vEdges, legend } = decorate(normalized, format);
   const steps = buildTourSteps(format, graph, normalized);
-  return { vis, vNodes, vEdges, legend, steps, format, normalized };
+  return { vis, graph, format, normalized, steps, entry };
 }
 
-/**
- * Stage 2: synchronously render the prepared data into the (now-visible)
- * container. Returns { legend, steps, network } so the caller can wire
- * the tour and legend.
- */
-export function commitGraph(prepared, container) {
-  currentContainer = container;
-  if (currentNetwork) {
-    try { currentNetwork.destroy(); } catch (_) { /* noop */ }
-    currentNetwork = null;
+export function commitGraph(prepared, container, options = {}) {
+  const { primary = true, layout: layoutOverride = null } = options;
+  // Tear down any existing primary if we're committing primary.
+  if (primary && primaryViewer) {
+    primaryViewer.destroy();
+    primaryViewer = null;
+    stopMinimap();
   }
-  stopMinimap();
+
+  const viewer = new Viewer(container);
+  viewer.entry = prepared.entry;
+  viewer.format = prepared.format;
+  viewer.normalized = prepared.normalized;
+  // Decorate
+  const { vNodes, vEdges, legend } = decorate(prepared.normalized, prepared.format, viewer);
+  viewer.allNodes = vNodes;
+  viewer.allEdges = vEdges;
+  viewer._computeDegrees();
+
+  // Determine layout: stored per entry, override, or default
+  let layout = layoutOverride;
+  if (!layout && prepared.entry && prepared.entry.id && typeof localStorage !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(`uq:layout:${prepared.entry.id}`);
+      if (stored && ['force', 'hierarchy', 'circle', 'tree'].includes(stored)) layout = stored;
+    } catch (_) { /* noop */ }
+  }
+  if (!layout) layout = 'force';
+  viewer.layout = layout;
+
   container.replaceChildren();
-  renderNetwork(prepared.vis, container, {
-    nodes: prepared.vNodes,
-    edges: prepared.vEdges,
+
+  // For circle/reduced-motion: pre-position nodes so vis-network never
+  // physics-sims them.
+  let circleAssigned = false;
+  if (PREFERS_REDUCED || layout === 'circle') {
+    const N = viewer.allNodes.length;
+    const R = Math.max(180, 22 * N);
+    viewer.allNodes.forEach((node, i) => {
+      const theta = (2 * Math.PI * i) / Math.max(1, N);
+      node.x = R * Math.cos(theta);
+      node.y = R * Math.sin(theta);
+      node.physics = false;
+    });
+    circleAssigned = true;
+  }
+
+  const DataSet = prepared.vis.DataSet || prepared.vis.data?.DataSet;
+  viewer.nodesDS = new DataSet(viewer.allNodes);
+  viewer.edgesDS = new DataSet(viewer.allEdges);
+
+  const opts = buildNetworkOptions(circleAssigned ? 'circle' : layout);
+  if (circleAssigned) {
+    opts.physics = { enabled: false };
+    opts.edges.smooth = { enabled: false };
+  }
+
+  viewer.network = new prepared.vis.Network(container, {
+    nodes: viewer.nodesDS,
+    edges: viewer.edgesDS,
+  }, opts);
+
+  // Wire hover focus
+  viewer.network.on('hoverNode', (params) => {
+    if (params && params.node != null) viewer.hoverFocus(params.node);
   });
-  startMinimap();
+  viewer.network.on('blurNode', () => viewer.hoverBlur());
+
+  if (!PREFERS_REDUCED && layout === 'force') {
+    viewer.network.once('stabilizationIterationsDone', () => {
+      setTimeout(() => {
+        if (viewer.network) {
+          try { viewer.network.setOptions({ physics: { enabled: false } }); } catch (_) { /* noop */ }
+        }
+      }, 5000);
+    });
+  }
+
+  if (primary) {
+    primaryViewer = viewer;
+    startMinimap(viewer);
+  }
+
   return {
-    legend: prepared.legend,
+    viewer,
+    legend,
     steps: prepared.steps,
-    network: currentNetwork,
+    network: viewer.network,
   };
 }
 
 export function getCurrentNetwork() {
-  return currentNetwork;
+  return primaryViewer ? primaryViewer.network : null;
+}
+
+export function getPrimaryViewer() {
+  return primaryViewer;
 }
 
 export function clearGraph() {
-  if (currentNetwork) {
-    try { currentNetwork.destroy(); } catch (_) { /* noop */ }
-    currentNetwork = null;
+  if (primaryViewer) {
+    primaryViewer.destroy();
+    primaryViewer = null;
   }
   stopMinimap();
-  if (currentContainer) currentContainer.replaceChildren();
 }
 
 async function fetchGraph(url) {
@@ -529,110 +1200,21 @@ async function fetchGraph(url) {
   return res.json();
 }
 
-function decorate({ nodes, edges }, format) {
-  const counts = new Map();
-  const ordered = [];
-
-  const vNodes = nodes.map((n) => {
-    const resolved = resolveKind(n._kind);
-    const fill = resolved ? NODE_COLORS[resolved] : FALLBACK_COLOR;
-    const stroke = darkenHex(fill, 0.25);
-    const labelKey = resolved != null ? resolved : 'other';
-    if (!counts.has(labelKey)) {
-      counts.set(labelKey, 0);
-      ordered.push({ label: labelKey, color: fill });
-    }
-    counts.set(labelKey, counts.get(labelKey) + 1);
-
-    // Truncate long labels; keep full text in tooltip via title.
-    const isTest = format === 'code-review-graph@1' && n._isTest;
-    const baseLabel = truncateLabel(n.label, 28);
-    const display = isTest ? `★ ${baseLabel}` : baseLabel;
-    const tooltip = n.title || n.label || undefined;
-
-    return {
-      id: n.id,
-      label: display,
-      title: tooltip,
-      color: {
-        background: fill,
-        border: stroke,
-        highlight: { background: fill, border: '#e8c49a' },
-        hover: { background: fill, border: '#e8c49a' },
-      },
-    };
-  });
-
-  const vEdges = edges.map((e) => ({
-    from: e.from,
-    to: e.to,
-    title: e.label || undefined,
-  }));
-
-  const legend = ordered.map((item) => ({
-    label: item.label,
-    color: item.color,
-    count: counts.get(item.label),
-  })).sort((a, b) => b.count - a.count);
-
-  return { vNodes, vEdges, legend };
-}
-
-function renderNetwork(vis, container, data) {
-  // For prefers-reduced-motion: disable physics and lay nodes on a circle.
-  if (PREFERS_REDUCED) {
-    const N = data.nodes.length;
-    const R = Math.max(180, 22 * N);
-    data.nodes.forEach((node, i) => {
-      const theta = (2 * Math.PI * i) / Math.max(1, N);
-      node.x = R * Math.cos(theta);
-      node.y = R * Math.sin(theta);
-      node.physics = false;
-    });
-  }
-
-  // Build options; clone the shared NETWORK_OPTIONS so we never mutate it.
-  const options = JSON.parse(JSON.stringify(NETWORK_OPTIONS));
-  // Apply current viewport-derived width cap (mobile uses 160).
-  options.nodes.widthConstraint = { minimum: 80, maximum: nodeMaxWidth() };
-  if (PREFERS_REDUCED) {
-    options.physics = { enabled: false };
-    options.edges.smooth = { enabled: false };
-  }
-
-  currentNetwork = new vis.Network(container, data, options);
-
-  if (!PREFERS_REDUCED) {
-    // Freeze physics 5s after stabilization to keep CPU low.
-    currentNetwork.once('stabilizationIterationsDone', () => {
-      setTimeout(() => {
-        if (currentNetwork) currentNetwork.setOptions({ physics: { enabled: false } });
-      }, 5000);
-    });
-  }
-}
-
-// ---- minimap ------------------------------------------------------------
-// Lightweight canvas-based minimap that samples node positions every 500ms
-// and draws them as small dots in the bottom-right corner of the graph pane.
-// Coexists with vis-network's built-in navigationButtons (those sit on the
-// bottom-left of the inner canvas; our minimap is positioned via CSS in the
-// graph-host's bottom-right above the zoom-controls).
+// ---- minimap (operates on primaryViewer) -------------------------------
 
 function getMinimapCanvas() {
   return document.getElementById('graph-minimap');
 }
 
-function startMinimap() {
+function startMinimap(viewer) {
   const canvas = getMinimapCanvas();
-  if (!canvas) return;
+  if (!canvas || !viewer) return;
   canvas.hidden = false;
   if (minimapTimer) {
     clearInterval(minimapTimer);
     minimapTimer = null;
   }
-  const tick = () => drawMinimap(canvas);
-  // Draw once immediately, then on an interval.
+  const tick = () => drawMinimap(canvas, viewer);
   tick();
   minimapTimer = setInterval(tick, 500);
 }
@@ -650,12 +1232,11 @@ function stopMinimap() {
   }
 }
 
-function drawMinimap(canvas) {
-  if (!currentNetwork) return;
+function drawMinimap(canvas, viewer) {
+  if (!viewer || !viewer.network) return;
   const ctx = canvas.getContext && canvas.getContext('2d');
   if (!ctx) return;
 
-  // Match canvas internal pixel size to its CSS size.
   const cssW = canvas.clientWidth || 140;
   const cssH = canvas.clientHeight || 100;
   const dpr = window.devicePixelRatio || 1;
@@ -667,7 +1248,6 @@ function drawMinimap(canvas) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssW, cssH);
 
-  // Background frame
   ctx.fillStyle = 'rgba(20, 20, 20, 0.85)';
   ctx.fillRect(0, 0, cssW, cssH);
   ctx.strokeStyle = 'rgba(212, 165, 116, 0.10)';
@@ -676,14 +1256,13 @@ function drawMinimap(canvas) {
 
   let positions;
   try {
-    positions = currentNetwork.getPositions();
+    positions = viewer.network.getPositions();
   } catch (_) {
     return;
   }
   const ids = Object.keys(positions);
   if (ids.length === 0) return;
 
-  // Compute world bounds.
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const id of ids) {
     const p = positions[id];
@@ -709,10 +1288,6 @@ function drawMinimap(canvas) {
 }
 
 // ---- viewport-derived widthConstraint refresh -------------------------
-// When the viewport crosses the mobile breakpoint we want vis-network to
-// re-cap node widths to the new max (200 desktop / 160 mobile) so long
-// labels stop overflowing the canvas. setOptions({nodes:...}) on a live
-// network triggers a relayout pass internally; no re-render needed.
 
 let mobileGraphMql = null;
 let mobileGraphMqlListener = null;
@@ -722,14 +1297,13 @@ function attachMobileGraphMql() {
   if (mobileGraphMql && mobileGraphMqlListener) return;
   mobileGraphMql = window.matchMedia(MOBILE_GRAPH_BP);
   mobileGraphMqlListener = () => {
-    if (!currentNetwork) return;
+    if (!primaryViewer || !primaryViewer.network) return;
     try {
-      currentNetwork.setOptions({
+      primaryViewer.network.setOptions({
         nodes: { widthConstraint: { minimum: 80, maximum: nodeMaxWidth() } },
       });
-    } catch (_) { /* network may have been destroyed mid-callback */ }
+    } catch (_) { /* noop */ }
   };
-  // addEventListener exists on modern Safari; fall back to addListener.
   if (mobileGraphMql.addEventListener) {
     mobileGraphMql.addEventListener('change', mobileGraphMqlListener);
   } else if (mobileGraphMql.addListener) {
@@ -750,8 +1324,6 @@ function detachMobileGraphMql() {
 
 attachMobileGraphMql();
 
-// Detach on pagehide to be a tidy citizen on iOS Safari (which keeps pages
-// alive in the bfcache; without teardown, listeners can leak).
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', detachMobileGraphMql);
 }
@@ -760,15 +1332,16 @@ if (typeof window !== 'undefined') {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('uq-zoom', (ev) => {
-    if (!currentNetwork) return;
+    const v = primaryViewer;
+    if (!v || !v.network) return;
     const dir = ev && ev.detail ? ev.detail.dir : null;
     if (dir === 'fit') {
-      currentNetwork.fit({ animation: !PREFERS_REDUCED });
+      v.network.fit({ animation: !PREFERS_REDUCED });
       return;
     }
-    const scale = currentNetwork.getScale();
+    const scale = v.network.getScale();
     const factor = dir === 'in' ? 1.25 : 0.8;
-    currentNetwork.moveTo({
+    v.network.moveTo({
       scale: scale * factor,
       animation: !PREFERS_REDUCED,
     });
