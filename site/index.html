@@ -2,87 +2,104 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>understand-quickly · registry browser</title>
+  <title>understand-quickly · registry</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Public, machine-readable registry of code-knowledge graphs. Browse entries, inspect graphs, copy raw URLs for agents.">
+  <meta name="theme-color" content="#0a0a0a">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
+
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div class="page">
-    <header class="site-header">
-      <div>
-        <h1><span class="brand-emoji" aria-hidden="true">&#129504;</span>understand-quickly</h1>
-        <p class="tagline">A public, machine-readable registry of code-knowledge graphs.</p>
-      </div>
-      <nav aria-label="Site">
-        <a class="cta-add-repo" href="./add.html">+ Add your repo</a>
-        <a href="./about.html">About</a>
-        <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">GitHub</a>
-      </nav>
-    </header>
-
-    <section class="endpoints" aria-label="Agent endpoints">
-      <strong>Agent endpoints</strong><br>
-      <code>GET <a href="./registry.json">./registry.json</a></code> &mdash; canonical index<br>
-      <code>GET <a href="./schemas/">./schemas/</a></code> &mdash; JSON Schemas
-    </section>
-
-    <main id="main">
-      <div id="error" class="error-banner" hidden role="alert"></div>
-
-      <form class="toolbar" id="toolbar" role="search" aria-label="Filter registry entries" onsubmit="return false;">
+  <div class="app">
+    <header class="topbar" role="banner">
+      <a class="brand" href="./" aria-label="understand-quickly home">
+        <span class="brand-mark"><span class="brand-emoji" aria-hidden="true">&#129504;</span>understand-quickly</span>
+      </a>
+      <form class="topbar-search" id="toolbar" role="search" aria-label="Search registry" onsubmit="return false;">
+        <label class="visually-hidden" for="q">Search</label>
         <input
           type="search"
           id="q"
           placeholder="Search id, description, or tags…"
-          autocomplete="off"
-          aria-label="Search entries">
-        <label class="visually-hidden" for="format">Format</label>
-        <select id="format" aria-label="Filter by format">
-          <option value="">All formats</option>
-        </select>
+          autocomplete="off">
       </form>
+      <nav class="topbar-actions" aria-label="Site">
+        <a href="./about.html">About</a>
+        <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">GitHub</a>
+        <a class="cta-add-repo" href="./add.html">+ Add your repo</a>
+      </nav>
+    </header>
 
-      <fieldset class="status-filter" id="status-filter" aria-label="Filter by status">
-        <legend class="visually-hidden">Status</legend>
-        <!-- populated by app.js -->
-      </fieldset>
-
-      <p class="results-meta" id="results-meta" aria-live="polite"></p>
-
-      <section id="cards" class="card-grid" aria-label="Registry entries"></section>
-
-      <section id="empty" class="empty" hidden>
-        <h2>No entries yet</h2>
-        <p>The registry is empty right now. Have a knowledge graph for a public repo?</p>
-        <p>
-          <a href="https://github.com/looptech-ai/understand-quickly#add-your-repo" rel="noopener">
-            Read the &ldquo;Add your repo&rdquo; guide &rarr;
-          </a>
-        </p>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <span>MIT &middot; <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">source</a></span>
-      <span id="generated-at"></span>
-    </footer>
-  </div>
-
-  <div class="modal" id="viewer" role="dialog" aria-modal="true" aria-labelledby="viewer-title" hidden>
-    <div class="modal-content">
-      <header class="modal-head">
-        <div>
-          <h2 id="viewer-title">Graph</h2>
-          <div class="modal-meta" id="viewer-meta"></div>
+    <div class="workspace" id="workspace">
+      <aside class="sidebar" aria-label="Registry entries">
+        <div class="sidebar-head">
+          <div class="sidebar-meta">
+            <span id="results-meta" aria-live="polite">Loading…</span>
+            <span id="generated-at"></span>
+          </div>
+          <label class="visually-hidden" for="format">Format</label>
+          <select class="sidebar-format" id="format" aria-label="Filter by format">
+            <option value="">All formats</option>
+          </select>
+          <fieldset class="status-filter" id="status-filter" aria-label="Filter by status">
+            <legend class="visually-hidden">Status</legend>
+          </fieldset>
         </div>
-        <button type="button" class="modal-close" id="viewer-close" aria-label="Close graph viewer">&times;</button>
-      </header>
-      <div class="modal-body">
-        <div id="graph-canvas" aria-label="Force-directed graph" role="img"></div>
-        <div class="modal-status" id="viewer-status" hidden></div>
-      </div>
+        <div class="sidebar-list" id="cards" role="listbox" aria-label="Registry entries"></div>
+        <div class="sidebar-empty" id="empty" hidden>No entries yet — the registry is empty.</div>
+      </aside>
+
+      <main class="main-pane" id="main">
+        <div id="error" class="error-banner" hidden role="alert"></div>
+        <div class="graph-host">
+          <div id="graph-canvas" aria-label="Knowledge graph viewer" role="img"></div>
+          <div class="graph-empty" id="graph-empty">
+            <h2>A registry of knowledge graphs.</h2>
+            <p>Pick an entry on the left to load its graph. Each entry points to a public JSON file in the producer's own format — agents fetch the raw URL directly.</p>
+            <div class="endpoint-card" id="endpoint-card">
+              <strong>Agent endpoints</strong>
+              <div><code>GET <a href="./registry.json">./registry.json</a></code> — canonical index</div>
+              <div><code>GET <a href="./schemas/">./schemas/</a></code> — JSON Schemas</div>
+            </div>
+            <div class="actions">
+              <a class="btn btn-primary" href="./add.html">+ Add your repo</a>
+              <a class="btn btn-ghost" href="./about.html">Read the docs</a>
+            </div>
+          </div>
+          <div class="graph-status" id="graph-status" hidden></div>
+          <div class="graph-legend" id="graph-legend" hidden aria-label="Node-type legend"></div>
+          <div class="zoom-controls" id="zoom-controls" hidden>
+            <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+            <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+            <button type="button" id="zoom-fit" aria-label="Fit graph" title="Fit">⤢</button>
+          </div>
+        </div>
+      </main>
+
+      <aside class="detail-pane" id="detail" aria-label="Entry details" hidden>
+        <header class="detail-head">
+          <div>
+            <h2 class="detail-title" id="detail-title">Entry</h2>
+            <div class="detail-sub" id="detail-sub"></div>
+          </div>
+          <button type="button" class="detail-close" id="detail-close" aria-label="Close detail pane">&times;</button>
+        </header>
+        <div class="detail-body" id="detail-body"></div>
+      </aside>
     </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <span>MIT</span>
+      <span>·</span>
+      <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">source</a>
+      <span>·</span>
+      <a href="./schemas/">spec</a>
+    </footer>
   </div>
 
   <script type="module" src="./app.js"></script>

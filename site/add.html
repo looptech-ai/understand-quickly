@@ -5,10 +5,29 @@
   <title>understand-quickly · Add your repo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Two-click registration for understand-quickly. Fill four fields, open a pre-filled GitHub issue, and the bot opens the PR.">
+  <meta name="theme-color" content="#0a0a0a">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
+
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./add.css">
 </head>
 <body>
+  <header class="topbar" role="banner">
+    <a class="brand" href="./" aria-label="understand-quickly home">
+      <span class="brand-mark"><span class="brand-emoji" aria-hidden="true">&#129504;</span>understand-quickly</span>
+    </a>
+    <span></span>
+    <nav class="topbar-actions" aria-label="Site">
+      <a href="./">Registry</a>
+      <a href="./about.html">About</a>
+      <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
   <div class="add-page">
     <header class="add-header">
       <a class="add-back" href="./">&larr; back to registry</a>
@@ -18,7 +37,6 @@
 
     <main>
       <form id="add-form" class="add-form" novalidate>
-        <!-- Repo id -->
         <fieldset class="field">
           <label for="f-id" class="field-label">
             Repo id
@@ -40,7 +58,6 @@
           <p class="field-error" id="err-id" hidden></p>
         </fieldset>
 
-        <!-- Format -->
         <fieldset class="field">
           <legend class="field-label">
             Format
@@ -72,7 +89,6 @@
           <p class="field-error" id="err-format" hidden></p>
         </fieldset>
 
-        <!-- graph_url -->
         <fieldset class="field">
           <label for="f-url" class="field-label">
             graph_url
@@ -94,7 +110,6 @@
           <p class="field-error" id="err-url" hidden></p>
         </fieldset>
 
-        <!-- Description -->
         <fieldset class="field">
           <label for="f-desc" class="field-label">
             Description
@@ -115,7 +130,6 @@
           <p class="field-error" id="err-desc" hidden></p>
         </fieldset>
 
-        <!-- Tags -->
         <fieldset class="field">
           <label for="f-tags" class="field-label">Tags</label>
           <p class="field-hint">
@@ -133,7 +147,6 @@
           </div>
         </fieldset>
 
-        <!-- Instant refresh -->
         <fieldset class="field">
           <label class="checkbox-row">
             <input type="checkbox" id="f-refresh" name="instant_refresh">
@@ -144,7 +157,6 @@
           </label>
         </fieldset>
 
-        <!-- Preview -->
         <fieldset class="field">
           <button type="button" id="toggle-preview" class="btn-link" aria-expanded="false" aria-controls="json-preview">
             Preview JSON &darr;
@@ -152,7 +164,6 @@
           <pre id="json-preview" class="json-preview" hidden><code></code></pre>
         </fieldset>
 
-        <!-- Actions -->
         <div class="actions">
           <button type="submit" id="submit-btn" class="btn btn-primary" disabled>
             Open issue &rarr; bot opens PR
@@ -196,11 +207,15 @@
         </details>
       </section>
     </main>
-
-    <footer class="site-footer">
-      <span>MIT &middot; <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">source</a></span>
-    </footer>
   </div>
+
+  <footer class="site-footer" role="contentinfo">
+    <span>MIT</span>
+    <span>·</span>
+    <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">source</a>
+    <span>·</span>
+    <a href="./schemas/">spec</a>
+  </footer>
 
   <script type="module" src="./add.js"></script>
 </body>
