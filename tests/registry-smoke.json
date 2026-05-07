@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-07T00:00:00Z",
+  "entries": [
+    {
+      "id": "Lum1104/Understand-Anything",
+      "owner": "Lum1104",
+      "repo": "Understand-Anything",
+      "default_branch": "main",
+      "format": "understand-anything@1",
+      "graph_url": "https://raw.githubusercontent.com/Lum1104/Understand-Anything/main/.understand-anything/knowledge-graph.json",
+      "description": "smoke target"
+    }
+  ]
+}

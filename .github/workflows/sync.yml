@@ -1,0 +1,67 @@
+name: sync
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  repository_dispatch:
+    types: [sync-entry]
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'Single entry id (owner/repo) to sync'
+        required: false
+        type: string
+      revalidate:
+        description: 'Resync all entries even if unchanged'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-${{ github.event.client_payload.id || github.event.inputs.id || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Resolve target id
+        id: target
+        env:
+          DISPATCH_ID: ${{ github.event.client_payload.id }}
+          INPUT_ID: ${{ github.event.inputs.id }}
+        run: |
+          ID="${DISPATCH_ID:-$INPUT_ID}"
+          if [ -n "$ID" ]; then
+            echo "args=--only $ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Smoke (dry-run, never commits)
+        run: npm run smoke
+
+      - name: Sync
+        run: node scripts/sync.mjs ${{ steps.target.outputs.args }}
+
+      - name: Commit changes
+        run: |
+          if ! git diff --quiet registry.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add registry.json
+            git commit -m "chore(sync): update registry"
+            git push
+          else
+            echo "no changes"
+          fi
