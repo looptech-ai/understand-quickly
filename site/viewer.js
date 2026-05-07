@@ -307,27 +307,152 @@ function normalize(format, graph) {
   }
 }
 
+// ---- guided-tour step extraction ----------------------------------------
+// Per-format extraction of human-readable steps. Each returned step is
+// { id, label, kind, text }, where:
+//   id    — node id (matches what vis-network knows)
+//   label — short display label (mono in panel)
+//   kind  — node-type key (used to color the chip)
+//   text  — prose description shown to the user
+//
+// Order:
+//   • understand-anything@1 / gitnexus@1 / generic@1: as-listed
+//   • code-review-graph@1: by kind precedence (File → Class → Function →
+//     Test → Type), then alphabetical within each kind
+// Cap at 25 steps; if more, sample evenly.
+
+const TOUR_STEP_CAP = 25;
+
+const CRG_KIND_ORDER = ['file', 'class', 'function', 'test', 'type'];
+
+function sampleEvenly(arr, max) {
+  if (arr.length <= max) return arr.slice();
+  const out = [];
+  const stride = arr.length / max;
+  for (let i = 0; i < max; i++) {
+    out.push(arr[Math.floor(i * stride)]);
+  }
+  return out;
+}
+
+function buildTourSteps(format, rawGraph, normalized) {
+  if (!normalized || !Array.isArray(normalized.nodes)) return [];
+
+  // Build a map id -> normalized node for label/kind fallbacks.
+  const normById = new Map();
+  for (const n of normalized.nodes) normById.set(String(n.id), n);
+
+  let steps = [];
+
+  if (format === 'understand-anything@1') {
+    // Step text = node.summary if present, else node.label. Order: as-listed.
+    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
+    steps = src.filter((n) => n && n.id != null).map((n) => {
+      const id = String(n.id);
+      const norm = normById.get(id);
+      return {
+        id,
+        label: n.label != null ? String(n.label) : id,
+        kind: resolveKind(n.kind) || (norm ? resolveKind(norm._kind) : null),
+        text: n.summary || n.label || id,
+      };
+    });
+  } else if (format === 'gitnexus@1') {
+    // Text = properties.description ?? properties.name ?? label. As-listed.
+    const inner = rawGraph && rawGraph.graph;
+    const src = inner && Array.isArray(inner.nodes) ? inner.nodes : [];
+    steps = src.filter((n) => n && n.id != null).map((n) => {
+      const id = String(n.id);
+      const props = n.properties || {};
+      const kindRaw = n.label != null ? n.label : n.type;
+      const display = props.name != null ? props.name
+                      : (n.name != null ? n.name : id);
+      const text = props.description || props.name || (n.label != null ? String(n.label) : id);
+      return {
+        id,
+        label: String(display),
+        kind: resolveKind(kindRaw),
+        text: String(text),
+      };
+    });
+  } else if (format === 'code-review-graph@1') {
+    // Text = node.summary if present, else `${kind} ${qualified_name||name||id}`.
+    // Order: by CRG_KIND_ORDER, then alpha within kind.
+    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
+    const raw = src.filter((n) => n && n.id != null).map((n) => {
+      const id = String(n.id);
+      const display = n.name != null ? String(n.name)
+                      : (n.qualified_name != null ? String(n.qualified_name) : id);
+      const kindLower = n.kind != null ? String(n.kind).toLowerCase() : '';
+      const fallbackText = `${n.kind || ''} ${n.qualified_name || n.name || id}`.trim();
+      return {
+        id,
+        label: display,
+        kind: resolveKind(n.kind),
+        text: n.summary ? String(n.summary) : fallbackText,
+        _sortKind: kindLower,
+        _sortLabel: display.toLowerCase(),
+      };
+    });
+    raw.sort((a, b) => {
+      const ai = CRG_KIND_ORDER.indexOf(a._sortKind);
+      const bi = CRG_KIND_ORDER.indexOf(b._sortKind);
+      const aRank = ai === -1 ? CRG_KIND_ORDER.length : ai;
+      const bRank = bi === -1 ? CRG_KIND_ORDER.length : bi;
+      if (aRank !== bRank) return aRank - bRank;
+      return a._sortLabel.localeCompare(b._sortLabel);
+    });
+    steps = raw.map(({ _sortKind, _sortLabel, ...rest }) => rest);
+  } else {
+    // generic@1: text = label || id. As-listed.
+    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
+    steps = src.filter((n) => n && n.id != null).map((n) => {
+      const id = String(n.id);
+      const label = n.label != null ? String(n.label)
+                    : (n.name != null ? String(n.name) : id);
+      const kindRaw = n.kind != null ? n.kind : n.type;
+      return {
+        id,
+        label,
+        kind: resolveKind(kindRaw),
+        text: label,
+      };
+    });
+  }
+
+  // Drop steps whose id we don't know about (defensive).
+  steps = steps.filter((s) => normById.has(s.id));
+
+  if (steps.length > TOUR_STEP_CAP) {
+    steps = sampleEvenly(steps, TOUR_STEP_CAP);
+  }
+  return steps;
+}
+
 // ---- public API ---------------------------------------------------------
 
 /**
- * Render the graph for `entry` into `container`. Returns {legend} so the
- * app can show a per-color legend.
+ * Render the graph for `entry` into `container`. Returns {legend, steps,
+ * network} so the app can show a per-color legend and drive the guided
+ * tour off the same node set.
  */
 export async function openGraph(entry, container) {
-  currentContainer = container;
+  const prepared = await prepareGraph(entry);
+  return commitGraph(prepared, container);
+}
 
-  if (currentNetwork) {
-    try { currentNetwork.destroy(); } catch (_) { /* noop */ }
-    currentNetwork = null;
-  }
-  stopMinimap();
-  container.replaceChildren();
-
+/**
+ * Stage 1: fetch the entry's graph_url and load the vis-network library.
+ * Returns the data needed to render — but does NOT touch the DOM. This
+ * lets the caller flip its state machine between "loading" and "graph"
+ * before we actually render, so the container has real dimensions when
+ * vis-network measures it.
+ */
+export async function prepareGraph(entry) {
   const [graph, vis] = await Promise.all([
     fetchGraph(entry.graph_url),
     loadVisNetwork(),
   ]);
-
   const format = detectFormat(entry, graph);
   const normalized = normalize(format, graph);
   if (!normalized || normalized.nodes.length === 0) {
@@ -336,11 +461,38 @@ export async function openGraph(entry, container) {
       'Expected nodes/edges (or graph.nodes/graph.links for gitnexus@1).',
     );
   }
-
   const { vNodes, vEdges, legend } = decorate(normalized, format);
-  renderNetwork(vis, container, { nodes: vNodes, edges: vEdges });
+  const steps = buildTourSteps(format, graph, normalized);
+  return { vis, vNodes, vEdges, legend, steps, format, normalized };
+}
+
+/**
+ * Stage 2: synchronously render the prepared data into the (now-visible)
+ * container. Returns { legend, steps, network } so the caller can wire
+ * the tour and legend.
+ */
+export function commitGraph(prepared, container) {
+  currentContainer = container;
+  if (currentNetwork) {
+    try { currentNetwork.destroy(); } catch (_) { /* noop */ }
+    currentNetwork = null;
+  }
+  stopMinimap();
+  container.replaceChildren();
+  renderNetwork(prepared.vis, container, {
+    nodes: prepared.vNodes,
+    edges: prepared.vEdges,
+  });
   startMinimap();
-  return { legend };
+  return {
+    legend: prepared.legend,
+    steps: prepared.steps,
+    network: currentNetwork,
+  };
+}
+
+export function getCurrentNetwork() {
+  return currentNetwork;
 }
 
 export function clearGraph() {

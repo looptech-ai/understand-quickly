@@ -4,9 +4,9 @@
 // rendered via textContent / createElement / attribute setters — never
 // innerHTML with untrusted data.
 
-import { openGraph, clearGraph } from './viewer.js?v=20260507b';
+import { prepareGraph, commitGraph, clearGraph, getCurrentNetwork } from './viewer.js?v=20260507c';
 
-const PAGE_VERSION = '20260507b';
+const PAGE_VERSION = '20260507c';
 const MOBILE_BREAKPOINT = 800;
 
 function isMobile() {
@@ -522,12 +522,30 @@ async function copyEntryJson(entry, statusEl) {
 
 // ---------- graph area ----------
 
+// The main pane is a state machine. Every transition flips
+// data-main-state on #main; CSS hides the inactive blocks. This is the
+// only place that should write the attribute.
+function setMainState(name) {
+  const main = document.getElementById('main');
+  if (!main) return;
+  if (main.getAttribute('data-main-state') === name) return;
+  main.setAttribute('data-main-state', name);
+  if (name !== 'graph') {
+    // Tour only makes sense over a rendered graph. Tear it down on any
+    // exit from the graph state to avoid orphaned timers.
+    Tour.exit();
+    const startBtn = document.getElementById('tour-start');
+    if (startBtn) startBtn.hidden = true;
+    const legend = document.getElementById('graph-legend');
+    if (legend) legend.hidden = true;
+    const zc = document.getElementById('zoom-controls');
+    if (zc) zc.hidden = true;
+  }
+}
+
 function resetGraphArea() {
   clearGraph();
-  document.getElementById('graph-empty').hidden = false;
-  document.getElementById('graph-status').hidden = true;
-  document.getElementById('zoom-controls').hidden = true;
-  document.getElementById('graph-legend').hidden = true;
+  setMainState('empty');
   refreshEmptyStateCta();
 }
 
@@ -549,36 +567,41 @@ function refreshEmptyStateCta() {
 }
 
 async function loadGraphFor(entry) {
-  document.getElementById('graph-empty').hidden = true;
   const status = entry.status || 'pending';
+
+  // Bad-status entries: jump straight to error state.
   if (!entry.graph_url || status !== 'ok') {
     clearGraph();
-    document.getElementById('graph-status').hidden = false;
     const statusMeta = STATUS_META[status] ?? { emoji: '', label: status };
+    setMainState('error');
     setStatusText(
       entry.graph_url
         ? `Graph not available (status: ${statusMeta.label}).`
         : 'This entry has no graph_url.',
       true,
     );
-    document.getElementById('zoom-controls').hidden = true;
-    document.getElementById('graph-legend').hidden = true;
     return;
   }
-  document.getElementById('graph-status').hidden = false;
+
+  // Loading state: spinner + "Loading graph…", everything else hidden.
+  setMainState('loading');
   setStatusText('Loading graph…', false, true);
+
   try {
-    const result = await openGraph(entry, document.getElementById('graph-canvas'));
-    document.getElementById('graph-status').hidden = true;
-    document.getElementById('zoom-controls').hidden = false;
+    // Stage 1: fetch + load lib (DOM untouched; loading overlay still visible)
+    const prepared = await prepareGraph(entry);
+    // Stage 2: flip to graph state so the canvas has dimensions, THEN render.
+    setMainState('graph');
+    const result = commitGraph(prepared, document.getElementById('graph-canvas'));
     if (result?.legend && result.legend.length) {
       renderLegend(result.legend);
     }
+    // Wire the guided tour to the freshly rendered graph.
+    Tour.attach(result.steps || [], result.network);
   } catch (err) {
     console.error(err);
+    setMainState('error');
     setStatusText(`Couldn't load graph: ${err.message}`, true);
-    document.getElementById('zoom-controls').hidden = true;
-    document.getElementById('graph-legend').hidden = true;
   }
 }
 
@@ -591,6 +614,229 @@ function setStatusText(text, isError, withSpinner = false) {
   }
   status.appendChild(document.createTextNode(text));
 }
+
+// ---------- guided tour ----------
+//
+// Tour is a small state machine over the steps[] array returned from
+// viewer.commitGraph(). It walks the user node-by-node, focusing the
+// network on each, with prev/next/auto-play/exit. It listens to:
+//   • keyboard: ←, →/Space, Esc, p
+//   • visibility: pauses auto-advance when the tab is backgrounded
+//                 (setInterval on iOS Safari throttles to seconds-not-ms
+//                 in background; we explicitly stop & resume to avoid
+//                 a sudden burst of catch-up ticks on return)
+//   • prefers-reduced-motion: drops focus animation to 0ms and disables
+//                 auto-advance entirely.
+//
+// Auto-show behavior: on the first tap of any entry within a session,
+// the tour starts automatically once the graph loads. A sessionStorage
+// flag prevents nagging on subsequent loads.
+
+const TOUR_AUTOSHOW_KEY = 'uq:tour-autoshown';
+const TOUR_AUTO_ADVANCE_MS = 6000;
+
+function tourPrefersReducedMotion() {
+  return typeof window !== 'undefined'
+    && window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+const Tour = (() => {
+  let steps = [];
+  let net = null;
+  let idx = 0;
+  let active = false;
+  let playing = true;
+  let timer = null;
+  let triggerEl = null;
+
+  function el(id) { return document.getElementById(id); }
+
+  function panel()       { return el('tour-panel'); }
+  function startBtn()    { return el('tour-start'); }
+  function counterEl()   { return el('tour-counter'); }
+  function kindChipEl()  { return el('tour-kind'); }
+  function labelEl()     { return el('tour-label'); }
+  function textEl()      { return el('tour-text'); }
+  function liveEl()      { return el('tour-live'); }
+  function pauseBtnEl()  { return el('tour-pause'); }
+  function pauseLblEl()  { return el('tour-pause-label'); }
+  function nextBtnEl()   { return el('tour-next'); }
+
+  function attach(newSteps, network) {
+    steps = Array.isArray(newSteps) ? newSteps.filter(Boolean) : [];
+    net = network || null;
+    active = false;
+    idx = 0;
+    playing = true;
+    stopTimer();
+    const sb = startBtn();
+    if (sb) sb.hidden = steps.length === 0;
+    const p = panel();
+    if (p) p.hidden = true;
+    if (steps.length === 0) return;
+    // Auto-show on first selection in this session
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        if (!sessionStorage.getItem(TOUR_AUTOSHOW_KEY)) {
+          sessionStorage.setItem(TOUR_AUTOSHOW_KEY, '1');
+          start(sb || null);
+        }
+      } catch (_) { /* private mode etc. */ }
+    }
+  }
+
+  function start(triggerElement) {
+    if (!steps.length) return;
+    triggerEl = triggerElement || startBtn();
+    active = true;
+    idx = 0;
+    playing = !tourPrefersReducedMotion();
+    const p = panel();
+    if (p) {
+      p.hidden = false;
+      // requestAnimationFrame so the slide-up transition kicks in on mobile
+      requestAnimationFrame(() => p.classList.add('is-open'));
+    }
+    renderStep();
+    syncPauseLabel();
+    schedule();
+    // Move focus to the panel (a11y).
+    if (p && typeof p.focus === 'function') {
+      try { p.focus({ preventScroll: true }); } catch (_) { p.focus(); }
+    }
+  }
+
+  function exit() {
+    if (!active && (!panel() || panel().hidden)) return;
+    active = false;
+    stopTimer();
+    const p = panel();
+    if (p) {
+      p.classList.remove('is-open');
+      p.hidden = true;
+    }
+    // Return focus to the start button (a11y).
+    if (triggerEl && typeof triggerEl.focus === 'function') {
+      try { triggerEl.focus({ preventScroll: true }); } catch (_) { /* ok */ }
+    }
+    triggerEl = null;
+  }
+
+  function next() {
+    if (!active || !steps.length) return;
+    if (idx >= steps.length - 1) {
+      // On last step "next" == restart-from-start
+      idx = 0;
+    } else {
+      idx += 1;
+    }
+    renderStep();
+    schedule();
+  }
+
+  function prev() {
+    if (!active || !steps.length) return;
+    idx = Math.max(0, idx - 1);
+    renderStep();
+    schedule();
+  }
+
+  function jumpTo(i) {
+    if (!active || !steps.length) return;
+    idx = Math.max(0, Math.min(steps.length - 1, i));
+    renderStep();
+    schedule();
+  }
+
+  function togglePlay() {
+    playing = !playing;
+    syncPauseLabel();
+    schedule();
+  }
+
+  function schedule() {
+    stopTimer();
+    if (!active || !playing || tourPrefersReducedMotion()) return;
+    timer = setInterval(() => {
+      // Treat the last step's auto-advance as a no-op (don't loop forever
+      // on its own — user must press the "restart" button).
+      if (idx >= steps.length - 1) { stopTimer(); return; }
+      next();
+    }, TOUR_AUTO_ADVANCE_MS);
+  }
+
+  function stopTimer() {
+    if (timer != null) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  function syncPauseLabel() {
+    const lbl = pauseLblEl();
+    const btn = pauseBtnEl();
+    if (lbl) lbl.textContent = playing ? 'Pause' : 'Resume';
+    if (btn) btn.setAttribute('aria-label', playing ? 'Pause auto-advance' : 'Resume auto-advance');
+  }
+
+  function renderStep() {
+    if (!steps.length) return;
+    const step = steps[idx];
+    if (!step) return;
+    const counter = counterEl();
+    if (counter) counter.textContent = `${idx + 1} / ${steps.length}`;
+    const chip = kindChipEl();
+    if (chip) {
+      chip.textContent = step.kind || '—';
+      chip.dataset.kind = step.kind || '';
+    }
+    const lbl = labelEl();
+    if (lbl) lbl.textContent = step.label || step.id;
+    const txt = textEl();
+    if (txt) txt.textContent = step.text || step.label || step.id;
+    const live = liveEl();
+    if (live) live.textContent = `Step ${idx + 1} of ${steps.length}: ${step.label || step.id}`;
+    const nb = nextBtnEl();
+    if (nb) {
+      const isLast = idx === steps.length - 1;
+      const lblSpan = nb.querySelector('.tour-btn-label');
+      if (lblSpan) lblSpan.textContent = isLast ? 'Restart' : 'Next';
+      nb.setAttribute('aria-label', isLast ? 'Restart tour' : 'Next step');
+    }
+
+    // Drive the network: select + focus on the step's node.
+    if (net && step.id) {
+      try { net.selectNodes([step.id]); } catch (_) { /* node may have been pruned */ }
+      try {
+        net.focus(step.id, {
+          scale: 1.6,
+          animation: tourPrefersReducedMotion()
+            ? false
+            : { duration: 600, easingFunction: 'easeInOutQuad' },
+        });
+      } catch (_) { /* noop */ }
+    }
+  }
+
+  function isActive() { return active; }
+  function isPlaying() { return playing; }
+
+  // Browser tab visibility: stop the interval when hidden, restart when
+  // visible. iOS Safari throttles setInterval in background tabs to ~1Hz
+  // and can deliver a flurry of stale ticks on resume; explicit pause
+  // avoids that.
+  function handleVisibility() {
+    if (typeof document === 'undefined') return;
+    if (document.hidden) {
+      stopTimer();
+    } else {
+      schedule();
+    }
+  }
+
+  return { attach, start, exit, next, prev, jumpTo, togglePlay, isActive, isPlaying, handleVisibility };
+})();
 
 function renderLegend(items) {
   const legend = document.getElementById('graph-legend');
@@ -772,6 +1018,84 @@ function bindZoom() {
   fitBtn.addEventListener('click', () => window.dispatchEvent(new CustomEvent('uq-zoom', { detail: { dir: 'fit' } })));
 }
 
+function bindTour() {
+  const startBtn = document.getElementById('tour-start');
+  const exitBtn = document.getElementById('tour-exit');
+  const prevBtn = document.getElementById('tour-prev');
+  const nextBtn = document.getElementById('tour-next');
+  const pauseBtn = document.getElementById('tour-pause');
+
+  if (startBtn) startBtn.addEventListener('click', () => Tour.start(startBtn));
+  if (exitBtn)  exitBtn.addEventListener('click', () => Tour.exit());
+  if (prevBtn)  prevBtn.addEventListener('click', () => Tour.prev());
+  if (nextBtn)  nextBtn.addEventListener('click', () => Tour.next());
+  if (pauseBtn) pauseBtn.addEventListener('click', () => Tour.togglePlay());
+
+  // Keyboard shortcuts when tour is active. Don't steal keys from inputs.
+  document.addEventListener('keydown', (ev) => {
+    if (!Tour.isActive()) return;
+    const t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      Tour.exit();
+    } else if (ev.key === 'ArrowRight' || ev.key === ' ' || ev.key === 'Spacebar') {
+      ev.preventDefault();
+      Tour.next();
+    } else if (ev.key === 'ArrowLeft') {
+      ev.preventDefault();
+      Tour.prev();
+    } else if (ev.key === 'p' || ev.key === 'P') {
+      ev.preventDefault();
+      Tour.togglePlay();
+    }
+  });
+
+  // iOS Safari + backgrounded tabs: setInterval in a hidden tab is
+  // throttled to ~1Hz and queued ticks can fire in a burst on resume.
+  // We explicitly stop the auto-advance timer when the tab hides and
+  // schedule a fresh one on visibility change.
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => Tour.handleVisibility());
+  }
+
+  // Drag-handle: tap-to-dismiss on mobile. Mirrors detail-pane sheet.
+  const handle = document.getElementById('tour-panel-handle');
+  const panel = document.getElementById('tour-panel');
+  if (handle && panel) {
+    let startY = 0;
+    let currentY = 0;
+    let dragging = false;
+    handle.addEventListener('touchstart', (ev) => {
+      if (!isMobile()) return;
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      dragging = true;
+      startY = t.clientY;
+      currentY = 0;
+      panel.style.transition = 'none';
+    }, { passive: true });
+    handle.addEventListener('touchmove', (ev) => {
+      if (!dragging) return;
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      currentY = Math.max(0, t.clientY - startY);
+      panel.style.transform = `translateY(${currentY}px)`;
+    }, { passive: true });
+    const end = () => {
+      if (!dragging) return;
+      dragging = false;
+      panel.style.transition = '';
+      const threshold = panel.clientHeight * 0.30;
+      panel.style.transform = '';
+      if (currentY > threshold) Tour.exit();
+      currentY = 0;
+    };
+    handle.addEventListener('touchend', end);
+    handle.addEventListener('touchcancel', end);
+  }
+}
+
 // ---------- diagnostics + global error handlers ----------
 
 function paintGlobalError(label, detail) {
@@ -828,6 +1152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindToolbar();
     bindDetail();
     bindZoom();
+    bindTour();
     loadRegistry();
     updateDiagPanel();
   } catch (err) {

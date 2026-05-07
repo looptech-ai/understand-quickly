@@ -469,6 +469,55 @@ button { font-family: inherit; }
   width: 100%;
   height: 100%;
 }
+
+/* ---------- Main pane state machine ---------------------------------------
+ * The main pane carries `data-main-state="empty|loading|graph|error"`.
+ * Each child surface is tagged with one or more `graph-state-<name>` classes
+ * indicating which states it should appear in. Anything not matching the
+ * current state is forced to display:none, regardless of its `hidden`
+ * attribute, so the states are *mutually exclusive* in the layout.
+ *
+ * Why a state attribute (not per-element `hidden`)? Earlier code juggled
+ * `hidden` on each block independently and drifted — nodes rendered on top
+ * of the empty hero. One attribute, one source of truth.
+ *
+ * `display: none` overrides the per-element class display rules. We then
+ * use specific `display: <value>` for each element in its active state so
+ * the layout (flex / block) is preserved.
+ * ---------------------------------------------------------------------- */
+.graph-host > .graph-state-empty,
+.graph-host > .graph-state-loading,
+.graph-host > .graph-state-graph,
+.graph-host > .graph-state-error { display: none !important; }
+
+/* Empty state: hero block is flex (centered). */
+.main-pane[data-main-state="empty"] .graph-host > #graph-empty {
+  display: flex !important;
+}
+
+/* Loading/error states: status overlay is flex (centered spinner+text). */
+.main-pane[data-main-state="loading"] .graph-host > #graph-status,
+.main-pane[data-main-state="error"]   .graph-host > #graph-status {
+  display: flex !important;
+}
+
+/* Graph state: canvas + chrome. Each element retains its native display
+ * type; `[hidden]` from JS still wins so we can toggle individual chips. */
+.main-pane[data-main-state="graph"] .graph-host > #graph-canvas {
+  display: block !important;
+}
+.main-pane[data-main-state="graph"] .graph-host > #graph-minimap:not([hidden]) {
+  display: block !important;
+}
+.main-pane[data-main-state="graph"] .graph-host > #graph-legend:not([hidden]) {
+  display: flex !important;
+}
+.main-pane[data-main-state="graph"] .graph-host > #zoom-controls:not([hidden]) {
+  display: flex !important;
+}
+.main-pane[data-main-state="graph"] .graph-host > #tour-start:not([hidden]) {
+  display: inline-flex !important;
+}
 .graph-status {
   position: absolute;
   inset: 0;
@@ -1048,6 +1097,275 @@ button { font-family: inherit; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pick-entry-arrow { animation: none; }
+}
+
+/* ---------- Guided tour ---------------------------------------------------
+ * Two surfaces:
+ *   • #tour-start  — primary "Start tour" button, bottom-right of graph
+ *                    pane. Sits above the zoom-controls stack.
+ *   • #tour-panel  — the tour itself: counter, kind chip, label, prose,
+ *                    prev/next/pause/exit.
+ *
+ * Desktop: panel is bottom-center, pill-shaped, max 520px.
+ * Mobile (<800px): panel becomes a full-width sheet anchored to bottom,
+ * slides up on activation, has a drag handle, and uses icon-only controls.
+ * ---------------------------------------------------------------------- */
+
+/* Tour-start button: bottom-right, stacked above zoom-controls + minimap.
+ * Uses a generous fixed offset (240px) that comfortably clears both. */
+.tour-start-btn {
+  position: absolute;
+  right: var(--space-4);
+  bottom: 240px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1208;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 6;
+  box-shadow: var(--shadow-card);
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+.tour-start-btn:hover {
+  background: var(--color-accent-bright);
+  border-color: var(--color-accent-bright);
+  transform: translateY(-1px);
+}
+.tour-start-btn[hidden] { display: none; }
+.tour-start-icon {
+  display: inline-flex;
+  font-size: 11px;
+  line-height: 1;
+}
+@media (max-width: 799.98px) {
+  .tour-start-btn {
+    right: var(--space-3);
+    bottom: 210px;
+  }
+}
+
+/* Tour panel — desktop default */
+.tour-panel {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-4);
+  transform: translateX(-50%);
+  width: min(520px, calc(100% - var(--space-5) * 2));
+  max-height: 30vh;
+  background: rgba(20, 20, 20, 0.96);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-medium);
+  border-radius: 14px;
+  box-shadow: var(--shadow-elevated);
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+.tour-panel[hidden] { display: none; }
+.tour-panel:focus { outline: none; }
+
+.tour-panel-handle { display: none; }
+
+.tour-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.tour-counter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.tour-kind-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(212, 165, 116, 0.10);
+  color: var(--color-accent-dim);
+  border: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tour-kind-chip[data-kind=""]        { color: var(--color-text-muted); }
+.tour-kind-chip[data-kind="file"]      { color: var(--node-file); }
+.tour-kind-chip[data-kind="function"]  { color: var(--node-function); }
+.tour-kind-chip[data-kind="class"]     { color: var(--node-class); }
+.tour-kind-chip[data-kind="module"]    { color: var(--node-module); }
+.tour-kind-chip[data-kind="concept"]   { color: var(--node-concept); }
+.tour-kind-chip[data-kind="service"]   { color: var(--node-service); }
+.tour-kind-chip[data-kind="table"]     { color: var(--node-table); }
+.tour-kind-chip[data-kind="schema"]    { color: var(--node-schema); }
+.tour-kind-chip[data-kind="endpoint"]  { color: var(--node-endpoint); }
+.tour-kind-chip[data-kind="pipeline"]  { color: var(--node-pipeline); }
+.tour-kind-chip[data-kind="entity"]    { color: var(--node-entity); }
+.tour-kind-chip[data-kind="config"]    { color: var(--node-config); }
+.tour-kind-chip[data-kind="document"]  { color: var(--node-document); }
+.tour-kind-chip[data-kind="resource"]  { color: var(--node-resource); }
+.tour-kind-chip[data-kind="claim"]     { color: var(--node-claim); }
+.tour-kind-chip[data-kind="article"]   { color: var(--node-article); }
+.tour-kind-chip[data-kind="topic"]     { color: var(--node-topic); }
+.tour-kind-chip[data-kind="source"]    { color: var(--node-source); }
+
+.tour-exit {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-button);
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.tour-exit:hover { border-color: var(--color-accent); color: var(--color-accent-bright); }
+
+.tour-panel-body {
+  padding: 10px 14px 8px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.tour-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-accent-bright);
+  word-break: break-word;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+.tour-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.tour-live {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
+.tour-controls {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: rgba(0, 0, 0, 0.20);
+}
+.tour-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: var(--radius-button);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.tour-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-bright);
+}
+.tour-btn.tour-next {
+  margin-left: auto;
+  background: var(--color-accent);
+  color: #1a1208;
+  border-color: var(--color-accent);
+}
+.tour-btn.tour-next:hover {
+  background: var(--color-accent-bright);
+  color: #1a1208;
+  border-color: var(--color-accent-bright);
+}
+.tour-btn.tour-pause .tour-pause-icon {
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 799.98px) {
+  /* Mobile: panel becomes a bottom-anchored full-width sheet that slides up. */
+  .tour-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    transform: translateX(0) translateY(100%);
+    width: 100%;
+    max-height: 50vh;
+    border-radius: 16px 16px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    z-index: 210;
+    transition: transform 240ms cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+    padding-bottom: env(safe-area-inset-bottom);
+    overscroll-behavior: contain;
+  }
+  .tour-panel.is-open { transform: translateX(0) translateY(0); }
+  .tour-panel-handle {
+    display: block;
+    width: 100%;
+    padding: 8px 0 4px;
+    flex-shrink: 0;
+    cursor: grab;
+    touch-action: none;
+  }
+  .tour-panel-handle::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 0 auto;
+    background: var(--color-text-muted);
+    border-radius: 2px;
+    opacity: 0.5;
+  }
+  /* Compact: hide control labels (keep glyph + pause-icon for clarity) */
+  .tour-btn .tour-btn-label { display: none; }
+  .tour-btn.tour-pause .tour-pause-icon { font-size: 10px; }
+  .tour-btn.tour-next { padding: 7px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-panel { transition: none; }
 }
 
 /* ---------- About page (markdown body) ---------- */

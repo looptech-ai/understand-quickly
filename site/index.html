@@ -14,7 +14,7 @@
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
 
-  <link rel="stylesheet" href="./styles.css?v=20260507b">
+  <link rel="stylesheet" href="./styles.css?v=20260507c">
 </head>
 <body>
   <div class="app">
@@ -56,12 +56,12 @@
         <div class="sidebar-empty" id="empty" hidden>No entries yet — the registry is empty.</div>
       </aside>
 
-      <main class="main-pane" id="main">
+      <main class="main-pane" id="main" data-main-state="empty">
         <div id="error" class="error-banner" hidden role="alert"></div>
         <div class="graph-host">
-          <div id="graph-canvas" aria-label="Knowledge graph viewer" role="img"></div>
-          <canvas id="graph-minimap" hidden aria-hidden="true"></canvas>
-          <div class="graph-empty" id="graph-empty">
+          <div id="graph-canvas" class="graph-state-graph" aria-label="Knowledge graph viewer" role="img"></div>
+          <canvas id="graph-minimap" class="graph-state-graph" hidden aria-hidden="true"></canvas>
+          <div class="graph-empty graph-state-empty" id="graph-empty">
             <h2>A registry of knowledge graphs.</h2>
             <p>Pick an entry on the left to load its graph. Each entry points to a public JSON file in the producer's own format — agents fetch the raw URL directly.</p>
             <div class="endpoint-card" id="endpoint-card">
@@ -74,17 +74,54 @@
               <a class="btn btn-ghost" href="./about.html">Read the docs</a>
             </div>
           </div>
-          <div class="graph-status" id="graph-status" hidden></div>
-          <div class="graph-legend" id="graph-legend" hidden aria-label="Node-type legend"></div>
-          <div class="zoom-controls" id="zoom-controls" hidden>
+          <div class="graph-status graph-state-loading graph-state-error" id="graph-status"></div>
+          <div class="graph-legend graph-state-graph" id="graph-legend" hidden aria-label="Node-type legend"></div>
+          <div class="zoom-controls graph-state-graph" id="zoom-controls" hidden>
             <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
             <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
             <button type="button" id="zoom-fit" aria-label="Fit graph" title="Fit">⤢</button>
           </div>
+          <button type="button" class="tour-start-btn graph-state-graph" id="tour-start" hidden aria-label="Start guided tour">
+            <span class="tour-start-icon" aria-hidden="true">&#9658;</span>
+            <span>Start tour</span>
+          </button>
           <button type="button" class="details-pill" id="details-pill" hidden aria-label="Show entry details">
             <span class="details-pill-icon" aria-hidden="true">&#9776;</span>
             <span>Details</span>
           </button>
+          <section
+            class="tour-panel"
+            id="tour-panel"
+            role="region"
+            aria-label="Guided tour"
+            hidden
+            tabindex="-1">
+            <div class="tour-panel-handle" id="tour-panel-handle" aria-hidden="true"></div>
+            <header class="tour-panel-head">
+              <span class="tour-counter" id="tour-counter">1 / 1</span>
+              <span class="tour-kind-chip" id="tour-kind" data-kind=""></span>
+              <button type="button" class="tour-exit" id="tour-exit" aria-label="Exit tour" title="Exit tour">&times;</button>
+            </header>
+            <div class="tour-panel-body">
+              <div class="tour-label" id="tour-label"></div>
+              <p class="tour-text" id="tour-text"></p>
+            </div>
+            <div class="tour-live" id="tour-live" aria-live="polite" aria-atomic="true"></div>
+            <footer class="tour-controls">
+              <button type="button" class="tour-btn tour-prev" id="tour-prev" aria-label="Previous step" title="Previous (←)">
+                <span aria-hidden="true">&larr;</span>
+                <span class="tour-btn-label">Prev</span>
+              </button>
+              <button type="button" class="tour-btn tour-pause" id="tour-pause" aria-label="Pause auto-advance" title="Pause/Resume (p)">
+                <span class="tour-pause-icon" aria-hidden="true">&#10073;&#10073;</span>
+                <span class="tour-btn-label" id="tour-pause-label">Pause</span>
+              </button>
+              <button type="button" class="tour-btn tour-next" id="tour-next" aria-label="Next step" title="Next (→ or Space)">
+                <span class="tour-btn-label">Next</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </footer>
+          </section>
         </div>
       </main>
 
@@ -113,6 +150,6 @@
     <div id="diag" hidden></div>
   </div>
 
-  <script type="module" src="./app.js?v=20260507b"></script>
+  <script type="module" src="./app.js?v=20260507c"></script>
 </body>
 </html>
