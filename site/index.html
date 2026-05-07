@@ -14,7 +14,7 @@
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
 
-  <link rel="stylesheet" href="./styles.css?v=20260507f">
+  <link rel="stylesheet" href="./styles.css?v=20260507g">
 </head>
 <body>
   <div class="app">
@@ -156,30 +156,73 @@
             tabindex="-1">
             <div class="tour-panel-handle" id="tour-panel-handle" aria-hidden="true"></div>
             <header class="tour-panel-head">
-              <span class="tour-counter" id="tour-counter">1 / 1</span>
+              <span class="tour-title" id="tour-title">Guided tour</span>
               <span class="tour-kind-chip" id="tour-kind" data-kind=""></span>
-              <button type="button" class="tour-exit" id="tour-exit" aria-label="Exit tour" title="Exit tour">&times;</button>
+              <button type="button" class="tour-exit" id="tour-exit" aria-label="Exit tour" title="Exit tour (Esc)">&times;</button>
             </header>
-            <div class="tour-panel-body">
-              <div class="tour-label" id="tour-label"></div>
-              <p class="tour-text" id="tour-text"></p>
+            <div class="tour-progress-row">
+              <span class="tour-counter" id="tour-counter" aria-live="polite">1 of 1</span>
+              <div class="tour-progress" aria-hidden="true">
+                <div class="tour-progress-bar" id="tour-progress-bar"></div>
+              </div>
+            </div>
+            <div class="tour-panel-body" id="tour-panel-body">
+              <article class="tour-active-card" aria-label="Active step">
+                <div class="tour-label" id="tour-label"></div>
+                <p class="tour-text" id="tour-text"></p>
+                <p class="tour-why" id="tour-why" hidden></p>
+                <a class="tour-github-link" id="tour-github" hidden href="#" rel="noopener" target="_blank">View on GitHub &#8599;</a>
+              </article>
+              <section class="tour-section tour-neighbors-section" id="tour-neighbors-section" hidden aria-label="Neighbors">
+                <h4 class="tour-section-title">Neighbors</h4>
+                <ul class="tour-neighbors" id="tour-neighbors"></ul>
+              </section>
+              <section class="tour-section tour-related-section" id="tour-related-section" hidden aria-label="Related concepts">
+                <h4 class="tour-section-title">Related concepts</h4>
+                <div class="tour-related" id="tour-related"></div>
+              </section>
+              <section class="tour-section tour-outline-section" id="tour-outline-section" aria-label="Tour outline">
+                <button type="button" class="tour-outline-toggle" id="tour-outline-toggle" aria-expanded="true" aria-controls="tour-outline">
+                  <span>Outline</span>
+                  <span class="tour-outline-caret" aria-hidden="true">&#9662;</span>
+                </button>
+                <ul class="tour-outline" id="tour-outline" role="listbox" aria-label="All tour steps"></ul>
+              </section>
             </div>
             <div class="tour-live" id="tour-live" aria-live="polite" aria-atomic="true"></div>
             <footer class="tour-controls">
-              <button type="button" class="tour-btn tour-prev" id="tour-prev" aria-label="Previous step" title="Previous (←)">
-                <span aria-hidden="true">&larr;</span>
-                <span class="tour-btn-label">Prev</span>
-              </button>
-              <button type="button" class="tour-btn tour-pause" id="tour-pause" aria-label="Pause auto-advance" title="Pause/Resume (p)">
-                <span class="tour-pause-icon" aria-hidden="true">&#10073;&#10073;</span>
-                <span class="tour-btn-label" id="tour-pause-label">Pause</span>
-              </button>
-              <button type="button" class="tour-btn tour-next" id="tour-next" aria-label="Next step" title="Next (→ or Space)">
-                <span class="tour-btn-label">Next</span>
-                <span aria-hidden="true">&rarr;</span>
-              </button>
+              <div class="tour-controls-row tour-controls-primary">
+                <button type="button" class="tour-btn tour-prev" id="tour-prev" aria-label="Previous step" title="Previous (←)">
+                  <span aria-hidden="true">&larr;</span>
+                  <span class="tour-btn-label">Prev</span>
+                </button>
+                <button type="button" class="tour-btn tour-pause" id="tour-pause" aria-label="Pause auto-advance" title="Pause/Resume (p)">
+                  <span class="tour-pause-icon" aria-hidden="true">&#9658;</span>
+                  <span class="tour-btn-label" id="tour-pause-label">Play</span>
+                </button>
+                <button type="button" class="tour-btn tour-next" id="tour-next" aria-label="Next step" title="Next (→ or Space)">
+                  <span class="tour-btn-label">Next</span>
+                  <span aria-hidden="true">&rarr;</span>
+                </button>
+              </div>
+              <div class="tour-controls-row tour-controls-secondary" id="tour-controls-secondary">
+                <label class="tour-speed" id="tour-speed-wrap" title="Auto-advance speed (+/-)">
+                  <span class="tour-speed-label">Speed</span>
+                  <select class="tour-speed-select" id="tour-speed" aria-label="Auto-advance speed">
+                    <option value="0.5">0.5&times;</option>
+                    <option value="1" selected>1&times;</option>
+                    <option value="1.5">1.5&times;</option>
+                    <option value="2">2&times;</option>
+                  </select>
+                </label>
+                <button type="button" class="tour-voice-btn" id="tour-voice" aria-pressed="false" title="Toggle voice narration (v)" hidden>
+                  <span class="tour-voice-icon" aria-hidden="true">&#128266;</span>
+                  <span class="tour-voice-label">Voice</span>
+                </button>
+              </div>
             </footer>
           </section>
+          <div class="tour-step-strip" id="tour-step-strip" hidden aria-label="Tour step strip"></div>
         </div>
       </main>
 
@@ -250,12 +293,15 @@
             <dt><kbd>g</kbd> <kbd>g</kbd></dt><dd>Jump to first sidebar entry</dd>
             <dt><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd></dt><dd>Open command palette</dd>
             <dt><kbd>Esc</kbd></dt><dd>Close any overlay</dd>
+            <dt class="tour-only-help"><kbd>&larr;</kbd>/<kbd>&rarr;</kbd> &middot; <kbd>p</kbd></dt><dd class="tour-only-help">Tour: prev/next &middot; play-pause</dd>
+            <dt class="tour-only-help"><kbd>v</kbd> &middot; <kbd>+</kbd>/<kbd>&minus;</kbd></dt><dd class="tour-only-help">Tour: voice &middot; speed</dd>
+            <dt class="tour-only-help"><kbd>j</kbd>/<kbd>k</kbd> &middot; <kbd>o</kbd></dt><dd class="tour-only-help">Tour outline: down/up &middot; jump</dd>
           </dl>
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="./app.js?v=20260507f"></script>
+  <script type="module" src="./app.js?v=20260507g"></script>
 </body>
 </html>

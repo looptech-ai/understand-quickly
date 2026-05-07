@@ -1246,13 +1246,16 @@ button { font-family: inherit; }
 }
 
 /* ---------- Guided tour ---------------------------------------------------
- * Two surfaces:
- *   • #tour-start  — primary "Start tour" button, bottom-right of graph
- *                    pane. Sits above the zoom-controls stack.
- *   • #tour-panel  — the tour itself: counter, kind chip, label, prose,
- *                    prev/next/pause/exit.
+ * Surfaces:
+ *   • #tour-start       — primary "Start tour" button, bottom-right of
+ *                         graph pane. Sits above the zoom-controls stack.
+ *   • #tour-panel       — the tour itself.
+ *   • #tour-step-strip  — desktop-only thin row of step thumbnails below
+ *                         the graph canvas.
  *
- * Desktop: panel is bottom-center, pill-shaped, max 520px.
+ * Desktop (>=800px): panel is a tall sticky side panel on the right edge
+ * of the graph pane (~380px wide), full graph-host height. The
+ * detail-pane is hidden while a tour runs (via body[data-tour-running]).
  * Mobile (<800px): panel becomes a full-width sheet anchored to bottom,
  * slides up on activation, has a drag handle, and uses icon-only controls.
  * ---------------------------------------------------------------------- */
@@ -1304,15 +1307,15 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
   }
 }
 
-/* Tour panel — desktop default */
+/* Tour panel — desktop default: tall sticky right-side panel */
 .tour-panel {
   position: absolute;
-  left: 50%;
-  bottom: var(--space-4);
-  transform: translateX(-50%);
-  width: min(520px, calc(100% - var(--space-5) * 2));
-  max-height: 30vh;
-  background: rgba(20, 20, 20, 0.96);
+  top: 12px;
+  right: 16px;
+  bottom: 60px; /* clear step strip */
+  width: 380px;
+  max-width: calc(100% - 32px);
+  background: rgba(18, 18, 18, 0.96);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border-medium);
   border-radius: 14px;
@@ -1323,6 +1326,13 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   overflow: hidden;
+  transform: translateX(8px);
+  opacity: 0;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+.tour-panel.is-open {
+  transform: translateX(0);
+  opacity: 1;
 }
 .tour-panel[hidden] { display: none; }
 .tour-panel:focus { outline: none; }
@@ -1333,8 +1343,28 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   padding: 10px 12px 8px;
   border-bottom: 1px solid var(--color-border-subtle);
+}
+.tour-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.tour-personas { order: 99; flex-basis: 100%; margin-left: 0 !important; }
+@media (max-width: 799.98px) {
+  .tour-personas { order: 0; flex-basis: auto; }
+}
+.tour-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
 }
 .tour-counter {
   font-family: var(--font-mono);
@@ -1342,6 +1372,24 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
   color: var(--color-text-muted);
   letter-spacing: 0.04em;
   flex-shrink: 0;
+}
+.tour-progress {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.tour-progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: var(--color-accent);
+  transition: width 200ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-progress-bar { transition: none; }
 }
 .tour-kind-chip {
   display: inline-flex;
@@ -1405,13 +1453,30 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-medium) transparent;
+}
+.tour-panel-body::-webkit-scrollbar { width: 6px; }
+.tour-panel-body::-webkit-scrollbar-thumb {
+  background: var(--color-border-medium);
+  border-radius: 3px;
+}
+
+.tour-active-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 .tour-label {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-accent-bright);
   word-break: break-word;
-  margin-bottom: 4px;
   line-height: 1.35;
 }
 .tour-text {
@@ -1420,6 +1485,211 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
   color: var(--color-text-primary);
   line-height: 1.55;
   word-break: break-word;
+}
+.tour-why {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  border-left: 2px solid var(--color-accent-dim);
+  padding-left: 8px;
+}
+.tour-why[hidden] { display: none; }
+.tour-github-link {
+  font-size: 12px;
+  color: var(--color-accent);
+  text-decoration: none;
+  align-self: flex-start;
+}
+.tour-github-link:hover { color: var(--color-accent-bright); text-decoration: underline; }
+.tour-github-link[hidden] { display: none; }
+
+.tour-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tour-section[hidden] { display: none; }
+.tour-section-title {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.tour-neighbors {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tour-neighbor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-button);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border-subtle);
+  font-size: 12px;
+}
+.tour-neighbor-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.tour-neighbor-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tour-neighbor-jump {
+  font: inherit;
+  font-size: 11px;
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-button);
+  padding: 2px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.tour-neighbor-jump:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-bright);
+  background: rgba(212, 165, 116, 0.10);
+}
+
+.tour-related {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tour-related-chip {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-accent);
+  background: rgba(212, 165, 116, 0.06);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  padding: 2px 8px;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.tour-related-chip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-bright);
+  background: rgba(212, 165, 116, 0.15);
+}
+
+.tour-outline-section {
+  flex: 1;
+  min-height: 0;
+}
+.tour-outline-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: 4px 0;
+  cursor: pointer;
+}
+.tour-outline-toggle:hover { color: var(--color-text-primary); }
+.tour-outline-caret {
+  font-size: 10px;
+  transition: transform 120ms ease;
+}
+.tour-outline-toggle[aria-expanded="false"] .tour-outline-caret {
+  transform: rotate(-90deg);
+}
+.tour-outline {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-medium) transparent;
+}
+.tour-outline::-webkit-scrollbar { width: 6px; }
+.tour-outline::-webkit-scrollbar-thumb {
+  background: var(--color-border-medium);
+  border-radius: 3px;
+}
+.tour-outline-toggle[aria-expanded="false"] + .tour-outline { display: none; }
+.tour-outline-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+  font-family: var(--font-mono);
+}
+.tour-outline-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text-primary);
+}
+.tour-outline-item[aria-selected="true"] {
+  background: rgba(212, 165, 116, 0.10);
+  border-color: var(--color-accent-dim);
+  color: var(--color-accent-bright);
+}
+.tour-outline-item-index {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  min-width: 22px;
+  text-align: right;
+}
+.tour-outline-item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.tour-outline-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tour-live {
@@ -1432,10 +1702,21 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
 
 .tour-controls {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   padding: 8px 12px 12px;
   border-top: 1px solid var(--color-border-subtle);
   background: rgba(0, 0, 0, 0.20);
+  flex-shrink: 0;
+}
+.tour-controls-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.tour-controls-secondary {
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 .tour-btn {
   display: inline-flex;
@@ -1468,32 +1749,163 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
   border-color: var(--color-accent-bright);
 }
 .tour-btn.tour-pause .tour-pause-icon {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 1px;
 }
 
+.tour-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.tour-speed-label { font-weight: 600; }
+.tour-speed-select {
+  font: inherit;
+  font-size: 11px;
+  color: var(--color-text-primary);
+  background: rgba(0, 0, 0, 0.30);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-button);
+  padding: 3px 6px;
+  cursor: pointer;
+}
+.tour-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.tour-voice-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-bright);
+}
+.tour-voice-btn[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: #1a1208;
+  border-color: var(--color-accent);
+}
+.tour-voice-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+.tour-voice-btn[hidden] { display: none; }
+
+/* While a tour is running on desktop, hide the detail-pane (the tour
+ * panel takes its place). The body data attribute is set by the Tour
+ * controller in app.js. */
+@media (min-width: 800px) {
+  body[data-tour-running="true"] .workspace.has-detail .detail-pane {
+    display: none;
+  }
+  body[data-tour-running="true"] .workspace.has-detail {
+    grid-template-columns: 320px 1fr 0;
+  }
+}
+
+/* Step strip — desktop only, below the graph host inside .graph-host */
+.tour-step-strip {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  height: 44px;
+  max-height: 56px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  z-index: 6;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-medium) transparent;
+}
+.tour-step-strip[hidden] { display: none; }
+.tour-step-strip:not([hidden]) { display: flex; }
+.tour-step-strip::-webkit-scrollbar { height: 4px; }
+.tour-step-strip::-webkit-scrollbar-thumb {
+  background: var(--color-border-medium);
+  border-radius: 2px;
+}
+.tour-step-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-subtle);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+.tour-step-tile:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-bright);
+}
+.tour-step-tile[aria-current="true"] {
+  border-color: var(--color-accent);
+  background: rgba(212, 165, 116, 0.18);
+  color: var(--color-accent-bright);
+  box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.18);
+}
+.tour-step-tile-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  margin-right: 6px;
+}
+
 @media (max-width: 799.98px) {
-  /* Mobile: panel becomes a bottom-anchored full-width sheet that slides up. */
+  /* Mobile: panel becomes a bottom-anchored full-width sheet that slides up.
+   * The desktop-only enrichments (progress bar, why, neighbors, related,
+   * outline, step strip, secondary controls) are hidden so the sheet stays
+   * the compact prev/next/auto-play surface mobile users have today. */
   .tour-panel {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
     top: auto;
-    transform: translateX(0) translateY(100%);
     width: 100%;
+    max-width: none;
     max-height: 50dvh;
     border-radius: 16px 16px 0 0;
     border-left: 0;
     border-right: 0;
     border-bottom: 0;
     z-index: 210;
+    transform: translateY(100%);
+    opacity: 1;
     transition: transform 240ms cubic-bezier(0.32, 0.72, 0, 1);
     will-change: transform;
     padding-bottom: env(safe-area-inset-bottom);
     overscroll-behavior: contain;
   }
-  .tour-panel.is-open { transform: translateX(0) translateY(0); }
+  .tour-panel.is-open { transform: translateY(0); }
   .tour-panel-handle {
     display: block;
     width: 100%;
@@ -1512,6 +1924,27 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
     border-radius: 2px;
     opacity: 0.5;
   }
+  /* Mobile sheet hides the desktop enrichments — keep the original
+   * compact tour exactly as it was. */
+  .tour-panel .tour-title,
+  .tour-panel .tour-progress-row .tour-progress,
+  .tour-panel .tour-why,
+  .tour-panel .tour-github-link,
+  .tour-panel .tour-neighbors-section,
+  .tour-panel .tour-related-section,
+  .tour-panel .tour-outline-section,
+  .tour-panel .tour-controls-secondary {
+    display: none !important;
+  }
+  .tour-panel .tour-progress-row {
+    border-bottom: 0;
+    padding: 8px 12px 4px;
+  }
+  .tour-panel .tour-active-card {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  .tour-step-strip { display: none !important; }
   /* Compact: hide control labels (keep glyph + pause-icon for clarity) */
   .tour-btn .tour-btn-label { display: none; }
   .tour-btn.tour-pause .tour-pause-icon { font-size: 10px; }
@@ -1519,6 +1952,8 @@ body[data-tour-running="true"] .main-pane[data-main-state="graph"] .graph-host >
 }
 @media (prefers-reduced-motion: reduce) {
   .tour-panel { transition: none; }
+  .tour-step-tile { transition: none; }
+  .tour-outline-item { transition: none; }
 }
 
 /* ---------- About page (markdown body) ---------- */

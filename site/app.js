@@ -11,9 +11,9 @@ import {
   getCurrentNetwork,
   getPrimaryViewer,
   reorderTourStepsForPersona,
-} from './viewer.js?v=20260507f';
+} from './viewer.js?v=20260507g';
 
-const PAGE_VERSION = '20260507f';
+const PAGE_VERSION = '20260507g';
 const MOBILE_BREAKPOINT = 800;
 
 function isMobile() {
@@ -811,8 +811,12 @@ function bindNetworkInteractions(viewer, isCompareB) {
       if (state.compareSecondary && state.compareSecondary.viewer) {
         try { state.compareSecondary.viewer.network.selectNodes([nodeId]); } catch (_) { /* node may not exist in B */ }
       }
-      // Refresh detail pane to show selected-node card.
-      if (!isMobile() && state.selectedId) {
+      // If a tour is running, update the panel to reflect the new
+      // selection (explore mode) — do NOT exit the tour. Otherwise refresh
+      // the desktop detail-pane node card.
+      if (Tour.isActive()) {
+        try { Tour.syncToSelectedNode(nodeId); } catch (_) { /* noop */ }
+      } else if (!isMobile() && state.selectedId) {
         const cur = getSelectedEntry();
         if (cur) showDetail(cur);
       }
@@ -883,10 +887,23 @@ function hideSearchCounter() {
 // ---------- guided tour ----------
 
 const TOUR_AUTOSHOW_KEY = 'uq:tour-autoshown';
-const TOUR_AUTO_ADVANCE_MS = 6000;
+const TOUR_VOICE_KEY = 'uq:tour:voice';
+const TOUR_AUTO_ADVANCE_MS = 6000; // base; multiplied by 1/speed
+const TOUR_DESKTOP_BP = '(min-width: 800px)';
 
 function tourPrefersReducedMotion() {
   return PREFERS_REDUCED;
+}
+
+function tourIsDesktop() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia(TOUR_DESKTOP_BP).matches;
+}
+
+function tourSpeechSupported() {
+  return typeof window !== 'undefined'
+    && typeof window.speechSynthesis !== 'undefined'
+    && typeof window.SpeechSynthesisUtterance !== 'undefined';
 }
 
 const Tour = (() => {
@@ -897,19 +914,51 @@ const Tour = (() => {
   let playing = true;
   let timer = null;
   let triggerEl = null;
+  let speed = 1; // 0.5 / 1 / 1.5 / 2
+  let voiceOn = false;
+  let voiceUtter = null;
+  let outlineExpanded = true;
+  // Cache of the entry whose detail pane was visible before the tour
+  // started — restored on exit.
+  let priorDetailVisible = false;
+  // Track if we're currently exploring (selected node != current step)
+  let exploreNodeId = null;
 
-  function el(id) { return document.getElementById(id); }
+  function gid(id) { return document.getElementById(id); }
 
-  function panel()       { return el('tour-panel'); }
-  function startBtn()    { return el('tour-start'); }
-  function counterEl()   { return el('tour-counter'); }
-  function kindChipEl()  { return el('tour-kind'); }
-  function labelEl()     { return el('tour-label'); }
-  function textEl()      { return el('tour-text'); }
-  function liveEl()      { return el('tour-live'); }
-  function pauseBtnEl()  { return el('tour-pause'); }
-  function pauseLblEl()  { return el('tour-pause-label'); }
-  function nextBtnEl()   { return el('tour-next'); }
+  function panel()           { return gid('tour-panel'); }
+  function startBtn()        { return gid('tour-start'); }
+  function counterEl()       { return gid('tour-counter'); }
+  function progressBarEl()   { return gid('tour-progress-bar'); }
+  function kindChipEl()      { return gid('tour-kind'); }
+  function labelEl()         { return gid('tour-label'); }
+  function textEl()          { return gid('tour-text'); }
+  function whyEl()           { return gid('tour-why'); }
+  function githubEl()        { return gid('tour-github'); }
+  function neighborsSecEl()  { return gid('tour-neighbors-section'); }
+  function neighborsEl()     { return gid('tour-neighbors'); }
+  function relatedSecEl()    { return gid('tour-related-section'); }
+  function relatedEl()       { return gid('tour-related'); }
+  function outlineEl()       { return gid('tour-outline'); }
+  function outlineToggleEl() { return gid('tour-outline-toggle'); }
+  function liveEl()           { return gid('tour-live'); }
+  function pauseBtnEl()      { return gid('tour-pause'); }
+  function pauseLblEl()      { return gid('tour-pause-label'); }
+  function nextBtnEl()       { return gid('tour-next'); }
+  function speedSelEl()      { return gid('tour-speed'); }
+  function voiceBtnEl()      { return gid('tour-voice'); }
+  function stepStripEl()     { return gid('tour-step-strip'); }
+
+  // Persisted user prefs (voice).
+  function loadVoicePref() {
+    if (typeof localStorage === 'undefined') return false;
+    try { return localStorage.getItem(TOUR_VOICE_KEY) === '1'; }
+    catch (_) { return false; }
+  }
+  function saveVoicePref(on) {
+    if (typeof localStorage === 'undefined') return;
+    try { localStorage.setItem(TOUR_VOICE_KEY, on ? '1' : '0'); } catch (_) { /* noop */ }
+  }
 
   function attach(newSteps, network) {
     steps = Array.isArray(newSteps) ? newSteps.filter(Boolean) : [];
@@ -917,6 +966,7 @@ const Tour = (() => {
     active = false;
     idx = 0;
     playing = true;
+    exploreNodeId = null;
     stopTimer();
     if (typeof document !== 'undefined' && document.body) {
       delete document.body.dataset.tourRunning;
@@ -924,8 +974,14 @@ const Tour = (() => {
     const sb = startBtn();
     if (sb) sb.hidden = steps.length === 0;
     const p = panel();
-    if (p) p.hidden = true;
+    if (p) {
+      p.hidden = true;
+      p.classList.remove('is-open');
+    }
+    const strip = stepStripEl();
+    if (strip) strip.hidden = true;
     if (steps.length === 0) return;
+    // Auto-show once per session.
     if (typeof sessionStorage !== 'undefined') {
       try {
         if (!sessionStorage.getItem(TOUR_AUTOSHOW_KEY)) {
@@ -943,7 +999,10 @@ const Tour = (() => {
       return;
     }
     idx = 0;
+    exploreNodeId = null;
     if (active) {
+      renderOutline();
+      renderStepStrip();
       renderStep();
       schedule();
     }
@@ -954,27 +1013,50 @@ const Tour = (() => {
     triggerEl = triggerElement || startBtn();
     active = true;
     idx = 0;
+    exploreNodeId = null;
     playing = !tourPrefersReducedMotion();
     if (typeof document !== 'undefined' && document.body) {
       document.body.dataset.tourRunning = 'true';
     }
+    // Voice pref: load from storage; show button only if speech supported.
+    voiceOn = loadVoicePref();
+    syncVoiceUI();
+    syncSpeedUI();
+
+    const isDesktop = tourIsDesktop();
+    // On desktop, hide the detail pane while the tour panel takes over
+    // the right column.
+    if (isDesktop) {
+      const detailPane = document.getElementById('detail');
+      priorDetailVisible = !!(detailPane && !detailPane.hidden);
+      const strip = stepStripEl();
+      if (strip) strip.hidden = false;
+    } else {
+      priorDetailVisible = false;
+    }
+
     const p = panel();
     if (p) {
       p.hidden = false;
       requestAnimationFrame(() => p.classList.add('is-open'));
     }
+    renderOutline();
+    renderStepStrip();
     renderStep();
     syncPauseLabel();
     schedule();
+    // Move focus to the active step card for screen-reader users.
     if (p && typeof p.focus === 'function') {
       try { p.focus({ preventScroll: true }); } catch (_) { p.focus(); }
     }
   }
 
   function exit() {
+    const wasActive = active;
     if (!active && (!panel() || panel().hidden)) return;
     active = false;
     stopTimer();
+    cancelSpeak();
     if (typeof document !== 'undefined' && document.body) {
       delete document.body.dataset.tourRunning;
     }
@@ -983,8 +1065,27 @@ const Tour = (() => {
       p.classList.remove('is-open');
       p.hidden = true;
     }
+    const strip = stepStripEl();
+    if (strip) strip.hidden = true;
+    // Restore the desktop detail pane (if it was previously shown).
+    if (wasActive && priorDetailVisible && tourIsDesktop()) {
+      const entry = getSelectedEntry();
+      if (entry && !isMobile()) {
+        showDetail(entry);
+      }
+    }
+    priorDetailVisible = false;
+    exploreNodeId = null;
     if (triggerEl && typeof triggerEl.focus === 'function') {
       try { triggerEl.focus({ preventScroll: true }); } catch (_) { /* ok */ }
+    } else {
+      // Fall back to the entry sidebar card.
+      const card = state.selectedId
+        ? document.querySelector(`.entry-card.is-selected`)
+        : null;
+      if (card && typeof card.focus === 'function') {
+        try { card.focus({ preventScroll: true }); } catch (_) { /* ok */ }
+      }
     }
     triggerEl = null;
   }
@@ -996,6 +1097,7 @@ const Tour = (() => {
     } else {
       idx += 1;
     }
+    exploreNodeId = null;
     renderStep();
     schedule();
   }
@@ -1003,6 +1105,7 @@ const Tour = (() => {
   function prev() {
     if (!active || !steps.length) return;
     idx = Math.max(0, idx - 1);
+    exploreNodeId = null;
     renderStep();
     schedule();
   }
@@ -1010,6 +1113,7 @@ const Tour = (() => {
   function jumpTo(i) {
     if (!active || !steps.length) return;
     idx = Math.max(0, Math.min(steps.length - 1, i));
+    exploreNodeId = null;
     renderStep();
     schedule();
   }
@@ -1017,16 +1121,56 @@ const Tour = (() => {
   function togglePlay() {
     playing = !playing;
     syncPauseLabel();
+    if (playing) {
+      // Resume narration if voice on.
+      if (voiceOn && tourSpeechSupported()) {
+        try { window.speechSynthesis.resume(); } catch (_) { /* noop */ }
+      }
+      schedule();
+    } else {
+      stopTimer();
+      if (voiceOn && tourSpeechSupported()) {
+        try { window.speechSynthesis.pause(); } catch (_) { /* noop */ }
+      }
+    }
+  }
+
+  function setSpeed(s) {
+    const v = parseFloat(s);
+    if (!Number.isFinite(v) || v <= 0) return;
+    speed = v;
+    syncSpeedUI();
     schedule();
+  }
+
+  function cycleSpeed(dir) {
+    const ladder = [0.5, 1, 1.5, 2];
+    let i = ladder.indexOf(speed);
+    if (i < 0) i = 1;
+    i = Math.max(0, Math.min(ladder.length - 1, i + (dir > 0 ? 1 : -1)));
+    setSpeed(ladder[i]);
+  }
+
+  function toggleVoice() {
+    if (!tourSpeechSupported()) return;
+    voiceOn = !voiceOn;
+    saveVoicePref(voiceOn);
+    syncVoiceUI();
+    if (voiceOn) {
+      speakCurrentStep();
+    } else {
+      cancelSpeak();
+    }
   }
 
   function schedule() {
     stopTimer();
     if (!active || !playing || tourPrefersReducedMotion()) return;
+    const interval = Math.max(1000, Math.round(TOUR_AUTO_ADVANCE_MS / speed));
     timer = setInterval(() => {
       if (idx >= steps.length - 1) { stopTimer(); return; }
       next();
-    }, TOUR_AUTO_ADVANCE_MS);
+    }, interval);
   }
 
   function stopTimer() {
@@ -1039,36 +1183,240 @@ const Tour = (() => {
   function syncPauseLabel() {
     const lbl = pauseLblEl();
     const btn = pauseBtnEl();
-    if (lbl) lbl.textContent = playing ? 'Pause' : 'Resume';
-    if (btn) btn.setAttribute('aria-label', playing ? 'Pause auto-advance' : 'Resume auto-advance');
+    if (lbl) lbl.textContent = playing ? 'Pause' : 'Play';
+    if (btn) {
+      btn.setAttribute('aria-label', playing ? 'Pause auto-advance' : 'Resume auto-advance');
+      const icon = btn.querySelector('.tour-pause-icon');
+      if (icon) icon.textContent = playing ? '⏸⏸' : '▶';
+    }
+  }
+
+  function syncSpeedUI() {
+    const sel = speedSelEl();
+    if (sel) sel.value = String(speed);
+  }
+
+  function syncVoiceUI() {
+    const btn = voiceBtnEl();
+    if (!btn) return;
+    if (!tourSpeechSupported()) {
+      btn.hidden = true;
+      return;
+    }
+    btn.hidden = false;
+    btn.setAttribute('aria-pressed', voiceOn ? 'true' : 'false');
+  }
+
+  function speakCurrentStep() {
+    if (!voiceOn || !tourSpeechSupported()) return;
+    if (!active || !steps.length) return;
+    const step = currentStep();
+    if (!step) return;
+    cancelSpeak();
+    try {
+      // iOS Safari truncates long utterances; cap at a sane length.
+      const raw = `${step.label || step.id}. ${step.text || ''}`;
+      const text = raw.length > 360 ? `${raw.slice(0, 357)}...` : raw;
+      const utter = new window.SpeechSynthesisUtterance(text);
+      utter.rate = 1;
+      voiceUtter = utter;
+      window.speechSynthesis.speak(utter);
+    } catch (_) { /* noop */ }
+  }
+
+  function cancelSpeak() {
+    if (!tourSpeechSupported()) return;
+    try { window.speechSynthesis.cancel(); } catch (_) { /* noop */ }
+    voiceUtter = null;
+  }
+
+  function currentStep() {
+    return steps[idx] || null;
+  }
+
+  // Active node = exploration override OR current step
+  function activeNodeId() {
+    return exploreNodeId != null ? exploreNodeId : (currentStep() ? currentStep().id : null);
+  }
+
+  // Heuristic-driven "Why this step?" one-liner.
+  // Inputs: degree, kind, in/out balance, community membership.
+  function buildWhyText(nodeId) {
+    const v = getPrimaryViewer();
+    if (!v || !nodeId) return '';
+    const inDeg = v._inDeg ? (v._inDeg.get(nodeId) || 0) : 0;
+    const outDeg = v._outDeg ? (v._outDeg.get(nodeId) || 0) : 0;
+    const total = (v.degreeMap.get(nodeId) || 0);
+    const kind = v._kindByNode.get(nodeId) || '';
+    const comm = v._communityHueByNode.get(nodeId);
+    const isHub = total >= 6 || (v.maxDegree && total >= v.maxDegree * 0.6);
+
+    const parts = [];
+    if (isHub && kind) {
+      parts.push(`${kind.charAt(0).toUpperCase() + kind.slice(1)} hub — ${inDeg} incoming, ${outDeg} outgoing edges. High centrality.`);
+    } else if (total >= 4 && kind) {
+      parts.push(`${kind.charAt(0).toUpperCase() + kind.slice(1)} with ${total} connections (${inDeg} in / ${outDeg} out).`);
+    } else if (kind) {
+      parts.push(`${kind.charAt(0).toUpperCase() + kind.slice(1)} node, ${total} connection${total === 1 ? '' : 's'}.`);
+    } else if (total > 0) {
+      parts.push(`${total} connection${total === 1 ? '' : 's'} (${inDeg} in / ${outDeg} out).`);
+    }
+    if (comm && comm.id != null) {
+      parts.push(`In community ${comm.id}.`);
+    }
+    return parts.join(' ');
+  }
+
+  // Persona-aware prose. The base text comes from the step; we prepend or
+  // append context per persona.
+  function personaProse(step, nodeId) {
+    const v = getPrimaryViewer();
+    const persona = state.tourPersona || 'default';
+    const base = step.text || step.label || step.id;
+    if (persona === 'architect') {
+      const why = buildWhyText(nodeId);
+      const layered = step.kind ? `Layered role: ${step.kind}.` : '';
+      return [layered, base, why].filter(Boolean).join(' ');
+    }
+    if (persona === 'junior') {
+      const nbrs = v ? firstNeighborLabels(v, nodeId, null, 3) : [];
+      const what = `What it is: ${base}`;
+      const touches = nbrs.length ? ` Touches: ${nbrs.join(', ')}.` : '';
+      return what + touches;
+    }
+    if (persona === 'pm') {
+      const nbrs = v ? firstNeighborLabels(v, nodeId, ['concept', 'module', 'service'], 3) : [];
+      const domain = `Domain: ${base}`;
+      const conn = nbrs.length ? ` Connects to: ${nbrs.join(', ')}.` : '';
+      return domain + conn;
+    }
+    return base;
+  }
+
+  function firstNeighborLabels(viewer, nodeId, kindFilter, max) {
+    if (!viewer || !nodeId) return [];
+    const adj = viewer._adj || (viewer._adj = viewer._buildAdjacency());
+    const nbrs = adj.get(nodeId);
+    if (!nbrs) return [];
+    const out = [];
+    for (const id of nbrs) {
+      if (kindFilter) {
+        const k = viewer._kindByNode.get(id);
+        if (!k || !kindFilter.includes(k)) continue;
+      }
+      const node = viewer.allNodes.find((n) => n.id === id);
+      if (node) out.push(String(node.label || id));
+      if (out.length >= max) break;
+    }
+    return out;
+  }
+
+  // Build neighbor objects (first 8) for rendering, with kind colors.
+  function getNeighbors(nodeId, max = 8) {
+    const v = getPrimaryViewer();
+    if (!v || !nodeId) return [];
+    const adj = v._adj || (v._adj = v._buildAdjacency());
+    const nbrs = adj.get(nodeId);
+    if (!nbrs) return [];
+    const out = [];
+    for (const id of nbrs) {
+      const node = v.allNodes.find((n) => n.id === id);
+      if (!node) continue;
+      out.push({
+        id,
+        label: String(node.label || id),
+        kind: v._kindByNode.get(id) || '',
+      });
+      if (out.length >= max) break;
+    }
+    return out;
+  }
+
+  // Distinct related concepts/modules/services neighbor labels (max 12).
+  function getRelatedConcepts(nodeId, max = 12) {
+    const v = getPrimaryViewer();
+    if (!v || !nodeId) return [];
+    const adj = v._adj || (v._adj = v._buildAdjacency());
+    const nbrs = adj.get(nodeId);
+    if (!nbrs) return [];
+    const want = new Set(['concept', 'module', 'service']);
+    const seen = new Set();
+    const out = [];
+    for (const id of nbrs) {
+      const k = v._kindByNode.get(id);
+      if (!k || !want.has(k)) continue;
+      const node = v.allNodes.find((n) => n.id === id);
+      if (!node) continue;
+      const lbl = String(node.label || id);
+      if (seen.has(lbl)) continue;
+      seen.add(lbl);
+      out.push({ id, label: lbl, kind: k });
+      if (out.length >= max) break;
+    }
+    return out;
+  }
+
+  function getGithubUrl(nodeId) {
+    const v = getPrimaryViewer();
+    if (!v || !nodeId || !v.entry) return null;
+    const norm = v.normalized && v.normalized.nodes.find((n) => String(n.id) === String(nodeId));
+    return buildGithubUrlForNode(v.entry, norm);
+  }
+
+  function jumpToNode(nodeId) {
+    if (!active) return;
+    // Find a step matching this node (if any) to keep outline in sync.
+    const i = steps.findIndex((s) => s.id === nodeId);
+    if (i >= 0) {
+      jumpTo(i);
+    } else {
+      // Explore mode: not in steps; render the panel with this node's data.
+      exploreNodeId = nodeId;
+      const v = getPrimaryViewer();
+      if (v && v.network) {
+        try { v.network.selectNodes([nodeId]); } catch (_) { /* noop */ }
+        try { v.focusNodes([nodeId]); } catch (_) { /* noop */ }
+      }
+      renderActiveCard();
+      renderNeighbors();
+      renderRelated();
+      // Stop auto-advance — user is exploring.
+      stopTimer();
+    }
+  }
+
+  // Called by app when network selection changes during the tour.
+  function syncToSelectedNode(nodeId) {
+    if (!active || !nodeId) return;
+    if (nodeId === activeNodeId()) return;
+    const i = steps.findIndex((s) => s.id === nodeId);
+    if (i >= 0) {
+      // Update internal index without focusing (network already focused)
+      idx = i;
+      exploreNodeId = null;
+    } else {
+      exploreNodeId = nodeId;
+    }
+    renderActiveCard();
+    renderNeighbors();
+    renderRelated();
+    renderProgress();
+    renderOutlineSelection();
+    renderStepStripSelection();
   }
 
   function renderStep() {
     if (!steps.length) return;
-    const step = steps[idx];
-    if (!step) return;
-    const counter = counterEl();
-    if (counter) counter.textContent = `${idx + 1} / ${steps.length}`;
-    const chip = kindChipEl();
-    if (chip) {
-      chip.textContent = step.kind || '—';
-      chip.dataset.kind = step.kind || '';
-    }
-    const lbl = labelEl();
-    if (lbl) lbl.textContent = step.label || step.id;
-    const txt = textEl();
-    if (txt) txt.textContent = step.text || step.label || step.id;
-    const live = liveEl();
-    if (live) live.textContent = `Step ${idx + 1} of ${steps.length}: ${step.label || step.id}`;
-    const nb = nextBtnEl();
-    if (nb) {
-      const isLast = idx === steps.length - 1;
-      const lblSpan = nb.querySelector('.tour-btn-label');
-      if (lblSpan) lblSpan.textContent = isLast ? 'Restart' : 'Next';
-      nb.setAttribute('aria-label', isLast ? 'Restart tour' : 'Next step');
-    }
-
-    if (net && step.id) {
+    renderActiveCard();
+    renderNeighbors();
+    renderRelated();
+    renderProgress();
+    renderOutlineSelection();
+    renderStepStripSelection();
+    renderNextLabel();
+    // Drive the network to the current step's node.
+    const step = currentStep();
+    if (net && step && step.id) {
       try { net.selectNodes([step.id]); } catch (_) { /* node may have been pruned */ }
       try {
         net.focus(step.id, {
@@ -1079,6 +1427,280 @@ const Tour = (() => {
         });
       } catch (_) { /* noop */ }
     }
+    // Voice narration on each step change.
+    if (voiceOn && tourSpeechSupported()) {
+      speakCurrentStep();
+    }
+  }
+
+  function renderActiveCard() {
+    const step = currentStep();
+    const nodeId = activeNodeId();
+    if (!step) return;
+    const chip = kindChipEl();
+    if (chip) {
+      // Use the active node's kind if exploring, else step kind.
+      let kind = step.kind || '';
+      if (exploreNodeId != null) {
+        const v = getPrimaryViewer();
+        const k = v ? v._kindByNode.get(nodeId) : null;
+        if (k) kind = k;
+      }
+      chip.textContent = kind || '—';
+      chip.dataset.kind = kind || '';
+    }
+    // Label + text (use exploring node if any).
+    let label = step.label || step.id;
+    let prose = step.text || step.label || step.id;
+    if (exploreNodeId != null) {
+      const v = getPrimaryViewer();
+      const node = v ? v.allNodes.find((n) => n.id === nodeId) : null;
+      if (node) label = String(node.label || nodeId);
+      const norm = v && v.normalized && v.normalized.nodes.find((n) => String(n.id) === String(nodeId));
+      if (norm && norm._raw) {
+        const r = norm._raw;
+        const props = r.properties || {};
+        prose = r.summary || props.description || props.summary || node && String(node.label || nodeId) || '';
+      }
+    } else {
+      // Persona prose only applied for "step" rendering — for explore
+      // we keep raw label. Personas modify the step's prose.
+      prose = personaProse(step, nodeId);
+    }
+    const lbl = labelEl();
+    if (lbl) lbl.textContent = String(label);
+    const txt = textEl();
+    if (txt) txt.textContent = String(prose || '');
+    const why = whyEl();
+    if (why) {
+      const w = buildWhyText(nodeId);
+      if (w) {
+        why.textContent = w;
+        why.hidden = false;
+      } else {
+        why.textContent = '';
+        why.hidden = true;
+      }
+    }
+    const gh = githubEl();
+    if (gh) {
+      const url = getGithubUrl(nodeId);
+      if (url) {
+        gh.href = url;
+        gh.hidden = false;
+      } else {
+        gh.removeAttribute('href');
+        gh.hidden = true;
+      }
+    }
+    const live = liveEl();
+    if (live) live.textContent = `Step ${idx + 1} of ${steps.length}: ${label}`;
+  }
+
+  function renderNeighbors() {
+    const wrap = neighborsSecEl();
+    const list = neighborsEl();
+    if (!wrap || !list) return;
+    list.replaceChildren();
+    const nodeId = activeNodeId();
+    const items = getNeighbors(nodeId, 8);
+    if (!items.length) {
+      wrap.hidden = true;
+      return;
+    }
+    wrap.hidden = false;
+    for (const it of items) {
+      const dot = el('span', {
+        className: 'tour-neighbor-dot',
+        attrs: it.kind
+          ? { style: `background: var(--node-${it.kind}, var(--color-text-muted));` }
+          : {},
+      });
+      const lbl = el('span', { className: 'tour-neighbor-label', text: it.label });
+      const btn = el('button', {
+        className: 'tour-neighbor-jump',
+        attrs: { type: 'button', title: 'Jump to neighbor' },
+        text: '→ Jump',
+      });
+      btn.addEventListener('click', () => jumpToNode(it.id));
+      const li = el('li', { className: 'tour-neighbor' }, [dot, lbl, btn]);
+      list.appendChild(li);
+    }
+  }
+
+  function renderRelated() {
+    const wrap = relatedSecEl();
+    const cloud = relatedEl();
+    if (!wrap || !cloud) return;
+    cloud.replaceChildren();
+    const nodeId = activeNodeId();
+    const items = getRelatedConcepts(nodeId, 12);
+    if (!items.length) {
+      wrap.hidden = true;
+      return;
+    }
+    wrap.hidden = false;
+    for (const it of items) {
+      const chip = el('button', {
+        className: 'tour-related-chip',
+        attrs: {
+          type: 'button',
+          title: `Jump to ${it.label}`,
+          'data-kind': it.kind || '',
+          style: it.kind ? `color: var(--node-${it.kind}, var(--color-accent));` : '',
+        },
+        text: it.label,
+      });
+      chip.addEventListener('click', () => jumpToNode(it.id));
+      cloud.appendChild(chip);
+    }
+  }
+
+  function renderProgress() {
+    const counter = counterEl();
+    if (counter) counter.textContent = `${idx + 1} of ${steps.length}`;
+    const bar = progressBarEl();
+    if (bar) {
+      const pct = steps.length > 1 ? ((idx) / (steps.length - 1)) * 100 : 100;
+      bar.style.width = `${pct.toFixed(1)}%`;
+    }
+  }
+
+  function renderNextLabel() {
+    const nb = nextBtnEl();
+    if (!nb) return;
+    const isLast = idx === steps.length - 1;
+    const lblSpan = nb.querySelector('.tour-btn-label');
+    if (lblSpan) lblSpan.textContent = isLast ? 'Restart' : 'Next';
+    nb.setAttribute('aria-label', isLast ? 'Restart tour' : 'Next step');
+  }
+
+  function renderOutline() {
+    const ul = outlineEl();
+    const toggle = outlineToggleEl();
+    if (!ul) return;
+    if (toggle) toggle.setAttribute('aria-expanded', outlineExpanded ? 'true' : 'false');
+    ul.replaceChildren();
+    if (!steps.length) return;
+    steps.forEach((s, i) => {
+      const item = el('button', {
+        className: 'tour-outline-item',
+        attrs: {
+          type: 'button',
+          role: 'option',
+          'aria-selected': i === idx ? 'true' : 'false',
+          'data-step-index': String(i),
+          title: s.label || s.id,
+        },
+      }, [
+        el('span', { className: 'tour-outline-item-index', text: String(i + 1) }),
+        el('span', {
+          className: 'tour-outline-item-dot',
+          attrs: s.kind
+            ? { style: `background: var(--node-${s.kind}, var(--color-text-muted));` }
+            : {},
+        }),
+        el('span', { className: 'tour-outline-item-label', text: String(s.label || s.id) }),
+      ]);
+      item.addEventListener('click', () => jumpTo(i));
+      item.addEventListener('mouseenter', () => {
+        const v = getPrimaryViewer();
+        if (v && s.id) {
+          try { v.pulse([s.id]); } catch (_) { /* noop */ }
+        }
+      });
+      ul.appendChild(item);
+    });
+  }
+
+  function renderOutlineSelection() {
+    const ul = outlineEl();
+    if (!ul) return;
+    const items = ul.querySelectorAll('.tour-outline-item');
+    items.forEach((item) => {
+      const i = parseInt(item.getAttribute('data-step-index') || '-1', 10);
+      const sel = i === idx;
+      item.setAttribute('aria-selected', sel ? 'true' : 'false');
+      if (sel) {
+        try { item.scrollIntoView({ block: 'nearest' }); } catch (_) { /* noop */ }
+      }
+    });
+  }
+
+  function moveOutline(dir) {
+    if (!steps.length) return;
+    const ul = outlineEl();
+    if (!ul) return;
+    // Highlighted (focused) row: read current focused item; default to idx.
+    const items = Array.from(ul.querySelectorAll('.tour-outline-item'));
+    if (!items.length) return;
+    const cur = document.activeElement;
+    let i = items.indexOf(cur);
+    if (i < 0) i = idx;
+    i = Math.max(0, Math.min(items.length - 1, i + dir));
+    try { items[i].focus({ preventScroll: false }); } catch (_) { items[i].focus(); }
+  }
+
+  function jumpToHighlightedOutline() {
+    const ul = outlineEl();
+    if (!ul) return;
+    const items = Array.from(ul.querySelectorAll('.tour-outline-item'));
+    const cur = document.activeElement;
+    const i = items.indexOf(cur);
+    if (i >= 0) jumpTo(i);
+  }
+
+  function toggleOutline() {
+    outlineExpanded = !outlineExpanded;
+    const toggle = outlineToggleEl();
+    if (toggle) toggle.setAttribute('aria-expanded', outlineExpanded ? 'true' : 'false');
+  }
+
+  function renderStepStrip() {
+    const strip = stepStripEl();
+    if (!strip) return;
+    strip.replaceChildren();
+    if (!steps.length || !tourIsDesktop()) {
+      strip.hidden = true;
+      return;
+    }
+    strip.hidden = !active;
+    steps.forEach((s, i) => {
+      const tile = el('button', {
+        className: 'tour-step-tile',
+        attrs: {
+          type: 'button',
+          'aria-label': `Step ${i + 1}: ${s.label || s.id}`,
+          title: s.label || s.id,
+          'aria-current': i === idx ? 'true' : 'false',
+          'data-step-index': String(i),
+        },
+      }, [
+        el('span', {
+          className: 'tour-step-tile-dot',
+          attrs: s.kind
+            ? { style: `background: var(--node-${s.kind}, var(--color-text-muted));` }
+            : {},
+        }),
+        el('span', { text: String(i + 1) }),
+      ]);
+      tile.addEventListener('click', () => jumpTo(i));
+      strip.appendChild(tile);
+    });
+  }
+
+  function renderStepStripSelection() {
+    const strip = stepStripEl();
+    if (!strip) return;
+    const tiles = strip.querySelectorAll('.tour-step-tile');
+    tiles.forEach((t) => {
+      const i = parseInt(t.getAttribute('data-step-index') || '-1', 10);
+      const sel = i === idx;
+      t.setAttribute('aria-current', sel ? 'true' : 'false');
+      if (sel) {
+        try { t.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (_) { /* noop */ }
+      }
+    });
   }
 
   function isActive() { return active; }
@@ -1088,12 +1710,39 @@ const Tour = (() => {
     if (typeof document === 'undefined') return;
     if (document.hidden) {
       stopTimer();
+      // iOS Safari quirk: speechSynthesis can be suspended on tab switch.
+      cancelSpeak();
     } else {
       schedule();
+      // Re-prime speech if voice was on and speech got suspended.
+      if (voiceOn && tourSpeechSupported()) {
+        try {
+          if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+        } catch (_) { /* noop */ }
+      }
     }
   }
 
-  return { attach, applySteps, start, exit, next, prev, jumpTo, togglePlay, isActive, isPlaying, handleVisibility };
+  return {
+    attach,
+    applySteps,
+    start,
+    exit,
+    next,
+    prev,
+    jumpTo,
+    togglePlay,
+    setSpeed,
+    cycleSpeed,
+    toggleVoice,
+    toggleOutline,
+    moveOutline,
+    jumpToHighlightedOutline,
+    syncToSelectedNode,
+    isActive,
+    isPlaying,
+    handleVisibility,
+  };
 })();
 
 // ---------- legend ----------
@@ -2015,21 +2664,31 @@ function bindTour() {
   const prevBtn = document.getElementById('tour-prev');
   const nextBtn = document.getElementById('tour-next');
   const pauseBtn = document.getElementById('tour-pause');
+  const speedSel = document.getElementById('tour-speed');
+  const voiceBtn = document.getElementById('tour-voice');
+  const outlineToggle = document.getElementById('tour-outline-toggle');
 
   if (startBtn) startBtn.addEventListener('click', () => Tour.start(startBtn));
   if (exitBtn)  exitBtn.addEventListener('click', () => Tour.exit());
   if (prevBtn)  prevBtn.addEventListener('click', () => Tour.prev());
   if (nextBtn)  nextBtn.addEventListener('click', () => Tour.next());
   if (pauseBtn) pauseBtn.addEventListener('click', () => Tour.togglePlay());
+  if (speedSel) speedSel.addEventListener('change', () => Tour.setSpeed(speedSel.value));
+  if (voiceBtn) voiceBtn.addEventListener('click', () => Tour.toggleVoice());
+  if (outlineToggle) outlineToggle.addEventListener('click', () => Tour.toggleOutline());
 
   document.addEventListener('keydown', (ev) => {
     if (!Tour.isActive()) return;
     const t = ev.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const inEditable = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable || t.tagName === 'SELECT');
+    // Allow Esc to always work; otherwise skip when editing.
     if (ev.key === 'Escape') {
       ev.preventDefault();
       Tour.exit();
-    } else if (ev.key === 'ArrowRight' || ev.key === ' ' || ev.key === 'Spacebar') {
+      return;
+    }
+    if (inEditable) return;
+    if (ev.key === 'ArrowRight' || ev.key === ' ' || ev.key === 'Spacebar') {
       ev.preventDefault();
       Tour.next();
     } else if (ev.key === 'ArrowLeft') {
@@ -2038,6 +2697,24 @@ function bindTour() {
     } else if (ev.key === 'p' || ev.key === 'P') {
       ev.preventDefault();
       Tour.togglePlay();
+    } else if (ev.key === 'v' || ev.key === 'V') {
+      ev.preventDefault();
+      Tour.toggleVoice();
+    } else if (ev.key === '+' || ev.key === '=') {
+      ev.preventDefault();
+      Tour.cycleSpeed(+1);
+    } else if (ev.key === '-' || ev.key === '_') {
+      ev.preventDefault();
+      Tour.cycleSpeed(-1);
+    } else if (ev.key === 'j' || ev.key === 'J') {
+      ev.preventDefault();
+      Tour.moveOutline(+1);
+    } else if (ev.key === 'k' || ev.key === 'K') {
+      ev.preventDefault();
+      Tour.moveOutline(-1);
+    } else if (ev.key === 'o' || ev.key === 'O') {
+      ev.preventDefault();
+      Tour.jumpToHighlightedOutline();
     }
   });
 
@@ -2078,6 +2755,16 @@ function bindTour() {
     };
     handle.addEventListener('touchend', end);
     handle.addEventListener('touchcancel', end);
+  }
+
+  // Resize: re-render strip / re-eval desktop-vs-mobile.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', () => {
+      if (!Tour.isActive()) return;
+      // Show/hide step strip based on breakpoint; preserve everything else.
+      const strip = document.getElementById('tour-step-strip');
+      if (strip) strip.hidden = !tourIsDesktop();
+    });
   }
 
   // Persona segmented control inside the tour panel head

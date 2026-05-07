@@ -655,9 +655,14 @@ class Viewer {
   _computeDegrees() {
     this.degreeMap.clear();
     this.maxDegree = 0;
+    // Also track in/out degree separately for the tour "Why this step?" heuristic.
+    this._inDeg = new Map();
+    this._outDeg = new Map();
     for (const e of this.allEdges) {
       this.degreeMap.set(e.from, (this.degreeMap.get(e.from) || 0) + 1);
       this.degreeMap.set(e.to, (this.degreeMap.get(e.to) || 0) + 1);
+      this._outDeg.set(e.from, (this._outDeg.get(e.from) || 0) + 1);
+      this._inDeg.set(e.to, (this._inDeg.get(e.to) || 0) + 1);
     }
     for (const v of this.degreeMap.values()) {
       if (v > this.maxDegree) this.maxDegree = v;
