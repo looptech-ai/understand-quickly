@@ -64,7 +64,6 @@ Tools like [Understand-Anything](https://github.com/Lum1104/Understand-Anything)
 - **Storage:** graphs live in their source repos. We store only pointers.
 - **Validation:** every PR runs schema checks on `registry.json` and the graph body.
 - **Freshness:** nightly cron resyncs every entry; source repos can opt-in to instant refresh via `repository_dispatch`.
-- **Cost:** zero. GitHub Actions only.
 
 ## Zero cost
 
@@ -112,19 +111,49 @@ Schemas: [`schemas/`](./schemas/). Each `format` value (e.g. `understand-anythin
 
 1. Run [Understand-Anything](https://github.com/Lum1104/Understand-Anything) (or any supported tool) locally; commit `.understand-anything/knowledge-graph.json` to your repo.
 2. Fork this repo.
-3. Append an entry to `registry.json`:
+3. Append an entry to `registry.json`. Use whichever format your tool emits:
+
+   **Understand-Anything**
    ```json
    {
-     "id": "yourname/yourrepo",
-     "owner": "yourname",
+     "id": "you/yourrepo",
+     "owner": "you",
      "repo": "yourrepo",
      "format": "understand-anything@1",
-     "graph_url": "https://raw.githubusercontent.com/yourname/yourrepo/main/.understand-anything/knowledge-graph.json",
+     "graph_url": "https://raw.githubusercontent.com/you/yourrepo/main/.understand-anything/knowledge-graph.json",
      "description": "one-liner about your project",
      "tags": ["python", "agents"]
    }
    ```
+
+   **GitNexus**
+   ```json
+   {
+     "id": "you/yourrepo",
+     "owner": "you",
+     "repo": "yourrepo",
+     "format": "gitnexus@1",
+     "graph_url": "https://raw.githubusercontent.com/you/yourrepo/main/.gitnexus/graph.json",
+     "description": "one-liner about your project",
+     "tags": ["typescript"]
+   }
+   ```
+
+   **code-review-graph**
+   ```json
+   {
+     "id": "you/yourrepo",
+     "owner": "you",
+     "repo": "yourrepo",
+     "format": "code-review-graph@1",
+     "graph_url": "https://raw.githubusercontent.com/you/yourrepo/main/.code-review-graph/graph.json",
+     "description": "one-liner about your project",
+     "tags": ["python"]
+   }
+   ```
 4. Open a PR. The `validate` check will fetch your graph and verify the format. Maintainer reviews + merges.
+
+> Need more detail? [`CONTRIBUTING.md`](./CONTRIBUTING.md) walks through every flavor of contribution. By participating you agree to the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ### Optional: instant refresh on push
 
@@ -185,7 +214,7 @@ npm run render     # regenerate README table
 - [x] Per-entry semantic search — substring search across `id`/`description`/`tags` in the browser; cross-graph search in the MCP server.
 - [x] Thin MCP server wrapping `registry.json` — see [`mcp/`](./mcp/) (stub).
 - [x] `entries/<a-z>.json` shard split — read-path implemented; auto-write triggers when index passes 1k entries.
-- [ ] Real upstream samples for every first-class format under `schemas/__fixtures__/<format>/real-sample.json`.
+- [x] Real upstream samples for every first-class format under `schemas/__fixtures__/<format>/real-sample.json`.
 - [ ] Public-org rebrand once the above is battle-tested.
 
 A stub MCP server lives in [`mcp/`](./mcp/) — exposes `list_repos`, `get_graph`, and `search_concepts` over stdio for Claude Desktop, Codex, and other MCP clients. See [`mcp/README.md`](./mcp/README.md) for setup.
