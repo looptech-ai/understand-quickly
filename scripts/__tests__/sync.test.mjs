@@ -106,7 +106,7 @@ test('timeout retried then transient_error', async () => {
 });
 
 test('oversize → status oversize, no body fetch', async () => {
-  const f = async (url, opts) => {
+  const f = async (_url, opts) => {
     if (opts && opts.method === 'HEAD') {
       const h = new Headers();
       h.set('content-length', String(60 * 1024 * 1024));
