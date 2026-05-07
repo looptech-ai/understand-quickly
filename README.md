@@ -108,7 +108,7 @@ Adding a new format = PR `schemas/<name>@<int>.json` + an `ok` and `bad` fixture
 <!-- BEGIN ENTRIES -->
 | Repo | Format | Description | Status | Last synced |
 | --- | --- | --- | :---: | --- |
-| [understand-quickly/registry](https://github.com/understand-quickly/registry) | `generic@1` | The registry indexes itself; useful as a meta entry. | 🟡 missing | 2026-05-07 |
+| [understand-quickly/registry](https://github.com/understand-quickly/registry) | `generic@1` | The registry indexes itself; useful as a meta entry. | ⚠️ invalid | 2026-05-07 |
 <!-- END ENTRIES -->
 
 ## Status legend
