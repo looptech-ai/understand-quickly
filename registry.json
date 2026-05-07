@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-05-07T00:00:00Z",
+  "generated_at": "2026-05-07T05:40:43.308Z",
   "entries": [
     {
       "id": "understand-quickly/registry",
@@ -9,7 +9,11 @@
       "default_branch": "main",
       "format": "generic@1",
       "graph_url": "https://raw.githubusercontent.com/understand-quickly/registry/main/registry.json",
-      "description": "The registry indexes itself; useful as a meta entry."
+      "description": "The registry indexes itself; useful as a meta entry.",
+      "miss_count": 1,
+      "status": "missing",
+      "last_error": "404",
+      "last_synced": "2026-05-07T05:40:43.307Z"
     }
   ]
 }
