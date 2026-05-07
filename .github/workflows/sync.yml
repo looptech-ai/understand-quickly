@@ -42,17 +42,24 @@ jobs:
           INPUT_ID: ${{ github.event.inputs.id }}
         run: |
           ID="${DISPATCH_ID:-$INPUT_ID}"
-          if [ -n "$ID" ]; then
-            echo "args=--only $ID" >> "$GITHUB_OUTPUT"
-          else
-            echo "args=" >> "$GITHUB_OUTPUT"
+          if [[ -n "$ID" && ! "$ID" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "rejecting malformed id: $ID" >&2
+            exit 1
           fi
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
 
       - name: Smoke (dry-run, never commits)
         run: npm run smoke
 
       - name: Sync
-        run: node scripts/sync.mjs ${{ steps.target.outputs.args }}
+        env:
+          TARGET_ID: ${{ steps.target.outputs.id }}
+        run: |
+          if [ -n "$TARGET_ID" ]; then
+            node scripts/sync.mjs --only "$TARGET_ID"
+          else
+            node scripts/sync.mjs
+          fi
 
       - name: Commit changes
         run: |
