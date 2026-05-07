@@ -4,7 +4,14 @@
 // rendered via textContent / createElement / attribute setters — never
 // innerHTML with untrusted data.
 
-import { openGraph, clearGraph } from './viewer.js';
+import { openGraph, clearGraph } from './viewer.js?v=20260507';
+
+const PAGE_VERSION = '20260507';
+const DIAG_ENABLED = (typeof window !== 'undefined')
+  && /[?&]diag=1\b/.test(window.location.search || '');
+
+let lastRegistryStatus = 'not-loaded';
+let lastFirstEntryId = null;
 
 const STATUS_META = {
   ok:               { emoji: '✅', label: 'ok' },
@@ -76,24 +83,49 @@ function showError(msg) {
 async function loadRegistry() {
   try {
     const res = await fetch('./registry.json', { cache: 'no-cache' });
+    lastRegistryStatus = `HTTP ${res.status}`;
     if (!res.ok) throw new Error(`registry.json responded ${res.status}`);
     const data = await res.json();
     state.entries = Array.isArray(data?.entries) ? data.entries : [];
+    lastFirstEntryId = state.entries[0]?.id ?? null;
     if (data?.generated_at) {
-      document.getElementById('generated-at').textContent =
-        relativeTime(data.generated_at);
+      const gen = document.getElementById('generated-at');
+      if (gen) gen.textContent = relativeTime(data.generated_at);
     }
     populateFormatFilter();
     populateStatusFilter();
     applyFilters();
+    renderEmptyMainStateIfNeeded();
   } catch (err) {
     console.error(err);
-    showError(`Couldn't load registry.json: ${err.message}`);
+    lastRegistryStatus = `error: ${err && err.message ? err.message : String(err)}`;
+    const friendly = "Couldn't load registry.json — check network or try again.";
+    showError(friendly);
     state.entries = [];
     populateFormatFilter();
     populateStatusFilter();
     applyFilters();
+    renderEmptyMainStateIfNeeded(friendly);
+  } finally {
+    updateDiagPanel();
   }
+}
+
+// If the registry is empty/failed, surface a friendly hint in the main pane
+// so the page never looks blank. The default graph-empty markup already
+// covers the "no entry selected" case; here we just append a small notice.
+function renderEmptyMainStateIfNeeded(msg) {
+  const empty = document.getElementById('graph-empty');
+  if (!empty) return;
+  // Remove any prior fallback we appended
+  const prior = empty.querySelector('.fallback-notice');
+  if (prior) prior.remove();
+  if (state.entries.length > 0) return;
+  const note = el('p', {
+    className: 'fallback-notice',
+    text: msg || 'No entries available yet — the registry is empty.',
+  });
+  empty.appendChild(note);
 }
 
 // ---------- filters ----------
@@ -435,15 +467,18 @@ function renderLegend(items) {
   const legend = document.getElementById('graph-legend');
   legend.replaceChildren();
   for (const item of items) {
-    const swatch = el('span', {
-      className: 'legend-swatch',
-      attrs: { style: `background:${item.color}` },
-    });
-    legend.appendChild(el('span', { className: 'legend-item' }, [
-      swatch,
+    // xyflow-style chip: <div class="legend-chip" style="--c: #...;">
+    //   <span class="dot"></span> file <span class="count">12</span>
+    // </div>
+    const chip = el('div', {
+      className: 'legend-chip',
+      attrs: { style: `--c: ${item.color};` },
+    }, [
+      el('span', { className: 'dot' }),
       el('span', { text: item.label }),
-      el('span', { className: 'legend-count', text: String(item.count) }),
-    ]));
+      el('span', { className: 'count', text: String(item.count) }),
+    ]);
+    legend.appendChild(chip);
   }
   legend.hidden = items.length === 0;
 }
@@ -482,9 +517,67 @@ function bindZoom() {
   fitBtn.addEventListener('click', () => window.dispatchEvent(new CustomEvent('uq-zoom', { detail: { dir: 'fit' } })));
 }
 
+// ---------- diagnostics + global error handlers ----------
+
+function paintGlobalError(label, detail) {
+  // Always paint into the inline error banner so the page is never blank.
+  try {
+    const banner = document.getElementById('error');
+    if (banner) {
+      banner.hidden = false;
+      banner.replaceChildren();
+      const strong = el('strong', { text: `${label}: ` });
+      const text = document.createTextNode(String(detail || 'unknown error'));
+      banner.appendChild(strong);
+      banner.appendChild(text);
+    }
+  } catch (_) { /* swallow */ }
+}
+
+function updateDiagPanel() {
+  const diag = document.getElementById('diag');
+  if (!diag) return;
+  if (!DIAG_ENABLED) {
+    diag.hidden = true;
+    return;
+  }
+  diag.hidden = false;
+  diag.replaceChildren();
+  const title = el('div', { className: 'diag-title', text: 'Diagnostics' });
+  const ua = el('div', { text: `UA: ${navigator.userAgent}` });
+  const ver = el('div', { text: `Page version: v=${PAGE_VERSION}` });
+  const reg = el('div', { text: `registry.json fetch: ${lastRegistryStatus}` });
+  const first = el('div', { text: `first entry id: ${lastFirstEntryId ?? '(none)'}` });
+  diag.appendChild(title);
+  diag.appendChild(ua);
+  diag.appendChild(ver);
+  diag.appendChild(reg);
+  diag.appendChild(first);
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (ev) => {
+    paintGlobalError('Script error', ev?.message || (ev?.error && ev.error.message) || 'unknown');
+    updateDiagPanel();
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    const reason = ev?.reason;
+    const msg = (reason && reason.message) ? reason.message : String(reason || 'unknown');
+    paintGlobalError('Promise rejection', msg);
+    updateDiagPanel();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  bindToolbar();
-  bindDetail();
-  bindZoom();
-  loadRegistry();
+  try {
+    bindToolbar();
+    bindDetail();
+    bindZoom();
+    loadRegistry();
+    updateDiagPanel();
+  } catch (err) {
+    console.error(err);
+    paintGlobalError('Init failed', (err && err.message) || String(err));
+    updateDiagPanel();
+  }
 });

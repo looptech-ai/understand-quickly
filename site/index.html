@@ -6,13 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Public, machine-readable registry of code-knowledge graphs. Browse entries, inspect graphs, copy raw URLs for agents.">
   <meta name="theme-color" content="#0a0a0a">
+  <meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
 
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=20260507">
 </head>
 <body>
   <div class="app">
@@ -58,6 +60,7 @@
         <div id="error" class="error-banner" hidden role="alert"></div>
         <div class="graph-host">
           <div id="graph-canvas" aria-label="Knowledge graph viewer" role="img"></div>
+          <canvas id="graph-minimap" hidden aria-hidden="true"></canvas>
           <div class="graph-empty" id="graph-empty">
             <h2>A registry of knowledge graphs.</h2>
             <p>Pick an entry on the left to load its graph. Each entry points to a public JSON file in the producer's own format — agents fetch the raw URL directly.</p>
@@ -100,8 +103,10 @@
       <span>·</span>
       <a href="./schemas/">spec</a>
     </footer>
+
+    <div id="diag" hidden></div>
   </div>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=20260507"></script>
 </body>
 </html>
