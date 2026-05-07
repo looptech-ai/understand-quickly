@@ -18,9 +18,25 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 
 ---
 
+## Contents
+
+- [Why](#why)
+- [How it works](#how-it-works)
+- [Zero cost](#zero-cost)
+- [Agent quickstart](#agent-quickstart)
+- [Add your repo](#add-your-repo)
+- [Supported formats](#supported-formats)
+- [Registry](#registry)
+- [Status legend](#status-legend)
+- [Development](#development)
+- [Roadmap](#roadmap)
+- [License](#license)
+
 ## Why
 
 Tools like [Understand-Anything](https://github.com/Lum1104/Understand-Anything), [GitNexus](https://github.com/abhigyanpatwari/GitNexus), and [code-review-graph](https://github.com/tirth8205/code-review-graph) turn a codebase into a queryable knowledge graph. The graph is JSON. Today there is no shared, current, machine-readable index of which public repos publish one.
+
+> **Awesome-list 2.0.** Same DNA — one curated repo, PR-to-add, README is the surface — but every entry points at *content* (a schema-validated graph), not just a name. Nightly sync flags dead links. Agents `curl` one URL and consume the registry programmatically.
 
 `understand-quickly` is that index. One repo, one `registry.json`, three workflows. No backend.
 
@@ -132,6 +148,9 @@ Adding a new format = PR `schemas/<name>@<int>.json` + an `ok` and `bad` fixture
 <!-- BEGIN ENTRIES -->
 | Repo | Format | Description | Status | Last synced |
 | --- | --- | --- | :---: | --- |
+| [understand-quickly/demo-code-review-graph](https://github.com/understand-quickly/demo-code-review-graph) | `code-review-graph@1` | Demo entry: a sample code-review-graph export covering files, classes, and tests. | 🆕 pending | — |
+| [understand-quickly/demo-gitnexus](https://github.com/understand-quickly/demo-gitnexus) | `gitnexus@1` | Demo entry: a sample GitNexus graph modeled on its own codebase. | 🆕 pending | — |
+| [understand-quickly/demo-understand-anything](https://github.com/understand-quickly/demo-understand-anything) | `understand-anything@1` | Demo entry: a hand-built sample knowledge graph in the understand-anything@1 shape. | 🆕 pending | — |
 <!-- END ENTRIES -->
 
 ## Status legend
