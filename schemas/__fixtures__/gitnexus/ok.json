@@ -1,6 +1,152 @@
 {
   "graph": {
-    "nodes": [{ "id": "a", "type": "file", "name": "main.ts" }],
-    "links": [{ "source": "a", "target": "a" }]
+    "nodes": [
+      {
+        "id": "proj:demo",
+        "label": "Project",
+        "name": "demo",
+        "properties": { "name": "demo", "filePath": "." }
+      },
+      {
+        "id": "file:src/main.ts",
+        "label": "File",
+        "name": "main.ts",
+        "path": "src/main.ts",
+        "language": "typescript",
+        "properties": {
+          "name": "main.ts",
+          "filePath": "src/main.ts",
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "func:src/main.ts#main",
+        "label": "Function",
+        "name": "main",
+        "path": "src/main.ts:1",
+        "language": "typescript",
+        "properties": {
+          "name": "main",
+          "filePath": "src/main.ts",
+          "startLine": 1,
+          "endLine": 12,
+          "isExported": true,
+          "isAsync": true,
+          "parameterCount": 0,
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "class:src/server.ts#Server",
+        "label": "Class",
+        "name": "Server",
+        "path": "src/server.ts:5",
+        "language": "typescript",
+        "properties": {
+          "name": "Server",
+          "filePath": "src/server.ts",
+          "startLine": 5,
+          "endLine": 80,
+          "isExported": true,
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "method:src/server.ts#Server.start",
+        "label": "Method",
+        "name": "start",
+        "path": "src/server.ts:14",
+        "language": "typescript",
+        "properties": {
+          "name": "start",
+          "filePath": "src/server.ts",
+          "startLine": 14,
+          "endLine": 24,
+          "visibility": "public",
+          "isAsync": true,
+          "parameterCount": 1,
+          "returnType": "Promise<void>",
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "comm:0",
+        "label": "Community",
+        "name": "transport",
+        "properties": {
+          "name": "transport",
+          "filePath": ".",
+          "heuristicLabel": "transport-layer",
+          "cohesion": 0.78,
+          "symbolCount": 14,
+          "keywords": ["http", "server", "request"],
+          "enrichedBy": "heuristic"
+        }
+      }
+    ],
+    "links": [
+      {
+        "id": "rel:1",
+        "source": "proj:demo",
+        "target": "file:src/main.ts",
+        "type": "CONTAINS",
+        "confidence": 1.0,
+        "reason": "filesystem walk"
+      },
+      {
+        "id": "rel:2",
+        "source": "file:src/main.ts",
+        "target": "func:src/main.ts#main",
+        "type": "DEFINES",
+        "confidence": 1.0,
+        "reason": "ast definition"
+      },
+      {
+        "id": "rel:3",
+        "source": "class:src/server.ts#Server",
+        "target": "method:src/server.ts#Server.start",
+        "type": "HAS_METHOD",
+        "confidence": 1.0,
+        "reason": "ast member"
+      },
+      {
+        "id": "rel:4",
+        "source": "func:src/main.ts#main",
+        "target": "method:src/server.ts#Server.start",
+        "type": "CALLS",
+        "confidence": 0.92,
+        "reason": "scope-resolved call expression",
+        "evidence": [
+          { "kind": "static-import", "weight": 0.6, "note": "import { Server } from './server'" },
+          { "kind": "name-match", "weight": 0.32 }
+        ]
+      },
+      {
+        "id": "rel:5",
+        "source": "func:src/main.ts#main",
+        "target": "class:src/server.ts#Server",
+        "type": "USES",
+        "confidence": 0.85,
+        "reason": "constructor invocation"
+      },
+      {
+        "id": "rel:6",
+        "source": "class:src/server.ts#Server",
+        "target": "comm:0",
+        "type": "MEMBER_OF",
+        "confidence": 1.0,
+        "reason": "louvain community detection"
+      }
+    ],
+    "directed": true,
+    "multigraph": false
+  },
+  "metadata": {
+    "tool": "gitnexus",
+    "tool_version": "1.0.0",
+    "generated_at": "2026-05-07T00:00:00Z",
+    "repo": "demo/example",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "stats": { "files": 2, "nodes": 6, "edges": 6, "communities": 1 }
   }
 }

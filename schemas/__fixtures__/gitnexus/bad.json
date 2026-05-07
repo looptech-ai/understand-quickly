@@ -1,1 +1,10 @@
-{ "graph": { "nodes": [], "edges": [] } }
+{
+  "graph": {
+    "nodes": [
+      { "label": "File", "name": "main.ts" }
+    ],
+    "links": [
+      { "source": "file:src/main.ts", "type": "CALLS" }
+    ]
+  }
+}

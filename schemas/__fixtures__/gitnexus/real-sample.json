@@ -1,0 +1,223 @@
+{
+  "_provenance": {
+    "documented": [
+      "Node `label` enum (Project, Package, Module, File, Class, Function, Method, Variable, Interface, Enum, Decorator, Import, Type, CodeElement, Community, Process, Struct, Macro, Typedef, Union, Namespace, Trait, Impl, TypeAlias, Const, Static, Property, Record, Delegate, Annotation, Constructor, Template, Section, Route, Tool) — sourced verbatim from gitnexus-shared/src/graph/types.ts (NodeLabel union).",
+      "Node properties (name, filePath, startLine, endLine, language, isExported, visibility, isAsync, parameterCount, returnType, heuristicLabel, cohesion, symbolCount, keywords, enrichedBy, etc.) — sourced verbatim from gitnexus-shared/src/graph/types.ts (NodeProperties).",
+      "Relationship `type` enum (CONTAINS, CALLS, INHERITS, METHOD_OVERRIDES, METHOD_IMPLEMENTS, IMPORTS, USES, DEFINES, DECORATES, IMPLEMENTS, EXTENDS, HAS_METHOD, HAS_PROPERTY, ACCESSES, MEMBER_OF, STEP_IN_PROCESS, HANDLES_ROUTE, FETCHES, HANDLES_TOOL, ENTRY_POINT_OF, WRAPS, QUERIES) — sourced verbatim from gitnexus-shared/src/graph/types.ts (RelationshipType).",
+      "Relationship fields id/sourceId/targetId/type/confidence/reason/step/evidence — sourced from GraphRelationship interface in the same file.",
+      "metadata.stats.{files,nodes,edges,communities,processes,embeddings} — sourced from RepoMeta.stats in gitnexus/src/storage/repo-manager.ts.",
+      "Reference: https://github.com/abhigyanpatwari/GitNexus/blob/main/gitnexus-shared/src/graph/types.ts"
+    ],
+    "inferred": [
+      "Wire-format wrapping `graph: { nodes, links }` with `source`/`target` (rather than `relationships` with `sourceId`/`targetId`) — inferred from GraphCanvas.tsx using a `knowledgeGraphToGraphology` adapter and the existing understand-quickly schema contract; GitNexus's persistence layer (LadybugDB) does not emit a documented JSON file format, but its visualization adapters use the D3/graphology convention captured here.",
+      "Top-level `metadata` object (tool, tool_version, generated_at, repo, commit, stats) — inferred to match the convention used by understand-anything@1 in this same registry. Not present in upstream GitNexus types, but additive and ignored by upstream consumers."
+    ]
+  },
+  "graph": {
+    "nodes": [
+      {
+        "id": "proj:akonlabs/gitnexus",
+        "label": "Project",
+        "properties": {
+          "name": "gitnexus",
+          "filePath": "."
+        }
+      },
+      {
+        "id": "pkg:gitnexus-shared",
+        "label": "Package",
+        "name": "gitnexus-shared",
+        "properties": {
+          "name": "gitnexus-shared",
+          "filePath": "gitnexus-shared"
+        }
+      },
+      {
+        "id": "file:gitnexus-shared/src/graph/types.ts",
+        "label": "File",
+        "name": "types.ts",
+        "path": "gitnexus-shared/src/graph/types.ts",
+        "language": "typescript",
+        "properties": {
+          "name": "types.ts",
+          "filePath": "gitnexus-shared/src/graph/types.ts",
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "iface:gitnexus-shared/src/graph/types.ts#GraphNode",
+        "label": "Interface",
+        "name": "GraphNode",
+        "path": "gitnexus-shared/src/graph/types.ts:103",
+        "language": "typescript",
+        "properties": {
+          "name": "GraphNode",
+          "filePath": "gitnexus-shared/src/graph/types.ts",
+          "startLine": 103,
+          "endLine": 107,
+          "isExported": true,
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "iface:gitnexus-shared/src/graph/types.ts#GraphRelationship",
+        "label": "Interface",
+        "name": "GraphRelationship",
+        "path": "gitnexus-shared/src/graph/types.ts:109",
+        "language": "typescript",
+        "properties": {
+          "name": "GraphRelationship",
+          "filePath": "gitnexus-shared/src/graph/types.ts",
+          "startLine": 109,
+          "endLine": 130,
+          "isExported": true,
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "type:gitnexus-shared/src/graph/types.ts#NodeLabel",
+        "label": "Type",
+        "name": "NodeLabel",
+        "path": "gitnexus-shared/src/graph/types.ts:11",
+        "language": "typescript",
+        "properties": {
+          "name": "NodeLabel",
+          "filePath": "gitnexus-shared/src/graph/types.ts",
+          "startLine": 11,
+          "endLine": 51,
+          "isExported": true,
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "type:gitnexus-shared/src/graph/types.ts#RelationshipType",
+        "label": "Type",
+        "name": "RelationshipType",
+        "path": "gitnexus-shared/src/graph/types.ts:79",
+        "language": "typescript",
+        "properties": {
+          "name": "RelationshipType",
+          "filePath": "gitnexus-shared/src/graph/types.ts",
+          "startLine": 79,
+          "endLine": 101,
+          "isExported": true,
+          "language": "typescript"
+        }
+      },
+      {
+        "id": "comm:graph-types",
+        "label": "Community",
+        "name": "graph-types",
+        "properties": {
+          "name": "graph-types",
+          "filePath": "gitnexus-shared/src/graph",
+          "heuristicLabel": "graph type definitions",
+          "cohesion": 0.94,
+          "symbolCount": 5,
+          "keywords": ["graph", "node", "relationship", "label", "type"],
+          "enrichedBy": "heuristic"
+        }
+      }
+    ],
+    "links": [
+      {
+        "id": "rel:proj-contains-pkg",
+        "source": "proj:akonlabs/gitnexus",
+        "target": "pkg:gitnexus-shared",
+        "type": "CONTAINS",
+        "confidence": 1.0,
+        "reason": "filesystem walk"
+      },
+      {
+        "id": "rel:pkg-contains-file",
+        "source": "pkg:gitnexus-shared",
+        "target": "file:gitnexus-shared/src/graph/types.ts",
+        "type": "CONTAINS",
+        "confidence": 1.0,
+        "reason": "filesystem walk"
+      },
+      {
+        "id": "rel:file-defines-graphnode",
+        "source": "file:gitnexus-shared/src/graph/types.ts",
+        "target": "iface:gitnexus-shared/src/graph/types.ts#GraphNode",
+        "type": "DEFINES",
+        "confidence": 1.0,
+        "reason": "ast definition"
+      },
+      {
+        "id": "rel:file-defines-graphrel",
+        "source": "file:gitnexus-shared/src/graph/types.ts",
+        "target": "iface:gitnexus-shared/src/graph/types.ts#GraphRelationship",
+        "type": "DEFINES",
+        "confidence": 1.0,
+        "reason": "ast definition"
+      },
+      {
+        "id": "rel:file-defines-nodelabel",
+        "source": "file:gitnexus-shared/src/graph/types.ts",
+        "target": "type:gitnexus-shared/src/graph/types.ts#NodeLabel",
+        "type": "DEFINES",
+        "confidence": 1.0,
+        "reason": "ast definition"
+      },
+      {
+        "id": "rel:file-defines-reltype",
+        "source": "file:gitnexus-shared/src/graph/types.ts",
+        "target": "type:gitnexus-shared/src/graph/types.ts#RelationshipType",
+        "type": "DEFINES",
+        "confidence": 1.0,
+        "reason": "ast definition"
+      },
+      {
+        "id": "rel:graphnode-uses-nodelabel",
+        "source": "iface:gitnexus-shared/src/graph/types.ts#GraphNode",
+        "target": "type:gitnexus-shared/src/graph/types.ts#NodeLabel",
+        "type": "USES",
+        "confidence": 0.97,
+        "reason": "type reference",
+        "evidence": [
+          { "kind": "static-type-ref", "weight": 0.97, "note": "label: NodeLabel" }
+        ]
+      },
+      {
+        "id": "rel:graphrel-uses-reltype",
+        "source": "iface:gitnexus-shared/src/graph/types.ts#GraphRelationship",
+        "target": "type:gitnexus-shared/src/graph/types.ts#RelationshipType",
+        "type": "USES",
+        "confidence": 0.97,
+        "reason": "type reference"
+      },
+      {
+        "id": "rel:graphnode-member-of-graph-types",
+        "source": "iface:gitnexus-shared/src/graph/types.ts#GraphNode",
+        "target": "comm:graph-types",
+        "type": "MEMBER_OF",
+        "confidence": 1.0,
+        "reason": "louvain community detection"
+      },
+      {
+        "id": "rel:graphrel-member-of-graph-types",
+        "source": "iface:gitnexus-shared/src/graph/types.ts#GraphRelationship",
+        "target": "comm:graph-types",
+        "type": "MEMBER_OF",
+        "confidence": 1.0,
+        "reason": "louvain community detection"
+      }
+    ],
+    "directed": true,
+    "multigraph": false
+  },
+  "metadata": {
+    "tool": "gitnexus",
+    "tool_version": "1.0.0",
+    "generated_at": "2026-05-07T00:00:00Z",
+    "repo": "abhigyanpatwari/GitNexus",
+    "commit": "main",
+    "stats": {
+      "files": 1,
+      "nodes": 8,
+      "edges": 10,
+      "communities": 1
+    }
+  }
+}
