@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   validate:
@@ -26,18 +25,7 @@ jobs:
           cache: 'npm'
       - run: npm ci
 
-      - name: Compute changed entry ids
-        id: changed
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          CHANGED=$(git diff --unified=0 "origin/${BASE_REF}..HEAD" -- registry.json \
-            | grep -E '^\+' | grep -Eo '"id": *"[^"]+"' | sed -E 's/.*"id": *"([^"]+)".*/\1/' | sort -u | paste -sd, -)
-          echo "ids=${CHANGED}" >> "$GITHUB_OUTPUT"
-
-      - name: Validate
-        env:
-          CHANGED_IDS: ${{ steps.changed.outputs.ids }}
+      - name: Validate (full registry; CI scale fine at MVP size)
         run: npm run validate
 
       - name: Run unit + integration tests

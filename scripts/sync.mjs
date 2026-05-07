@@ -48,7 +48,6 @@ export async function syncEntry(entry, opts = {}) {
     const res = await withRetry(() => fetchImpl(entry.graph_url, reqOpts), { maxRetries });
 
     if (res.status === 304) {
-      out.status = 'ok';
       out.miss_count = 0;
       out.last_error = null;
       stamp();

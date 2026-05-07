@@ -123,7 +123,7 @@ test('integration: ETag is sent and 304 honored', async () => {
     const r = await syncEntry({
       id: 'x/y', owner: 'x', repo: 'y', format: 'understand-anything@1',
       graph_url: `http://127.0.0.1:${port}/g.json`, description: 'd',
-      last_sha: 'abc'
+      last_sha: 'abc', status: 'ok'
     }, { etagFor: () => '"etag-1"' });
     assert.equal(sentIfNoneMatch, '"etag-1"');
     assert.equal(r.status, 'ok');

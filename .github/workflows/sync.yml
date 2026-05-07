@@ -48,7 +48,8 @@ jobs:
           fi
           echo "id=$ID" >> "$GITHUB_OUTPUT"
 
-      - name: Smoke (dry-run, never commits)
+      - name: Smoke (dry-run; cron only)
+        if: github.event_name == 'schedule'
         run: npm run smoke
 
       - name: Sync
@@ -61,14 +62,17 @@ jobs:
             node scripts/sync.mjs
           fi
 
+      - name: Render README inline (default GITHUB_TOKEN push won't trigger render.yml)
+        run: npm run render
+
       - name: Commit changes
         run: |
-          if ! git diff --quiet registry.json; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add registry.json
-            git commit -m "chore(sync): update registry"
-            git push
-          else
+          if git diff --quiet registry.json README.md; then
             echo "no changes"
+            exit 0
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registry.json README.md
+          git commit -m "chore(sync): update registry and README"
+          git push
