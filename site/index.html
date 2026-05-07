@@ -14,7 +14,7 @@
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
 
-  <link rel="stylesheet" href="./styles.css?v=20260507">
+  <link rel="stylesheet" href="./styles.css?v=20260507b">
 </head>
 <body>
   <div class="app">
@@ -81,10 +81,16 @@
             <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
             <button type="button" id="zoom-fit" aria-label="Fit graph" title="Fit">⤢</button>
           </div>
+          <button type="button" class="details-pill" id="details-pill" hidden aria-label="Show entry details">
+            <span class="details-pill-icon" aria-hidden="true">&#9776;</span>
+            <span>Details</span>
+          </button>
         </div>
       </main>
 
-      <aside class="detail-pane" id="detail" aria-label="Entry details" hidden>
+      <div class="detail-scrim" id="detail-scrim" hidden></div>
+      <aside class="detail-pane" id="detail" role="dialog" aria-label="Entry details" aria-modal="false" hidden>
+        <div class="detail-drag-handle" id="detail-drag-handle" aria-hidden="true"></div>
         <header class="detail-head">
           <div>
             <h2 class="detail-title" id="detail-title">Entry</h2>
@@ -107,6 +113,6 @@
     <div id="diag" hidden></div>
   </div>
 
-  <script type="module" src="./app.js?v=20260507"></script>
+  <script type="module" src="./app.js?v=20260507b"></script>
 </body>
 </html>

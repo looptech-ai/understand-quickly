@@ -4,9 +4,14 @@
 // rendered via textContent / createElement / attribute setters — never
 // innerHTML with untrusted data.
 
-import { openGraph, clearGraph } from './viewer.js?v=20260507';
+import { openGraph, clearGraph } from './viewer.js?v=20260507b';
 
-const PAGE_VERSION = '20260507';
+const PAGE_VERSION = '20260507b';
+const MOBILE_BREAKPOINT = 800;
+
+function isMobile() {
+  return typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT;
+}
 const DIAG_ENABLED = (typeof window !== 'undefined')
   && /[?&]diag=1\b/.test(window.location.search || '');
 
@@ -120,6 +125,7 @@ function renderEmptyMainStateIfNeeded(msg) {
   // Remove any prior fallback we appended
   const prior = empty.querySelector('.fallback-notice');
   if (prior) prior.remove();
+  refreshEmptyStateCta();
   if (state.entries.length > 0) return;
   const note = el('p', {
     className: 'fallback-notice',
@@ -259,19 +265,34 @@ function selectEntry(entry) {
   state.selectedId = entry.id;
   // Re-render cards to reflect selected state
   render();
-  showDetail(entry);
+
+  if (isMobile()) {
+    // Mobile: skip detail pane; load graph immediately and surface
+    // a "Details" pill for users who want metadata.
+    hideDetail();
+    showDetailsPill();
+  } else {
+    showDetail(entry);
+  }
   loadGraphFor(entry);
+}
+
+function getSelectedEntry() {
+  if (!state.selectedId) return null;
+  return state.entries.find((e) => e.id === state.selectedId) || null;
 }
 
 function deselect() {
   state.selectedId = null;
   render();
   hideDetail();
+  hideDetailsPill();
   resetGraphArea();
 }
 
 function showDetail(entry) {
   const pane = document.getElementById('detail');
+  const scrim = document.getElementById('detail-scrim');
   const ws = document.getElementById('workspace');
   const title = document.getElementById('detail-title');
   const sub = document.getElementById('detail-sub');
@@ -344,13 +365,20 @@ function showDetail(entry) {
 
   // Actions
   const actions = el('div', { className: 'detail-actions' });
+
+  // Primary: Visualize graph (renders in-page, never navigates)
   if (entry.graph_url) {
-    actions.appendChild(el('a', {
-      className: 'btn btn-ghost',
-      text: 'Open raw graph_url',
-      attrs: { href: entry.graph_url, rel: 'noopener', target: '_blank' },
-    }));
+    const visualizeBtn = el('button', {
+      className: 'btn btn-primary',
+      attrs: { type: 'button' },
+      text: 'Visualize graph',
+    });
+    visualizeBtn.addEventListener('click', () => {
+      handleVisualize(entry, visualizeBtn);
+    });
+    actions.appendChild(visualizeBtn);
   }
+
   if (entry.id) {
     actions.appendChild(el('a', {
       className: 'btn btn-ghost',
@@ -374,6 +402,17 @@ function showDetail(entry) {
   copyBtn.addEventListener('click', () => copyEntryJson(entry, copyStatus));
   actions.appendChild(copyBtn);
   actions.appendChild(copyStatus);
+
+  // Secondary, demoted raw-URL access for agents/devs
+  if (entry.graph_url) {
+    const raw = el('a', {
+      className: 'detail-raw-link',
+      text: 'View raw JSON ↗',
+      attrs: { href: entry.graph_url, rel: 'noopener', target: '_blank' },
+    });
+    actions.appendChild(raw);
+  }
+
   body.appendChild(el('section', { className: 'detail-section' }, [
     el('h3', { text: 'Actions' }),
     actions,
@@ -381,10 +420,82 @@ function showDetail(entry) {
 
   pane.hidden = false;
   ws.classList.add('has-detail');
+
+  // Bottom-sheet treatment on mobile
+  if (isMobile()) {
+    pane.classList.add('is-sheet');
+    pane.setAttribute('aria-modal', 'true');
+    if (scrim) scrim.hidden = false;
+    // Trigger transition next frame
+    requestAnimationFrame(() => {
+      pane.classList.add('is-open');
+      if (scrim) scrim.classList.add('is-open');
+    });
+  } else {
+    pane.classList.remove('is-sheet', 'is-open');
+    pane.setAttribute('aria-modal', 'false');
+    if (scrim) {
+      scrim.hidden = true;
+      scrim.classList.remove('is-open');
+    }
+  }
+}
+
+// Run the same in-page visualize path used by selection. On mobile this
+// closes the bottom sheet first so the graph fills the viewport.
+function handleVisualize(entry, button) {
+  if (button) {
+    button.disabled = true;
+    button.dataset.originalText = button.textContent;
+    button.textContent = 'Loading…';
+  }
+  if (isMobile()) {
+    hideDetail();
+    showDetailsPill();
+  }
+  loadGraphFor(entry).finally(() => {
+    if (button) {
+      button.disabled = false;
+      if (button.dataset.originalText) {
+        button.textContent = button.dataset.originalText;
+      }
+    }
+  });
+}
+
+function showDetailsPill() {
+  const pill = document.getElementById('details-pill');
+  if (pill) pill.hidden = false;
+}
+
+function hideDetailsPill() {
+  const pill = document.getElementById('details-pill');
+  if (pill) pill.hidden = true;
 }
 
 function hideDetail() {
-  document.getElementById('detail').hidden = true;
+  const pane = document.getElementById('detail');
+  const scrim = document.getElementById('detail-scrim');
+  pane.classList.remove('is-open');
+  pane.setAttribute('aria-modal', 'false');
+  if (scrim) scrim.classList.remove('is-open');
+  // Hide after transition completes (mirrors --transition-sheet timing)
+  const wasSheet = pane.classList.contains('is-sheet');
+  if (wasSheet) {
+    setTimeout(() => {
+      // Only hide if still closed (user didn't reopen)
+      if (!pane.classList.contains('is-open')) {
+        pane.hidden = true;
+        if (scrim) scrim.hidden = true;
+        pane.classList.remove('is-sheet');
+        pane.style.transform = '';
+      }
+    }, 240);
+  } else {
+    pane.hidden = true;
+    if (scrim) scrim.hidden = true;
+    pane.style.transform = '';
+  }
   document.getElementById('workspace').classList.remove('has-detail');
 }
 
@@ -417,6 +528,24 @@ function resetGraphArea() {
   document.getElementById('graph-status').hidden = true;
   document.getElementById('zoom-controls').hidden = true;
   document.getElementById('graph-legend').hidden = true;
+  refreshEmptyStateCta();
+}
+
+// On mobile, when the graph pane is shown but no entry is selected, surface
+// a "Pick an entry below" CTA pointing at the sidebar strip. We add it lazily
+// to the existing empty-state markup so the desktop copy stays untouched.
+function refreshEmptyStateCta() {
+  const empty = document.getElementById('graph-empty');
+  if (!empty) return;
+  const prior = empty.querySelector('.pick-entry-cta');
+  if (prior) prior.remove();
+  if (!isMobile()) return;
+  if (state.entries.length === 0) return; // fallback-notice already covers
+  const cta = el('div', { className: 'pick-entry-cta' }, [
+    el('span', { className: 'pick-entry-arrow', text: '↓', attrs: { 'aria-hidden': 'true' } }),
+    el('span', { text: 'Pick an entry below' }),
+  ]);
+  empty.appendChild(cta);
 }
 
 async function loadGraphFor(entry) {
@@ -499,13 +628,139 @@ function bindToolbar() {
 }
 
 function bindDetail() {
-  document.getElementById('detail-close').addEventListener('click', deselect);
+  document.getElementById('detail-close').addEventListener('click', () => {
+    if (isMobile() && state.selectedId) {
+      // On mobile, just close the sheet but keep graph + pill alive.
+      hideDetail();
+      showDetailsPill();
+    } else {
+      deselect();
+    }
+  });
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') {
       const detail = document.getElementById('detail');
-      if (!detail.hidden) deselect();
+      if (!detail.hidden) {
+        if (isMobile() && state.selectedId) {
+          hideDetail();
+          showDetailsPill();
+        } else {
+          deselect();
+        }
+      }
     }
   });
+
+  // Scrim tap dismisses the bottom sheet on mobile
+  const scrim = document.getElementById('detail-scrim');
+  if (scrim) {
+    scrim.addEventListener('click', () => {
+      hideDetail();
+      if (isMobile() && state.selectedId) showDetailsPill();
+    });
+  }
+
+  // Details pill reopens the bottom sheet
+  const pill = document.getElementById('details-pill');
+  if (pill) {
+    pill.addEventListener('click', () => {
+      const entry = getSelectedEntry();
+      if (entry) {
+        hideDetailsPill();
+        showDetail(entry);
+      }
+    });
+  }
+
+  // Bottom-sheet drag-to-dismiss (touch only — keeps iOS Safari happy)
+  bindSheetDrag();
+
+  // Re-evaluate layout when the user crosses the breakpoint
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+  }
+}
+
+function handleResize() {
+  const entry = getSelectedEntry();
+  if (!entry) {
+    // No selection — make sure stray UI isn't hanging around.
+    hideDetailsPill();
+    refreshEmptyStateCta();
+    return;
+  }
+  const pane = document.getElementById('detail');
+  const scrim = document.getElementById('detail-scrim');
+  const isSheet = pane.classList.contains('is-sheet');
+  if (isMobile()) {
+    // Crossed into mobile: hide any inline desktop pane and surface the pill.
+    if (!pane.hidden && !isSheet) {
+      // Was inline desktop pane: collapse it; user can tap pill to reopen.
+      pane.hidden = true;
+      document.getElementById('workspace').classList.remove('has-detail');
+    }
+    if (!(isSheet && pane.classList.contains('is-open'))) {
+      showDetailsPill();
+    }
+  } else {
+    // Desktop: pill is meaningless; ensure detail pane is shown side-by-side.
+    hideDetailsPill();
+    pane.classList.remove('is-sheet', 'is-open');
+    pane.style.transform = '';
+    if (scrim) {
+      scrim.hidden = true;
+      scrim.classList.remove('is-open');
+    }
+    if (pane.hidden) showDetail(entry);
+  }
+  refreshEmptyStateCta();
+}
+
+function bindSheetDrag() {
+  const handle = document.getElementById('detail-drag-handle');
+  const pane = document.getElementById('detail');
+  if (!handle || !pane) return;
+
+  let startY = 0;
+  let currentY = 0;
+  let dragging = false;
+
+  const onTouchStart = (ev) => {
+    if (!pane.classList.contains('is-sheet')) return;
+    const t = ev.touches && ev.touches[0];
+    if (!t) return;
+    dragging = true;
+    startY = t.clientY;
+    currentY = 0;
+    pane.style.transition = 'none';
+  };
+  const onTouchMove = (ev) => {
+    if (!dragging) return;
+    const t = ev.touches && ev.touches[0];
+    if (!t) return;
+    currentY = Math.max(0, t.clientY - startY);
+    pane.style.transform = `translateY(${currentY}px)`;
+  };
+  const onTouchEnd = () => {
+    if (!dragging) return;
+    dragging = false;
+    pane.style.transition = '';
+    const threshold = pane.clientHeight * 0.25;
+    if (currentY > threshold) {
+      pane.style.transform = '';
+      hideDetail();
+      if (state.selectedId) showDetailsPill();
+    } else {
+      pane.style.transform = '';
+    }
+    currentY = 0;
+  };
+
+  handle.addEventListener('touchstart', onTouchStart, { passive: true });
+  handle.addEventListener('touchmove', onTouchMove, { passive: true });
+  handle.addEventListener('touchend', onTouchEnd);
+  handle.addEventListener('touchcancel', onTouchEnd);
 }
 
 function bindZoom() {

@@ -854,8 +854,87 @@ button { font-family: inherit; }
   margin-bottom: 4px;
 }
 
-/* ---------- Mobile (<700px) ---------- */
-@media (max-width: 700px) {
+/* ---------- Detail-pane raw-link (demoted secondary action) ---------- */
+.detail-raw-link {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: 4px;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+.detail-raw-link:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+/* ---------- Details pill (floats over the graph pane on mobile) ---------- */
+.details-pill {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid var(--color-border-medium);
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 6;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-card);
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.details-pill[hidden] { display: none; }
+.details-pill:hover { border-color: var(--color-accent); color: var(--color-accent-bright); }
+.details-pill .details-pill-icon {
+  display: inline-flex;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ---------- Bottom-sheet scrim ---------- */
+.detail-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  z-index: 199;
+  transition: opacity 220ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.detail-scrim[hidden] { display: none; }
+.detail-scrim.is-open { opacity: 1; }
+
+/* ---------- Drag handle (only visible in sheet mode) ---------- */
+.detail-drag-handle {
+  display: none;
+  width: 100%;
+  padding: 8px 0 4px;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.detail-drag-handle::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto;
+  background: var(--color-text-muted);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+/* ---------- Mobile (<800px) ---------- */
+@media (max-width: 799.98px) {
   .topbar {
     grid-template-columns: 1fr auto;
     grid-template-areas:
@@ -869,33 +948,106 @@ button { font-family: inherit; }
   .topbar-actions a:not(.cta-add-repo) { display: none; }
   .topbar-search { grid-area: search; width: 100%; }
 
+  /* Stack: graph fills viewport; sidebar becomes a horizontal strip below. */
   .workspace,
   .workspace.has-detail {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: 1fr auto;
   }
+  .main-pane { order: 1; min-height: 0; }
   .sidebar {
+    order: 2;
     border-right: 0;
-    border-bottom: 1px solid var(--color-border-subtle);
-    max-height: 220px;
+    border-top: 1px solid var(--color-border-subtle);
+    border-bottom: 0;
+    max-height: 180px;
+    background: var(--color-surface);
+  }
+  .sidebar-head {
+    padding: var(--space-2) var(--space-3);
   }
   .sidebar-list {
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
     padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+    -webkit-overflow-scrolling: touch;
   }
   .entry-card { min-width: 240px; flex-shrink: 0; }
 
-  .detail-pane {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    border-left: 0;
-    box-shadow: var(--shadow-elevated);
+  .graph-host {
+    min-height: 0;
+    height: 100%;
   }
 
-  .graph-empty h2 { font-size: 24px; }
+  .graph-empty h2 { font-size: 22px; }
+  .graph-empty p { font-size: 13px; }
+  .graph-empty .endpoint-card { display: none; }
+  .graph-empty .actions { display: none; }
+
+  /* Show the floating "Details" pill */
+  .details-pill:not([hidden]) { display: inline-flex; }
+
+  /* Mobile detail-pane = bottom sheet (~70vh) */
+  .detail-pane.is-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    height: 70vh;
+    max-height: 70vh;
+    width: 100%;
+    border-left: 0;
+    border-top: 1px solid var(--color-border-medium);
+    border-radius: 16px 16px 0 0;
+    box-shadow: var(--shadow-elevated);
+    z-index: 200;
+    transform: translateY(100%);
+    transition: transform 240ms cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+    overscroll-behavior: contain;
+    /* iOS Safari: keep content above home-indicator */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .detail-pane.is-sheet.is-open {
+    transform: translateY(0);
+  }
+  .detail-pane.is-sheet .detail-drag-handle {
+    display: block;
+  }
+  .detail-pane.is-sheet .detail-head {
+    padding-top: 4px;
+  }
+
+}
+/* "Pick an entry below" CTA — only painted into the DOM on mobile, but
+ * leaving safe defaults here in case the breakpoint shifts. */
+.pick-entry-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--space-3);
+  padding: 10px 16px;
+  border: 1px dashed var(--color-border-medium);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  background: rgba(212, 165, 116, 0.04);
+}
+.pick-entry-arrow {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-accent);
+  animation: bounce-down 1.4s ease-in-out infinite;
+}
+@keyframes bounce-down {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pick-entry-arrow { animation: none; }
 }
 
 /* ---------- About page (markdown body) ---------- */
