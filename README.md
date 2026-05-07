@@ -6,9 +6,11 @@
 
 Point AI agents at any indexed repo and they get a current, schema-validated graph — no scraping, no LLM cost on the registry side.
 
-[![validate](https://github.com/understand-quickly/registry/actions/workflows/validate.yml/badge.svg)](https://github.com/understand-quickly/registry/actions/workflows/validate.yml)
-[![sync](https://github.com/understand-quickly/registry/actions/workflows/sync.yml/badge.svg)](https://github.com/understand-quickly/registry/actions/workflows/sync.yml)
+[![sync](https://github.com/amacsmith/understand-quickly/actions/workflows/sync.yml/badge.svg)](https://github.com/amacsmith/understand-quickly/actions/workflows/sync.yml)
+[![pages](https://github.com/amacsmith/understand-quickly/actions/workflows/pages.yml/badge.svg)](https://amacsmith.github.io/understand-quickly/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> **Status:** private MVP under [`amacsmith/understand-quickly`](https://github.com/amacsmith/understand-quickly). Will move to a public org once core flows are battle-tested. Live registry at <https://amacsmith.github.io/understand-quickly/>.
 
 [**Browse entries ↓**](#registry) · [**Add your repo**](#add-your-repo) · [**Agent quickstart**](#agent-quickstart) · [**Design spec**](docs/superpowers/specs/2026-05-07-understand-quickly-registry-design.md)
 
@@ -51,7 +53,7 @@ Tools like [Understand-Anything](https://github.com/Lum1104/Understand-Anything)
 ## Agent quickstart
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/understand-quickly/registry/main/registry.json
+curl -fsSL https://amacsmith.github.io/understand-quickly/registry.json
 ```
 
 Each entry that an agent should trust:
