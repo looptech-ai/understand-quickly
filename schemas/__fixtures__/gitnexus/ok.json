@@ -1,0 +1,6 @@
+{
+  "graph": {
+    "nodes": [{ "id": "a", "type": "file", "name": "main.ts" }],
+    "links": [{ "source": "a", "target": "a" }]
+  }
+}
