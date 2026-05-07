@@ -1,5 +1,15 @@
 {
   "schema_version": 1,
   "generated_at": "2026-05-07T00:00:00Z",
-  "entries": []
+  "entries": [
+    {
+      "id": "understand-quickly/registry",
+      "owner": "understand-quickly",
+      "repo": "registry",
+      "default_branch": "main",
+      "format": "generic@1",
+      "graph_url": "https://raw.githubusercontent.com/understand-quickly/registry/main/registry.json",
+      "description": "The registry indexes itself; useful as a meta entry."
+    }
+  ]
 }
