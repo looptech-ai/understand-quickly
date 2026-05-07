@@ -44,3 +44,16 @@ test('applyMarkers idempotent', () => {
 test('applyMarkers throws if markers missing', () => {
   assert.throws(() => applyMarkers('no markers', 'X'), /markers/);
 });
+
+test('entry without status renders as pending, not undefined', () => {
+  const md = renderTable({
+    schema_version: 1,
+    generated_at: '2026-05-07T00:00:00Z',
+    entries: [{
+      id: 'z/new', owner: 'z', repo: 'new', format: 'generic@1',
+      graph_url: 'https://x/g.json', description: 'fresh'
+    }]
+  });
+  assert.match(md, /🆕 pending/);
+  assert.doesNotMatch(md, /undefined/);
+});

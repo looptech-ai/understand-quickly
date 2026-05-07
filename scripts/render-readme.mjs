@@ -7,7 +7,8 @@ const STATUS_EMOJI = {
   oversize: '📦',
   transient_error: '🔁',
   dead: '💀',
-  renamed: '↪️'
+  renamed: '↪️',
+  pending: '🆕'
 };
 
 const BEGIN = '<!-- BEGIN ENTRIES -->';
@@ -18,10 +19,11 @@ export function renderTable(registry) {
   const header = '| Repo | Format | Description | Status | Last synced |';
   const sep    = '| --- | --- | --- | :---: | --- |';
   const body = rows.map(e => {
-    const emoji = STATUS_EMOJI[e.status] || '❔';
+    const status = e.status || 'pending';
+    const emoji = STATUS_EMOJI[status] || '❔';
     const synced = e.last_synced ? e.last_synced.slice(0, 10) : '—';
     const desc = (e.description || '').replace(/\|/g, '\\|');
-    return `| [${e.id}](https://github.com/${e.id}) | \`${e.format}\` | ${desc} | ${emoji} ${e.status} | ${synced} |`;
+    return `| [${e.id}](https://github.com/${e.id}) | \`${e.format}\` | ${desc} | ${emoji} ${status} | ${synced} |`;
   });
   return [header, sep, ...body].join('\n');
 }

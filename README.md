@@ -108,13 +108,14 @@ Adding a new format = PR `schemas/<name>@<int>.json` + an `ok` and `bad` fixture
 <!-- BEGIN ENTRIES -->
 | Repo | Format | Description | Status | Last synced |
 | --- | --- | --- | :---: | --- |
-| [understand-quickly/registry](https://github.com/understand-quickly/registry) | `generic@1` | The registry indexes itself; useful as a meta entry. | ❔ undefined | — |
+| [understand-quickly/registry](https://github.com/understand-quickly/registry) | `generic@1` | The registry indexes itself; useful as a meta entry. | 🆕 pending | — |
 <!-- END ENTRIES -->
 
 ## Status legend
 
 | Emoji | Status | Meaning |
 | :---: | --- | --- |
+| 🆕 | `pending` | registered but not yet synced |
 | ✅ | `ok` | fetched, validated, current |
 | 🟡 | `missing` | 404 in last sync (will retry) |
 | ⚠️ | `invalid` | body failed schema validation |
