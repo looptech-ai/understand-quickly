@@ -1,19 +1,5 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-05-07T05:43:36.843Z",
-  "entries": [
-    {
-      "id": "understand-quickly/registry",
-      "owner": "understand-quickly",
-      "repo": "registry",
-      "default_branch": "main",
-      "format": "generic@1",
-      "graph_url": "https://amacsmith.github.io/understand-quickly/registry.json",
-      "description": "The registry indexes itself; useful as a meta entry.",
-      "miss_count": 1,
-      "status": "invalid",
-      "last_error": " must have required property 'nodes';  must have required property 'edges'",
-      "last_synced": "2026-05-07T05:43:36.843Z"
-    }
-  ]
+  "generated_at": "2026-05-07T00:00:00Z",
+  "entries": []
 }
