@@ -1,0 +1,33 @@
+name: render-readme
+
+on:
+  push:
+    branches: [main]
+    paths: ['registry.json']
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    if: github.actor != 'github-actions[bot]' || !startsWith(github.event.head_commit.message, 'docs(readme):')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run render
+      - name: Commit README
+        run: |
+          if ! git diff --quiet README.md; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "docs(readme): regenerate entry table"
+            git push
+          else
+            echo "no changes"
+          fi
