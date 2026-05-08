@@ -85,5 +85,28 @@ jobs:
           CHANGED_IDS: ${{ steps.changed.outputs.changed_ids }}
         run: npm run validate
 
+      - name: Diagnostic banner
+        # Dump environment + tool versions before the test step so any future
+        # CI failure has obvious context in the log.
+        run: |
+          echo "::group::Environment"
+          echo "node: $(node --version)"
+          echo "npm: $(npm --version)"
+          echo "platform: $(uname -a)"
+          echo "cwd: $(pwd)"
+          echo "tmp writable: $(mktemp -d)"
+          echo "free disk:" && df -h . | tail -1
+          echo "::endgroup::"
+
       - name: Run unit + integration tests
-        run: npm test
+        run: npm test 2>&1 | tee /tmp/npm-test.log
+
+      - name: Dump test log on failure
+        if: failure()
+        run: |
+          echo "::group::npm test full log"
+          tail -200 /tmp/npm-test.log || true
+          echo "::endgroup::"
+          echo "::group::Failing test lines"
+          grep -E '^(not ok|# fail|Error:|TypeError:)' /tmp/npm-test.log || true
+          echo "::endgroup::"
