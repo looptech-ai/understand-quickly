@@ -2,7 +2,7 @@
 // `webServer` block in playwright.config.js. We mock registry.json + the
 // per-entry graph_url so the suite never depends on the live site state.
 
-const { test, expect, devices } = require('@playwright/test');
+const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
 
