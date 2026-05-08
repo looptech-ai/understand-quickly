@@ -7,6 +7,13 @@ import { extractStats, extractSourceSha, validateBodyLimits } from './extract.mj
 
 const MAX_SIZE = 50 * 1024 * 1024;
 const DEAD_THRESHOLD = 7;
+// Bounded concurrency for the sync loop. Picked low enough that a 500-entry
+// registry doesn't open hundreds of sockets at once but high enough that a
+// single slow producer URL doesn't hold up the rest. Node 20+ undici keeps
+// connections alive per-host by default for fetch(), so consecutive fetches
+// to the same host (raw.githubusercontent.com is the dominant case) reuse
+// the TCP+TLS connection without us managing a custom Agent.
+const SYNC_CONCURRENCY = Number(process.env.SYNC_CONCURRENCY) || 6;
 
 // Soft per-run cap for drift detection. The unauthenticated GitHub REST API
 // allows 60 req/hr/IP and each entry costs up to 2 calls (HEAD + compare), so
@@ -370,12 +377,25 @@ async function main() {
     registry.last_drift_index || 0
   );
 
-  const updated = [];
-  for (const e of targets) {
-    const opts = driftIds.has(e.id) ? { driftCheck: checkDrift } : {};
-    const r = await syncEntry(e, opts);
-    updated.push(r);
+  // Bounded-parallel sync. A fixed-size pool keeps total open sockets
+  // small (concurrency * keep-alive max), while parallel-by-host fetches
+  // saturate raw.githubusercontent.com without needing to issue a new
+  // TCP+TLS handshake per entry. Folding back into `updated` is order-
+  // independent because we look up by id when merging at the end.
+  const updated = new Array(targets.length);
+  let cursor = 0;
+  async function pool() {
+    while (true) {
+      const i = cursor++;
+      if (i >= targets.length) return;
+      const e = targets[i];
+      const opts = driftIds.has(e.id) ? { driftCheck: checkDrift } : {};
+      updated[i] = await syncEntry(e, opts);
+    }
   }
+  await Promise.all(
+    Array.from({ length: Math.min(SYNC_CONCURRENCY, targets.length) }, () => pool()),
+  );
 
   // Sort entries by id before write so downstream diffs are stable regardless
   // of how `registry.entries.map` happens to interleave originals and updates.

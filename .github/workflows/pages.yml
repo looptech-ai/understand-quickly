@@ -45,6 +45,12 @@ jobs:
           # Copy static site assets (index.html, app.js, viewer.js, styles.css, about.html)
           cp -r site/. _site/
 
+          # Generate sitemap.xml from registry.json (idempotent — same input
+          # produces byte-identical output, so a "no-change" run touches no
+          # file and downstream caches stay valid). robots.txt and the
+          # /.well-known/security.txt are static and were copied above.
+          node scripts/render-sitemap.mjs --registry registry.json --out _site/sitemap.xml
+
           # Pre-render README -> _site/about.html, splicing the rendered body
           # between the BEGIN/END markers in site/about.html.
           npx -y marked@14 README.md > _readme.html

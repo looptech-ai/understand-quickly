@@ -23,6 +23,7 @@
     "sync": "node scripts/sync.mjs",
     "render": "node scripts/render-readme.mjs",
     "aggregate": "node scripts/aggregate.mjs",
+    "sitemap": "node scripts/render-sitemap.mjs",
     "test": "node --test 'scripts/__tests__/*.test.mjs'",
     "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 80 node --test 'scripts/__tests__/*.test.mjs'",
     "smoke": "node scripts/sync.mjs --registry tests/registry-smoke.json --dry-run",

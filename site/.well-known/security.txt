@@ -1,0 +1,11 @@
+# security.txt for looptech-ai/understand-quickly
+# Spec: https://www.rfc-editor.org/rfc/rfc9116
+# Refresh this file at least annually.
+
+Contact: https://github.com/looptech-ai/understand-quickly/security/advisories/new
+Contact: mailto:Alex.Mac@LoopTech.AI
+Expires: 2027-05-08T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://looptech-ai.github.io/understand-quickly/.well-known/security.txt
+Policy: https://github.com/looptech-ai/understand-quickly/blob/main/SECURITY.md
+Acknowledgments: https://github.com/looptech-ai/understand-quickly/blob/main/SECURITY.md#hall-of-fame

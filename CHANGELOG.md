@@ -4,6 +4,40 @@ All notable changes to this project will be documented here. The format follows 
 
 ## [Unreleased]
 
+### Added (v0.2 follow-ups — discoverability + supply chain + producer ergonomics)
+
+- **`scripts/render-sitemap.mjs`** + `npm run sitemap` — generates
+  `site/sitemap.xml` with one URL per non-revoked registry entry plus the
+  three canonical site pages. Wired into `pages.yml` so each deploy
+  refreshes the sitemap. 5 new tests under `scripts/__tests__/render-sitemap.test.mjs`.
+- **JSON-LD `Dataset` block + Open Graph / Twitter Card meta tags** on
+  `site/index.html` so the registry surfaces in search engine rich-results
+  and social-link previews.
+- **`site/robots.txt`** declaring full indexability and pointing at the
+  sitemap.
+- **`site/.well-known/security.txt`** (RFC 9116) directing security
+  researchers at GitHub Security Advisories + a contact email, with a
+  one-year expiration set.
+- **`docs/privacy.md`** — plain-language privacy notice covering Pages
+  logs, Cloudflare Web Analytics retention, and the producer-data flow.
+- **`docs/alternatives.md`** — frank side-by-side vs. awesome-lists,
+  DevDocs, DeepWiki / deepwiki-open / OpenDeepWiki, Sourcegraph, and the
+  packer producers (Repomix / gitingest / codebase-digest). Helps readers
+  decide when the registry is and isn't the right tool.
+- **`docs/badge.md` + `site/badge.svg`** — embeddable "Indexed by
+  understand-quickly" badge for producer READMEs, with shields.io,
+  self-hosted SVG, and status-aware variants.
+- **`scripts/sync.mjs` bounded concurrency** — replaced the serial
+  per-entry loop with a fixed-size worker pool (default `SYNC_CONCURRENCY=6`,
+  override via env). Concurrent fetches saturate `raw.githubusercontent.com`
+  while keeping total open sockets bounded; node 20+ undici keep-alive
+  reuses connections for free.
+- **`.github/workflows/validate.yml`** — `npm audit --audit-level=high`
+  runs after `npm ci` and fails the job on high/critical CVEs. Lower
+  severities continue to be handled via Dependabot.
+- **README** — `Alternatives` and `Badge` links added to the top
+  navigation row.
+
 ### Changed (licensing — breaking for downstream re-use semantics)
 
 - **Code license switched from MIT to Apache License 2.0.** Adds an explicit
