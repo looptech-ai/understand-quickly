@@ -23,6 +23,7 @@ const KNOWN_FORMATS = [
   'understand-anything@1',
   'gitnexus@1',
   'code-review-graph@1',
+  'bundle@1',
   'generic@1'
 ];
 
@@ -228,7 +229,23 @@ function printDiff(entry, registry) {
 
 function helpText() {
   return [
-    'understand-quickly add — register your repo with the understand-quickly registry.',
+    'understand-quickly add — list your repo in the public registry.',
+    '',
+    'What it does:',
+    '  Auto-detects your repo id, default branch, and existing knowledge-graph file.',
+    '  Prints the registry entry it would submit, then offers to either:',
+    '    • open a prefilled GitHub issue (no PR skills needed), or',
+    '    • open a PR via `gh` if you have it installed.',
+    '',
+    'Quickstart (run inside a git repo with a knowledge-graph file already committed):',
+    '  npx @understand-quickly/cli add',
+    '',
+    'Don\'t have a graph file yet? Pick a producer first:',
+    '  - Understand-Anything → .understand-anything/knowledge-graph.json',
+    '  - GitNexus            → .gitnexus/graph.json',
+    '  - code-review-graph   → .crg/graph.json',
+    '  - Repomix / gitingest → write a bundle@1 sidecar; see docs/integrations/protocol.md',
+    '  - any custom tool     → emit {nodes, edges} JSON; pick generic@1',
     '',
     'Usage:',
     '  npx @understand-quickly/cli add [flags]',
@@ -236,8 +253,9 @@ function helpText() {
     'Flags:',
     '  --id <owner/repo>          override auto-detected id',
     '  --format <name>@<int>      override sniffed format',
+    '                             (' + KNOWN_FORMATS.join(', ') + ')',
     '  --graph-url <url>          override computed graph URL',
-    '  --description "<text>"     one-line description',
+    '  --description "<text>"     one-line description (max 200 chars)',
     '  --tags a,b,c               tags as comma-separated list',
     '  --print-entry              print the entry JSON, exit (default in non-TTY)',
     '  --open-issue               open a prefilled GitHub issue in the browser',
@@ -245,6 +263,10 @@ function helpText() {
     '  --registry <owner/repo>    override registry repo (default: ' + DEFAULT_REGISTRY + ')',
     '  --cwd <path>               run as if from this directory',
     '  --help                     show this help',
+    '',
+    'Stuck or non-technical?',
+    '  Use the wizard at https://looptech-ai.github.io/understand-quickly/add.html',
+    '  or the FAQ at https://github.com/looptech-ai/understand-quickly/blob/main/docs/faq.md',
     ''
   ].join('\n');
 }

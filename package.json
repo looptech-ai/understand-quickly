@@ -4,7 +4,10 @@
   "private": true,
   "description": "Public registry of code-knowledge graphs for AI agents.",
   "author": "Alex Macdonald-Smith <Alex.Mac@LoopTech.AI>",
-  "license": "MIT",
+  "contributors": [
+    "LoopTech.AI <https://looptech.ai>"
+  ],
+  "license": "Apache-2.0 AND LicenseRef-Understand-Quickly-Data-License-1.0",
   "homepage": "https://looptech-ai.github.io/understand-quickly/",
   "repository": {
     "type": "git",

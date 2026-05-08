@@ -26,8 +26,11 @@
     "mcp",
     "cli"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Alex Macdonald-Smith <Alex.Mac@LoopTech.AI>",
+  "contributors": [
+    "LoopTech.AI <https://looptech.ai>"
+  ],
   "homepage": "https://github.com/looptech-ai/understand-quickly/tree/main/cli",
   "repository": {
     "type": "git",

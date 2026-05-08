@@ -24,8 +24,8 @@
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
-        "owner": { "type": "string", "minLength": 1 },
-        "repo": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[A-Za-z0-9_.-]+$" },
+        "repo": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[A-Za-z0-9_.-]+$" },
         "default_branch": { "type": "string", "default": "main" },
         "format": { "type": "string", "pattern": "^[a-z0-9-]+@[0-9]+$" },
         "graph_url": { "type": "string", "format": "uri", "pattern": "^https://" },

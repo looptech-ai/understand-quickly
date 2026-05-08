@@ -7,13 +7,22 @@ import { loadRegistry } from './shard.mjs';
 const SCHEMAS_DIR = 'schemas';
 const META_PATH = join(SCHEMAS_DIR, 'meta.schema.json');
 
+let _ajv = null;
+let _formatSchemas = null;
+const _formatValidators = new Map();
+let _metaValidator = null;
+
 function loadAjv() {
-  const ajv = new Ajv({ allErrors: true, strict: false });
-  addFormats(ajv);
-  return ajv;
+  if (_ajv) return _ajv;
+  // strict:'log' surfaces unknown keywords without crashing — catches schema
+  // typos in CI without breaking older fixtures that pre-date a keyword bump.
+  _ajv = new Ajv({ allErrors: true, strict: 'log' });
+  addFormats(_ajv);
+  return _ajv;
 }
 
 function loadFormatSchemas() {
+  if (_formatSchemas) return _formatSchemas;
   const out = {};
   for (const f of readdirSync(SCHEMAS_DIR)) {
     if (f === 'meta.schema.json' || !f.endsWith('.json')) continue;
@@ -22,16 +31,31 @@ function loadFormatSchemas() {
     const id = f.replace(/\.json$/, '');
     out[id] = JSON.parse(readFileSync(full, 'utf8'));
   }
+  _formatSchemas = out;
   return out;
 }
 
+function describeValidationError(format, err) {
+  // Surface a short human-friendly hint for the most common producer mistakes.
+  // ajv messages are accurate but cryptic; the wrapped form is what we surface
+  // in CI comments and the registry's `last_error` column.
+  const path = err.instancePath || '(root)';
+  const msg = err.message || 'failed';
+  const hint = err.params?.missingProperty
+    ? ` (missing required property "${err.params.missingProperty}")`
+    : '';
+  return `${path} ${msg}${hint}`;
+}
+
 export function validateRegistry(registry) {
-  const ajv = loadAjv();
-  const meta = JSON.parse(readFileSync(META_PATH, 'utf8'));
-  const validate = ajv.compile(meta);
-  const ok = validate(registry);
+  if (!_metaValidator) {
+    const ajv = loadAjv();
+    const meta = JSON.parse(readFileSync(META_PATH, 'utf8'));
+    _metaValidator = ajv.compile(meta);
+  }
+  const ok = _metaValidator(registry);
   if (!ok) {
-    return { ok: false, errors: validate.errors.map(e => ({ message: `${e.instancePath} ${e.message}` })) };
+    return { ok: false, errors: _metaValidator.errors.map(e => ({ message: describeValidationError('meta', e) })) };
   }
   const seen = new Set();
   for (const e of registry.entries) {
@@ -46,18 +70,64 @@ export function validateRegistry(registry) {
 export function validateGraph(format, body) {
   const schemas = loadFormatSchemas();
   if (!schemas[format]) {
-    return { ok: false, errors: [{ message: `unknown format ${format}` }] };
+    return {
+      ok: false,
+      errors: [{
+        message: `unknown format "${format}". Known formats: ${Object.keys(schemas).sort().join(', ')}. To register a new one, see docs/integrations/protocol.md §7.`
+      }]
+    };
   }
-  const ajv = loadAjv();
-  const validate = ajv.compile(schemas[format]);
+  let validate = _formatValidators.get(format);
+  if (!validate) {
+    validate = loadAjv().compile(schemas[format]);
+    _formatValidators.set(format, validate);
+  }
   const ok = validate(body);
-  return ok
-    ? { ok: true, errors: [] }
-    : { ok: false, errors: validate.errors.slice(0, 5).map(e => ({ message: `${e.instancePath} ${e.message}` })) };
+  if (ok) return { ok: true, errors: [] };
+  // Top error becomes the headline; the rest are kept for debugging. Limited
+  // to 5 because Ajv's allErrors mode can produce dozens for one shape mismatch.
+  const errors = validate.errors.slice(0, 5).map(e => ({
+    message: describeValidationError(format, e)
+  }));
+  errors.unshift({
+    message: `Graph does not match \`${format}\` schema. See https://github.com/looptech-ai/understand-quickly/blob/main/schemas/${format}.json`
+  });
+  return { ok: false, errors };
+}
+
+// Retry network-failure-class errors. We retry on:
+//   - thrown errors (TLS, DNS, ECONNRESET, abort, etc.)
+//   - 5xx and 408/429 (server-side transient)
+// 4xx (404, 410, etc.) are NOT retried — those are deterministic producer
+// faults and should fail fast with a clear message.
+async function fetchWithRetry(fetchImpl, url, opts = {}, { maxRetries = 3, baseDelay = 200 } = {}) {
+  let lastErr;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const res = await fetchImpl(url, opts);
+      if (res.ok || (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429)) {
+        return res;
+      }
+      lastErr = new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (i < maxRetries) {
+      // Linear backoff with a small ceiling — registry has dozens of entries
+      // and exponential would compound long-tail latency.
+      await new Promise(r => setTimeout(r, baseDelay * (i + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 export async function fetchAndValidate(entry, fetchImpl = fetch) {
-  const head = await fetchImpl(entry.graph_url, { method: 'HEAD' });
+  let head;
+  try {
+    head = await fetchWithRetry(fetchImpl, entry.graph_url, { method: 'HEAD' });
+  } catch (e) {
+    return { ok: false, errors: [{ message: `HEAD ${entry.graph_url} failed: ${e?.message || e}` }] };
+  }
   if (!head.ok) {
     return { ok: false, errors: [{ message: `HEAD ${entry.graph_url} returned ${head.status}` }] };
   }
@@ -66,7 +136,12 @@ export async function fetchAndValidate(entry, fetchImpl = fetch) {
   if (size !== null && size > 50 * 1024 * 1024) {
     return { ok: false, errors: [{ message: `oversize: ${size} bytes` }] };
   }
-  const res = await fetchImpl(entry.graph_url);
+  let res;
+  try {
+    res = await fetchWithRetry(fetchImpl, entry.graph_url);
+  } catch (e) {
+    return { ok: false, errors: [{ message: `GET ${entry.graph_url} failed: ${e?.message || e}` }] };
+  }
   if (!res.ok) return { ok: false, errors: [{ message: `GET ${entry.graph_url} returned ${res.status}` }] };
   const text = await res.text();
   let body;
@@ -90,7 +165,16 @@ async function main() {
     process.exit(1);
   }
 
-  const changedIds = new Set((process.env.CHANGED_IDS || '').split(',').filter(Boolean));
+  // CHANGED_IDS is set from a `git diff` in CI. Validate the shape so a
+  // malformed value (or an attacker-controlled fork PR env) can't OOM the
+  // process or smuggle empty strings past the size cap.
+  const ID_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+  const rawIds = (process.env.CHANGED_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (rawIds.length > 1000) {
+    console.error(`CHANGED_IDS has ${rawIds.length} entries (cap 1000); refusing to validate`);
+    process.exit(1);
+  }
+  const changedIds = new Set(rawIds.filter(id => ID_RE.test(id)));
   const subset = changedIds.size > 0
     ? registry.entries.filter(e => changedIds.has(e.id))
     : registry.entries;

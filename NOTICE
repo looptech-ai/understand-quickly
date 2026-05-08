@@ -1,0 +1,20 @@
+Understand-Quickly Registry
+Copyright 2026 Alex Macdonald-Smith and LoopTech.AI
+
+This product includes software developed by Alex Macdonald-Smith and
+LoopTech.AI (https://looptech.ai). It is licensed under the Apache
+License, Version 2.0 (see LICENSE) for code, and under the supplemental
+DATA-LICENSE.md for Registry Data, ingested third-party graphs, and
+derived data products (registry.json, aggregates, MCP responses,
+schema validation outputs, etc.).
+
+Portions of the source schemas, fixtures, and integration drafts
+reference upstream tools (Understand-Anything, GitNexus,
+code-review-graph, Repomix, gitingest, codebase-digest, deepwiki-open,
+graphify, codebase-memory-mcp, PocketFlow-Tutorial-Codebase-Knowledge,
+OpenDeepWiki) — those projects retain their own copyrights and
+licenses; this NOTICE does not extend to them.
+
+Vendored third-party assets:
+  - vis-network (Apache-2.0), vendored under site/vendor/
+  - Cloudflare Web Analytics (CC-BY snippet)

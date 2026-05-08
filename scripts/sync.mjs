@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { validateGraph } from './validate.mjs';
@@ -180,8 +180,12 @@ export async function syncEntry(entry, opts = {}) {
           out.commits_behind = drift.commits_behind ?? null;
           out.drift_checked_at = drift.drift_checked_at || now().toISOString();
         }
-      } catch {
-        // Never fail a sync because of a drift-check exception.
+      } catch (e) {
+        // Never fail a sync because of a drift-check exception, but DO log to
+        // stderr so a chronic drift-detector outage is observable in CI.
+        // last_error is reserved for the body fetch/validate result; surfacing
+        // drift errors there would mask invalid/missing statuses.
+        console.warn(`[drift] ${entry.id}: ${e?.message || String(e)}`);
         out.head_sha = out.head_sha ?? null;
         out.commits_behind = out.commits_behind ?? null;
         out.drift_checked_at = now().toISOString();
@@ -341,7 +345,19 @@ async function main() {
       );
     }
   } else {
-    registry = JSON.parse(readFileSync(regPath, 'utf8'));
+    let raw;
+    try {
+      raw = readFileSync(regPath, 'utf8');
+    } catch (e) {
+      console.error(`failed to read ${regPath}: ${e?.message || e}`);
+      process.exit(1);
+    }
+    try {
+      registry = JSON.parse(raw);
+    } catch (e) {
+      console.error(`registry at ${regPath} is not valid JSON: ${e?.message || e}`);
+      process.exit(1);
+    }
   }
   const targets = onlyId ? registry.entries.filter(e => e.id === onlyId) : registry.entries;
 
@@ -361,11 +377,24 @@ async function main() {
     updated.push(r);
   }
 
+  // Sort entries by id before write so downstream diffs are stable regardless
+  // of how `registry.entries.map` happens to interleave originals and updates.
+  // The sort is idempotent — registries that are already sorted produce no
+  // diff. Pinning the order also makes adversarial reordering attacks visible.
+  //
+  // O(n) merge via a Map of updated entries by id; the previous version did an
+  // updated.find() per original entry, which was O(n²) and got noticeable past
+  // a few hundred entries.
+  const updatedById = new Map(updated.map(u => [u.id, u]));
+  const mergedEntries = registry.entries
+    .map(orig => updatedById.get(orig.id) || orig)
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+
   const next = {
     ...registry,
     generated_at: new Date().toISOString(),
     last_drift_index: nextIndex,
-    entries: registry.entries.map(orig => updated.find(u => u.id === orig.id) || orig)
+    entries: mergedEntries
   };
 
   if (dryRun) {
@@ -373,7 +402,14 @@ async function main() {
     return;
   }
 
-  writeFileSync(regPath, JSON.stringify(next, null, 2) + '\n');
+  // Atomic write: drop the new contents into a sibling tmp file, then rename
+  // over the canonical path. A crash mid-write leaves the original intact
+  // (rename is atomic on POSIX; close-enough on Windows). Without this, an
+  // ENOSPC or signal during the JSON.stringify->write window would truncate
+  // the registry to zero bytes — a hard outage for every consumer.
+  const tmp = `${regPath}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(next, null, 2) + '\n');
+  renameSync(tmp, regPath);
   console.log(`synced ${updated.length} entries`);
 }
 

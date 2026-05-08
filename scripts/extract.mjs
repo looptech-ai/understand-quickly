@@ -202,8 +202,11 @@ export function extractSourceSha(format, body) {
   } else if (format === 'code-review-graph@1') {
     candidates.push(body?.metadata?.commit, body?.stats?.commit);
   } else if (format === 'bundle@1') {
-    // bundle@1: producer stamps the source-repo HEAD into manifest.commit.
-    candidates.push(body?.manifest?.commit);
+    // bundle@1: producer stamps the source-repo HEAD. The schema canonicalizes
+    // it as `manifest.commit`, but we also accept `metadata.commit` so a
+    // producer that follows the cross-format convention from
+    // docs/integrations/protocol.md doesn't get silently dropped.
+    candidates.push(body?.manifest?.commit, body?.metadata?.commit);
   } else {
     // generic@1 + unknown formats: no producer convention.
     return null;

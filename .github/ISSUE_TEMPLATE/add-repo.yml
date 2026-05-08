@@ -1,17 +1,31 @@
 name: Add my repo
-description: Request that your repo be indexed by understand-quickly.
+description: List your project in the understand-quickly registry — no code or PR required.
 title: "[add] <owner>/<repo>"
 labels: ["add-repo"]
 body:
   - type: markdown
     attributes:
       value: |
-        A PR is usually faster than an issue. See [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md). Use this form only if you can't open one.
+        ## Welcome 👋
+
+        Use this form to add your repository to the registry. **No coding required** — fill the
+        fields below, submit, and a maintainer will open the PR for you (or auto-merge if your
+        project is on the [verified-publisher allowlist](https://github.com/looptech-ai/understand-quickly/blob/main/docs/verified-publishers.md)).
+
+        **Faster paths** if you're comfortable with them:
+
+        - 🖱️ [Wizard](https://looptech-ai.github.io/understand-quickly/add.html) — same fields, with auto-suggest and JSON preview.
+        - 💻 `npx @understand-quickly/cli add` — auto-detects everything from your repo.
+        - ✍️ Or open a PR directly per [CONTRIBUTING.md](https://github.com/looptech-ai/understand-quickly/blob/main/CONTRIBUTING.md).
+
+        ---
   - type: input
     id: id
     attributes:
       label: Repo id
-      description: Must match `owner/repo`.
+      description: |
+        Your project's `owner/repo` slug, exactly as it appears on GitHub.
+        For example, `looptech-ai/understand-quickly`.
       placeholder: yourname/yourrepo
     validations:
       required: true
@@ -19,10 +33,15 @@ body:
     id: format
     attributes:
       label: Graph format
+      description: |
+        Which tool did you run to generate your knowledge graph or context bundle?
+        If you're not sure, pick `generic@1` and a maintainer will help match the right one.
+        See [Supported formats](https://github.com/looptech-ai/understand-quickly#supported-formats) for setup links.
       options:
         - understand-anything@1
         - gitnexus@1
         - code-review-graph@1
+        - bundle@1
         - generic@1
     validations:
       required: true
@@ -30,7 +49,9 @@ body:
     id: graph_url
     attributes:
       label: graph_url
-      description: Must start with `https://`.
+      description: |
+        The public `https://` URL where the registry can fetch your graph.
+        Most users use a `raw.githubusercontent.com` URL for a JSON file in their default branch.
       placeholder: https://raw.githubusercontent.com/yourname/yourrepo/main/.understand-anything/knowledge-graph.json
     validations:
       required: true
@@ -38,22 +59,34 @@ body:
     id: description
     attributes:
       label: Description
-      description: One line, ≤ 200 chars.
+      description: |
+        One short sentence describing your project. Shows up in the registry table next to your repo.
+        Plain text only — please no markdown links or HTML.
+      placeholder: Multi-agent toolkit with built-in tracing, demos, and a Python sandbox.
     validations:
       required: true
   - type: input
     id: tags
     attributes:
       label: Tags
-      description: Comma-separated, optional.
-      placeholder: python, agents
+      description: |
+        Comma-separated keywords. Helps people discover your repo from the registry's search.
+      placeholder: python, agents, tracing
   - type: checkboxes
     id: instant_refresh
     attributes:
       label: Optional add-ons
       options:
-        - label: I'll also drop the publish workflow into my repo for instant-refresh on push.
+        - label: I'll also drop the publish workflow into my repo so the registry refreshes on every push.
   - type: markdown
     attributes:
       value: |
-        Reminder: a PR adding the entry to `registry.json` is faster than this form.
+        ---
+
+        ### What happens next
+
+        1. A maintainer (or our automation, for verified publishers) reads this issue and opens a PR adding your entry to `registry.json`.
+        2. CI fetches your `graph_url`, validates the JSON against the format schema, and (if green) merges.
+        3. Your repo shows up in the registry within a few minutes — no further action from you.
+
+        Typical turnaround: **same-day** for verified publishers, **24–48h** for first-time contributors. Stuck? Re-ping the issue or DM the maintainers — we don't bite.

@@ -148,6 +148,26 @@ npm run render     # regenerate README table
 
 ---
 
-By contributing you agree your work is licensed under MIT. See [`LICENSE`](./LICENSE).
+## Licensing of contributions
+
+By submitting a contribution — whether code, docs, schemas, fixtures, or
+a registry entry pointing at a third-party graph — you agree to two
+things:
+
+1. **Code, docs, and schema contributions** are licensed under the
+   [Apache License 2.0](./LICENSE), and you are authorized to grant that
+   license. We follow [DCO](https://developercertificate.org/) sign-off
+   conventions: include `Signed-off-by: Your Name <you@example.com>` in
+   commits to confirm you have the right to submit your work.
+2. **Registry-data contributions** (entries that point at a `graph_url`,
+   `content_url`, or other Linked Artifact, plus any aggregated outputs
+   produced from them) are governed by the
+   [`DATA-LICENSE.md`](./DATA-LICENSE.md). In short: you grant Alex
+   Macdonald-Smith and LoopTech.AI a perpetual, royalty-free,
+   sublicensable right to use the submitted data — including for
+   AI/ML training and commercial products — and that grant travels with
+   any fork or extension of the registry. Read `DATA-LICENSE.md` before
+   submitting if you are doing so on behalf of an employer or you have
+   any doubt about your rights to the linked content.
 
 Please also read our [Code of Conduct](./CODE_OF_CONDUCT.md). We expect everyone interacting in issues, PRs, and discussions to follow it.
