@@ -25,9 +25,25 @@ test('sitemap: emits one URL per non-revoked entry, encoding the id', () => {
   assert.match(xml, /\?id=foo%2Fbar/);
   assert.match(xml, /\?id=baz%2Fqux/);
   assert.doesNotMatch(xml, /gone%2Fdead/);
+  // last_synced drives the per-entry lastmod (regression guard against the
+  // renderer falling back to wall-clock `now` for every URL).
+  assert.match(xml, /<lastmod>2026-05-01<\/lastmod>/);
+  assert.match(xml, /<lastmod>2026-04-30<\/lastmod>/);
   // ok entries get higher priority than non-ok ones
   assert.match(xml, /<priority>0\.6<\/priority>/);
   assert.match(xml, /<priority>0\.3<\/priority>/);
+});
+
+test('sitemap: deterministic across runs given the same registry', () => {
+  const reg = {
+    schema_version: 1, generated_at: '2026-05-08T00:00:00Z',
+    entries: [{ id: 'a/b', status: 'ok', last_synced: '2026-05-07T00:00:00Z' }],
+  };
+  // Two runs with different `now` values should still produce identical
+  // output — the generator anchors on registry.generated_at, not wall clock.
+  const xml1 = renderSitemap(reg, { now: () => new Date('2026-05-08T01:00:00Z') });
+  const xml2 = renderSitemap(reg, { now: () => new Date('2027-12-31T23:59:59Z') });
+  assert.equal(xml1, xml2);
 });
 
 test('sitemap: escapes XML special characters in ids', () => {

@@ -18,9 +18,15 @@
   <meta property="og:description" content="A public, machine-readable directory of code-knowledge graphs. Point AI agents at any indexed repo and they get a current, schema-validated graph in one fetch.">
   <meta property="og:url" content="https://looptech-ai.github.io/understand-quickly/">
   <meta property="og:site_name" content="understand-quickly">
-  <meta name="twitter:card" content="summary_large_image">
+  <meta property="og:image" content="https://looptech-ai.github.io/understand-quickly/badge.svg">
+  <!-- Twitter card type is `summary` (not `summary_large_image`) because we
+       only ship a small SVG badge as the preview image; a large card without
+       a real banner asset renders as a text-only card. Upgrade to
+       `summary_large_image` once a 1200x630 og.png is shipped. -->
+  <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="understand-quickly · registry of code-knowledge graphs">
   <meta name="twitter:description" content="Public registry indexing code-knowledge graphs and repo-context bundles for AI agents. Apache 2.0 + Data License 1.0.">
+  <meta name="twitter:image" content="https://looptech-ai.github.io/understand-quickly/badge.svg">
 
   <script type="application/ld+json">
   {
@@ -30,7 +36,10 @@
     "alternateName": "looptech-ai/understand-quickly",
     "description": "Public, machine-readable registry of code-knowledge graphs and repo-context bundles for AI agents. Each entry is a pointer to a JSON graph in a producer's repository, validated against a versioned JSON Schema.",
     "url": "https://looptech-ai.github.io/understand-quickly/",
-    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "license": [
+      "https://github.com/looptech-ai/understand-quickly/blob/main/DATA-LICENSE.md",
+      "https://www.apache.org/licenses/LICENSE-2.0"
+    ],
     "creator": {
       "@type": "Organization",
       "name": "LoopTech.AI",

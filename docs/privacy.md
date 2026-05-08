@@ -23,11 +23,22 @@ profile, no per-user state.
 ## What is NOT collected
 
 - No cookies (Cloudflare Analytics is cookieless).
-- No localStorage / sessionStorage user data — site UI state lives only
-  in URL fragments you control.
 - No telemetry from the CLI (`npx @understand-quickly/cli add`) or MCP
   server beyond the dispatch you explicitly configure.
 - No fingerprinting, no canvas/WebGL probes, no behavioural tracking.
+
+## Client-side state on the site
+
+The site does store small bits of UI preference in your browser, locally.
+None of it is transmitted off-device:
+
+| Storage | Key | Purpose | Scope |
+| --- | --- | --- | --- |
+| `localStorage` | `uq:layout:<id>` | Remembers your preferred graph-viewer layout per entry. | Persists across visits. |
+| `sessionStorage` | `uq:tour-autoshown` | Suppresses the guided tour after it auto-shows once. | Cleared when you close the tab. |
+| URL query string | `?id=<owner/repo>` | Selects an entry for deep-linking. | Visible to anyone you share the URL with. |
+
+To clear: use your browser's "Clear site data" tool for `looptech-ai.github.io`.
 
 ## Third parties
 
@@ -50,9 +61,18 @@ You own what you submit. Specifically:
 - **Withdraw a producer-side dispatch**: just stop firing
   `repository_dispatch` and revoke the PAT. The registry's nightly sync
   will move the entry to `missing` after the graph URL 404s.
-- **GDPR / CCPA** rights: there is no PII in the registry to subject
-  request. Logs at GitHub and Cloudflare are governed by their
-  respective privacy policies.
+- **GDPR / CCPA** rights:
+  - **Registry entries themselves contain no personal data** — only
+    repo identifiers, public graph URLs, and producer metadata. There is
+    nothing to subject-request from `registry.json`.
+  - **Server-level access logs** (GitHub Pages, Cloudflare Web Analytics)
+    do contain IP addresses, which are personal data under GDPR
+    Article 4(1) and CCPA. To exercise rights against those records,
+    use the platform processes directly:
+    [GitHub privacy contact](https://github.com/contact/privacy) and
+    [Cloudflare data subject request portal](https://www.cloudflare.com/trust-hub/gdpr/).
+    The registry maintainers don't have admin access to those logs and
+    can't action a subject request on your behalf.
 
 ## Children
 

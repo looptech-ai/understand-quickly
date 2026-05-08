@@ -2,11 +2,17 @@
 //
 // One static page per registry entry plus the canonical site pages. Output
 // is consumed by search engines and by the Pages workflow as a discovery
-// surface for new entries. Idempotent: running with no registry changes
-// produces a byte-identical sitemap.
+// surface for new entries.
+//
+// Determinism: output is fully a function of (registry contents,
+// `registry.generated_at`). Static-page `lastmod` values track
+// `registry.generated_at` rather than the wall clock so two runs over the
+// same registry produce byte-identical XML — important for crawler ETag
+// caching downstream. Per-entry `lastmod` honors `entry.last_synced` if
+// present, falling back to the registry timestamp.
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { loadRegistry } from './shard.mjs';
 
 const SITE_BASE = 'https://looptech-ai.github.io/understand-quickly';
@@ -27,9 +33,12 @@ function xmlEscape(s) {
 }
 
 export function renderSitemap(registry, { now = () => new Date() } = {}) {
-  const today = now().toISOString().slice(0, 10);
+  // Anchor static-page lastmod to registry.generated_at so the output is a
+  // pure function of (registry, generated_at). Falling back to `now` only
+  // when the registry has no timestamp (an empty/seed run).
+  const anchor = (registry?.generated_at || now().toISOString()).slice(0, 10);
   const urls = [
-    ...STATIC_PAGES.map((p) => ({ ...p, lastmod: today })),
+    ...STATIC_PAGES.map((p) => ({ ...p, lastmod: anchor })),
     ...(registry?.entries || [])
       .filter((e) => e?.id && e?.status !== 'revoked')
       .map((e) => ({
@@ -64,7 +73,11 @@ function main() {
   const outPath = outIdx >= 0 ? args[outIdx + 1] : 'site/sitemap.xml';
 
   const absReg = resolve(regPath);
-  const registry = absReg.endsWith('registry.json')
+  // `basename === 'registry.json'` (not `endsWith`) so a tests-fixture path
+  // like `tests/my-registry.json` doesn't get false-positived into the
+  // sharded loader, which would silently load `<root>/registry.json`
+  // instead of the file the user pointed at.
+  const registry = basename(absReg) === 'registry.json'
     ? loadRegistry({ root: dirname(absReg) })
     : JSON.parse(readFileSync(regPath, 'utf8'));
 

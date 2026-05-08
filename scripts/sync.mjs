@@ -13,7 +13,18 @@ const DEAD_THRESHOLD = 7;
 // connections alive per-host by default for fetch(), so consecutive fetches
 // to the same host (raw.githubusercontent.com is the dominant case) reuse
 // the TCP+TLS connection without us managing a custom Agent.
-const SYNC_CONCURRENCY = Number(process.env.SYNC_CONCURRENCY) || 6;
+//
+// Hardened against SYNC_CONCURRENCY=0 / negative / NaN env values:
+// `parseInt` returns NaN for non-numeric strings, and the clamp below
+// snaps any non-finite or out-of-range value to the [1, 32] band. The
+// upper bound is a guardrail against a misconfigured env opening
+// thousands of sockets and tripping a rate limit.
+const _CONCURRENCY_DEFAULT = 6;
+const _CONCURRENCY_MAX = 32;
+const _CONCURRENCY_RAW = parseInt(process.env.SYNC_CONCURRENCY ?? '', 10);
+const SYNC_CONCURRENCY = Number.isFinite(_CONCURRENCY_RAW)
+  ? Math.max(1, Math.min(_CONCURRENCY_MAX, _CONCURRENCY_RAW))
+  : _CONCURRENCY_DEFAULT;
 
 // Soft per-run cap for drift detection. The unauthenticated GitHub REST API
 // allows 60 req/hr/IP and each entry costs up to 2 calls (HEAD + compare), so
