@@ -7,6 +7,8 @@
   <meta name="description" content="Two-click registration for understand-quickly. Fill four fields, open a pre-filled GitHub issue, and the bot opens the PR.">
   <meta name="theme-color" content="#0a0a0a">
 
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://looptech-ai.github.io https://raw.githubusercontent.com https://api.github.com https://static.cloudflareinsights.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://github.com;">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
@@ -63,27 +65,36 @@
             Format
             <span class="field-required" aria-hidden="true">*</span>
           </legend>
-          <p class="field-hint">Pick the producer that emits your knowledge graph.</p>
+          <p class="field-hint">
+            Pick the producer that emits your knowledge graph. Not sure which?
+            See the <a href="https://github.com/looptech-ai/understand-quickly/blob/main/docs/faq.md#whats-the-difference-between-the-formats-understand-anything1-gitnexus1-bundle1-" rel="noopener" target="_blank">format guide</a>
+            or pick <code>generic@1</code>.
+          </p>
           <div class="radio-list" role="radiogroup" aria-label="Graph format">
             <label class="radio-card">
               <input type="radio" name="format" value="understand-anything@1" required>
               <span class="radio-title"><code>understand-anything@1</code></span>
-              <span class="radio-desc">Knowledge graph from <a href="https://github.com/Lum1104/Understand-Anything" rel="noopener" target="_blank">Lum1104/Understand-Anything</a>.</span>
+              <span class="radio-desc">From <a href="https://github.com/Lum1104/Understand-Anything" rel="noopener" target="_blank">Lum1104/Understand-Anything</a>. <a href="./schemas/understand-anything@1.json" rel="noopener" target="_blank">View schema ↗</a></span>
             </label>
             <label class="radio-card">
               <input type="radio" name="format" value="gitnexus@1">
               <span class="radio-title"><code>gitnexus@1</code></span>
-              <span class="radio-desc">Knowledge graph from <a href="https://github.com/abhigyanpatwari/GitNexus" rel="noopener" target="_blank">abhigyanpatwari/GitNexus</a>.</span>
+              <span class="radio-desc">From <a href="https://github.com/abhigyanpatwari/GitNexus" rel="noopener" target="_blank">abhigyanpatwari/GitNexus</a>. <a href="./schemas/gitnexus@1.json" rel="noopener" target="_blank">View schema ↗</a></span>
             </label>
             <label class="radio-card">
               <input type="radio" name="format" value="code-review-graph@1">
               <span class="radio-title"><code>code-review-graph@1</code></span>
-              <span class="radio-desc">Knowledge graph from <a href="https://github.com/tirth8205/code-review-graph" rel="noopener" target="_blank">tirth8205/code-review-graph</a>.</span>
+              <span class="radio-desc">From <a href="https://github.com/tirth8205/code-review-graph" rel="noopener" target="_blank">tirth8205/code-review-graph</a>. <a href="./schemas/code-review-graph@1.json" rel="noopener" target="_blank">View schema ↗</a></span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="format" value="bundle@1">
+              <span class="radio-title"><code>bundle@1</code></span>
+              <span class="radio-desc">Repo-context packers (<a href="https://github.com/yamadashy/repomix" rel="noopener" target="_blank">Repomix</a>, <a href="https://github.com/cyclotruc/gitingest" rel="noopener" target="_blank">gitingest</a>, <a href="https://github.com/kamilstanuch/codebase-digest" rel="noopener" target="_blank">codebase-digest</a>). <a href="./schemas/bundle@1.json" rel="noopener" target="_blank">View schema ↗</a></span>
             </label>
             <label class="radio-card">
               <input type="radio" name="format" value="generic@1">
               <span class="radio-title"><code>generic@1</code></span>
-              <span class="radio-desc">Any <code>{nodes, edges}</code> graph (escape hatch).</span>
+              <span class="radio-desc">Any <code>{nodes, edges}</code> graph — escape hatch when no first-class format fits. <a href="./schemas/generic@1.json" rel="noopener" target="_blank">View schema ↗</a></span>
             </label>
           </div>
           <p class="field-error" id="err-format" hidden></p>
@@ -181,28 +192,59 @@
       </form>
 
       <section class="faq">
-        <h2>FAQ</h2>
+        <h2>Common questions</h2>
         <details>
-          <summary>Don&rsquo;t have a graph yet?</summary>
+          <summary>I don&rsquo;t have a graph yet &mdash; what do I run?</summary>
           <p>
-            Run any of the supported tools first &mdash; see
-            <a href="./about.html#supported-formats" rel="noopener">Supported formats</a>
-            on the README for setup links and example outputs.
+            Each format has a producer tool linked next to it above. Run that tool against your
+            repo, commit the output, then come back. The
+            <a href="https://github.com/looptech-ai/understand-quickly/blob/main/docs/faq.md" rel="noopener" target="_blank">FAQ</a>
+            walks through this in plain language.
           </p>
         </details>
         <details>
-          <summary>Don&rsquo;t want to open a GitHub issue?</summary>
+          <summary>I&rsquo;m not sure which format to pick.</summary>
+          <p>
+            If your repo is a generic codebase, pick <code>generic@1</code> &mdash; it accepts any
+            <code>{nodes, edges}</code> shape and a maintainer can re-tag you to a stricter format
+            later if it fits. If you used a specific tool (Repomix, gitingest, GitNexus, etc.),
+            pick the matching format above. Worst case, ask in the
+            <a href="https://github.com/looptech-ai/understand-quickly/discussions" rel="noopener" target="_blank">Discussions</a>.
+          </p>
+        </details>
+        <details>
+          <summary>How long until my entry shows up?</summary>
+          <p>
+            <strong>Verified publishers</strong>: same-day, auto-merged after CI passes.
+            <strong>First-time contributors</strong>: 24&ndash;48h while a maintainer reviews.
+            After merge, the registry resyncs your entry within a few minutes.
+          </p>
+        </details>
+        <details>
+          <summary>I don&rsquo;t want to open a GitHub issue.</summary>
           <p>
             Click <strong>Copy as JSON for direct PR</strong> above, then open a PR yourself per
             <a href="https://github.com/looptech-ai/understand-quickly/blob/main/CONTRIBUTING.md" rel="noopener" target="_blank">CONTRIBUTING.md</a>.
-            A direct PR is usually faster than an issue.
+            Direct PRs are usually faster than issues.
           </p>
         </details>
         <details>
-          <summary>Why a bot, not direct write access?</summary>
+          <summary>Why a bot review, not direct write access?</summary>
           <p>
-            Same gate as awesome-lists: a maintainer review on every entry keeps quality high and the
-            registry trustworthy for downstream agents. The bot just removes the typing.
+            Same gate as awesome-lists: a maintainer review on every entry keeps quality high and
+            the registry trustworthy for downstream agents. The bot just removes the typing &mdash; it
+            doesn&rsquo;t skip review. Verified publishers (allowlisted maintainers) skip the review for
+            registry-only PRs.
+          </p>
+        </details>
+        <details>
+          <summary>What rights am I granting by submitting?</summary>
+          <p>
+            By submitting an entry you accept the
+            <a href="https://github.com/looptech-ai/understand-quickly/blob/main/DATA-LICENSE.md" rel="noopener" target="_blank">Data License 1.0</a>:
+            anyone can use the registry (including for AI training); LoopTech.AI and Alex
+            Macdonald-Smith get a perpetual, sublicensable right to use submitted data; that grant
+            travels with any fork. Don&rsquo;t submit content you don&rsquo;t have rights to share.
           </p>
         </details>
       </section>
@@ -210,11 +252,15 @@
   </div>
 
   <footer class="site-footer" role="contentinfo">
-    <span>MIT</span>
+    <a href="https://github.com/looptech-ai/understand-quickly/blob/main/LICENSE" rel="noopener">Apache 2.0</a>
+    <span>·</span>
+    <a href="https://github.com/looptech-ai/understand-quickly/blob/main/DATA-LICENSE.md" rel="noopener">Data License 1.0</a>
     <span>·</span>
     <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">source</a>
     <span>·</span>
-    <a href="./schemas/">spec</a>
+    <a href="./schemas/meta.schema.json" rel="noopener">spec</a>
+    <span>·</span>
+    <a href="https://github.com/looptech-ai/understand-quickly/blob/main/docs/faq.md" rel="noopener">FAQ</a>
   </footer>
 
   <script type="module" src="./add.js?v=20260507h"></script>

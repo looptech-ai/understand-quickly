@@ -1,0 +1,60 @@
+name: CodeQL
+
+# GitHub-native security analysis. Runs on push to main, on PRs that touch
+# scanned source, and weekly to catch advisories published after merge.
+#
+# Languages covered: JavaScript/TypeScript (scripts/, mcp/, cli/, site/).
+# We do not scan vendored third-party assets under site/vendor/.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - "mcp/src/**"
+      - "cli/**"
+      - "site/**"
+      - ".github/workflows/codeql.yml"
+  schedule:
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["javascript-typescript"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+          config: |
+            paths-ignore:
+              - site/vendor/**
+              - "**/node_modules/**"
+              - "**/dist/**"
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

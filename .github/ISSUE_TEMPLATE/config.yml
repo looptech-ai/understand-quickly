@@ -3,6 +3,15 @@ contact_links:
   - name: Browse the registry
     url: https://looptech-ai.github.io/understand-quickly/
     about: See what's already indexed before opening a new issue.
-  - name: Add your repo (preferred path)
-    url: https://github.com/looptech-ai/understand-quickly/blob/main/CONTRIBUTING.md
-    about: A PR is faster than an issue for most additions.
+  - name: Add your repo via the wizard
+    url: https://looptech-ai.github.io/understand-quickly/add.html
+    about: Fill four fields; the bot opens the PR. Same as the issue form, with auto-suggest.
+  - name: Read the FAQ
+    url: https://github.com/looptech-ai/understand-quickly/blob/main/docs/faq.md
+    about: Plain-language answers to "What is this?" and "Should I add my repo?".
+  - name: Discussions
+    url: https://github.com/looptech-ai/understand-quickly/discussions
+    about: Open a question or share what you're building.
+  - name: Security report
+    url: https://github.com/looptech-ai/understand-quickly/security/advisories/new
+    about: Privately report a security issue.

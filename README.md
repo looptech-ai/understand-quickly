@@ -15,9 +15,23 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 [![issues](https://img.shields.io/github/issues/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/issues)
 [![last commit](https://img.shields.io/github/last-commit/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/commits/main)
 
-[**Browse →**](https://looptech-ai.github.io/understand-quickly/) · [**Add your repo (wizard)**](https://looptech-ai.github.io/understand-quickly/add.html) · [**Quickstart**](#quickstart) · [**Contributing**](CONTRIBUTING.md)
+[**Browse →**](https://looptech-ai.github.io/understand-quickly/) · [**Add your repo (wizard)**](https://looptech-ai.github.io/understand-quickly/add.html) · [**Quickstart**](#quickstart) · [**FAQ (plain English)**](docs/faq.md) · [**Contributing**](CONTRIBUTING.md)
 
 </div>
+
+---
+
+## New here? Read this first 👋
+
+**It's a public directory of "map files" for codebases.** Each entry points at a JSON file (a *knowledge graph* or *context bundle*) that describes a project's structure — files, functions, modules, how they connect — in a shape that AI tools can read in one network request.
+
+If you're a **project maintainer**, you can add your repo so AI assistants can understand it instantly. If you're an **AI agent or tooling developer**, you can fetch any indexed graph by URL with no auth and no SDK.
+
+- **No code required to be listed.** Use the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) — fill four fields, the bot opens the PR.
+- **No infrastructure, no costs.** Graphs stay in your repo; we only store pointers.
+- **Open and public.** Apache 2.0 code; permissive [Data License](DATA-LICENSE.md) for the registry.
+
+> First time? The [FAQ](docs/faq.md) answers "what is a knowledge graph?", "do I need this?", and "what happens after I submit?" in plain language.
 
 ---
 
@@ -145,16 +159,19 @@ Drop [`docs/publish-template.yml`](docs/publish-template.yml) into your repo as 
 
 ## Status legend
 
-| Emoji | Status | Meaning |
-| :---: | --- | --- |
-| 🆕 | `pending` | registered but not yet synced |
-| ✅ | `ok` | fetched, validated, current |
-| 🟡 | `missing` | 404 in last sync (will retry) |
-| ⚠️ | `invalid` | body failed schema validation |
-| 📦 | `oversize` | graph > 50 MB; not fetched |
-| 🔁 | `transient_error` | network / 5xx; retried |
-| 💀 | `dead` | 7+ consecutive misses |
-| ↪️ | `renamed` | superseded by `renamed_to` |
+Each entry's `status` field tells consumers whether the linked graph is currently usable.
+
+| Emoji | Status | Meaning | What to do |
+| :---: | --- | --- | --- |
+| 🆕 | `pending` | Registered but the registry hasn't synced it yet. | Wait for the next sync (≤24h, or fire `repository_dispatch` for instant). |
+| ✅ | `ok` | Fetched, validated, current. | Use it. |
+| 🟡 | `missing` | 404 in the last sync. Will keep retrying. | Verify the file exists at the registered URL on the default branch. |
+| ⚠️ | `invalid` | Body failed schema validation. | Run `npm run validate` locally; fix the field that fails. |
+| 📦 | `oversize` | Graph exceeds 50 MB; not fetched. | Slim the graph or split it. |
+| 🔁 | `transient_error` | Network or 5xx; will retry next sync. | Usually nothing — wait one cycle. |
+| 💀 | `dead` | 7+ consecutive misses. | Re-publish or open an issue to remove the entry. |
+| ↪️ | `renamed` | Superseded by `renamed_to`. | Update tooling to point at the new id. |
+| 🚫 | `revoked` | Maintainer-retracted. | Don't consume; contact maintainers if unexpected. |
 
 ## Development
 

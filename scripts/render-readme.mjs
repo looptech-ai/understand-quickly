@@ -8,6 +8,7 @@ const STATUS_EMOJI = {
   transient_error: '🔁',
   dead: '💀',
   renamed: '↪️',
+  revoked: '🚫',
   pending: '🆕'
 };
 
