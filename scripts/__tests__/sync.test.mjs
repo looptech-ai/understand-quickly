@@ -590,7 +590,7 @@ test('cap: > 100k nodes → oversize, last_error "too many nodes"', async () => 
 });
 
 test('cap: > 500k edges → oversize, last_error "too many edges"', async () => {
-  const edges = Array.from({ length: 500_001 }, (_, i) => ({ from: 'a', to: 'b', kind: 'calls' }));
+  const edges = Array.from({ length: 500_001 }, () => ({ from: 'a', to: 'b', kind: 'calls' }));
   const body = JSON.stringify({ nodes: [{ id: 'a', kind: 'file', label: 'x' }, { id: 'b', kind: 'file', label: 'y' }], edges });
   const f = makeFetch({
     'https://example.com/g.json': () => new Response(body, { status: 200 })
