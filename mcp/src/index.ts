@@ -6,6 +6,7 @@ import { z } from "zod";
 import { listRepos } from "./tools/list-repos.js";
 import { getGraph } from "./tools/get-graph.js";
 import { searchConcepts } from "./tools/search-concepts.js";
+import { findGraphForRepo } from "./tools/find-graph-for-repo.js";
 
 const server = new McpServer(
   {
@@ -94,18 +95,57 @@ server.registerTool(
   "search_concepts",
   {
     description:
-      "Substring-search node label/name/id fields. If `id` is given, search just that graph; otherwise scan up to the first 5 status:ok entries.",
+      "Search aggregated concept terms across the registry. By default reads the precomputed stats.json (single GET, cached 60s) and returns matching terms with sample entry ids. If `id` is given, falls back to a single-graph node search. If stats.json is unavailable, falls back to a capped cross-graph node fan-out.",
     inputSchema: {
       query: z.string().min(1).describe("Substring to search for (case-insensitive)."),
       id: z
         .string()
         .optional()
-        .describe("Optional entry id to scope the search to a single graph."),
+        .describe(
+          "Optional entry id. If given, scopes the search to that single graph (legacy node-level mode).",
+        ),
     },
   },
   async ({ query, id }) => {
     try {
       const result = await searchConcepts({ query, id });
+      return jsonContent(result);
+    } catch (err) {
+      return errorContent(err);
+    }
+  },
+);
+
+server.registerTool(
+  "find_graph_for_repo",
+  {
+    description:
+      "Look up a registry entry by `id` (\"owner/repo\") or `github_url` (https or ssh form, with optional .git/branch/path). Returns graph_url + drift metadata, or {found:false, suggestions} with up to 5 fuzzy-matched ids.",
+    inputSchema: {
+      id: z
+        .string()
+        .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, {
+          message: "id must be \"owner/repo\".",
+        })
+        .optional()
+        .describe("Registry id, e.g. \"Lum1104/Understand-Anything\"."),
+      github_url: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          "GitHub URL (https or ssh form). Trailing .git, branches, and sub-paths are tolerated.",
+        ),
+    },
+  },
+  async ({ id, github_url }) => {
+    try {
+      if (!id && !github_url) {
+        return errorContent(
+          new Error("Provide at least one of `id` or `github_url`."),
+        );
+      }
+      const result = await findGraphForRepo({ id, github_url });
       return jsonContent(result);
     } catch (err) {
       return errorContent(err);

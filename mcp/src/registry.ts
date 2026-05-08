@@ -2,10 +2,13 @@ import type {
   FetchImpl,
   Registry,
   RegistryEntry,
+  StatsJson,
 } from "./types.js";
 
 export const DEFAULT_REGISTRY_URL =
   "https://looptech-ai.github.io/understand-quickly/registry.json";
+export const DEFAULT_STATS_URL =
+  "https://looptech-ai.github.io/understand-quickly/stats.json";
 export const DEFAULT_TTL_MS = 60_000;
 
 interface CacheRecord {
@@ -13,9 +16,15 @@ interface CacheRecord {
   registry: Registry;
 }
 
+interface StatsCacheRecord {
+  fetchedAt: number;
+  stats: StatsJson;
+}
+
 // Module-level cache keyed by source URL. Each MCP process gets its own cache;
 // that is fine for a stub server because the registry is small.
 const cache = new Map<string, CacheRecord>();
+const statsCache = new Map<string, StatsCacheRecord>();
 
 export interface LoadRegistryOptions {
   source?: string;
@@ -76,6 +85,66 @@ export function clearCache(cacheKey?: string): void {
   cache.delete(cacheKey);
 }
 
+export interface LoadStatsOptions {
+  source?: string;
+  fetchImpl?: FetchImpl;
+  cacheKey?: string;
+  ttlMs?: number;
+  now?: () => number;
+}
+
+/**
+ * Load `stats.json` with the same TTL caching pattern as `loadRegistry`.
+ *
+ * Validates the minimum shape (schema_version + concepts array). Throws on
+ * non-OK HTTP, malformed body, or missing concepts; callers that want a
+ * fallback path should catch.
+ */
+export async function loadStats(
+  options: LoadStatsOptions = {},
+): Promise<StatsJson> {
+  const source = options.source ?? DEFAULT_STATS_URL;
+  const fetchImpl = options.fetchImpl ?? (globalThis.fetch as unknown as FetchImpl);
+  const cacheKey = options.cacheKey ?? source;
+  const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
+  const now = options.now ?? Date.now;
+
+  if (!fetchImpl) {
+    throw new Error(
+      "No fetch implementation available. Pass `fetchImpl` or run on Node 20+.",
+    );
+  }
+
+  const cached = statsCache.get(cacheKey);
+  if (cached && now() - cached.fetchedAt < ttlMs) {
+    return cached.stats;
+  }
+
+  const response = await fetchImpl(source);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch stats from ${source}: ${response.status} ${response.statusText}`,
+    );
+  }
+  const body = (await response.json()) as StatsJson;
+  if (!body || !Array.isArray(body.concepts)) {
+    throw new Error(
+      `Stats at ${source} is malformed: missing \`concepts\` array`,
+    );
+  }
+  statsCache.set(cacheKey, { fetchedAt: now(), stats: body });
+  return body;
+}
+
+/** Drop the cached stats payload (default: every key). */
+export function clearStatsCache(cacheKey?: string): void {
+  if (cacheKey === undefined) {
+    statsCache.clear();
+    return;
+  }
+  statsCache.delete(cacheKey);
+}
+
 /**
  * Filter entries with a predicate. Trivial wrapper, but exported so the tool
  * layer composes via a single named function rather than ad-hoc `.filter`s.
@@ -90,6 +159,11 @@ export function filterEntries(
 /** Resolve the registry URL from env, falling back to the public default. */
 export function resolveRegistrySource(): string {
   return process.env.UNDERSTAND_QUICKLY_REGISTRY ?? DEFAULT_REGISTRY_URL;
+}
+
+/** Resolve the stats URL from env, falling back to the public default. */
+export function resolveStatsSource(): string {
+  return process.env.UNDERSTAND_QUICKLY_STATS ?? DEFAULT_STATS_URL;
 }
 
 /**

@@ -22,7 +22,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "tsx --test tests/registry.test.ts"
+    "test": "tsx --test tests/registry.test.ts tests/tools.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

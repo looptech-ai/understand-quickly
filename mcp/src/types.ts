@@ -16,6 +16,9 @@ export interface RegistryEntry {
   tags?: string[];
   last_sha?: string;
   last_synced?: string;
+  source_sha?: string;
+  head_sha?: string;
+  commits_behind?: number;
   // Forward-compat: any additional fields we have not modelled yet.
   [key: string]: unknown;
 }
@@ -59,6 +62,29 @@ export interface SearchHit {
   name?: string;
   matched_field: "id" | "label" | "name";
   matched_value: string;
+}
+
+export interface FindGraphForRepoParams {
+  id?: string;
+  github_url?: string;
+}
+
+// Shape of `stats.json` produced by scripts/aggregate.mjs. Only the fields the
+// MCP server consumes are typed; other fields are kept as `unknown`.
+export interface StatsConcept {
+  term: string;
+  entries: number;
+  samples: string[];
+}
+
+export interface StatsJson {
+  schema_version: number;
+  generated_at: string;
+  totals?: { entries: number; nodes: number; edges: number };
+  kinds?: unknown[];
+  languages?: unknown[];
+  concepts: StatsConcept[];
+  [key: string]: unknown;
 }
 
 // `fetch` and `Response` are global in Node 20+, but we keep a narrow alias
