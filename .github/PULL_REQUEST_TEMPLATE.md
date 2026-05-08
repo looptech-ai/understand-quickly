@@ -17,7 +17,7 @@
 - [ ] `npm test` is green locally.
 - [ ] `npm run validate` is green (or the PR explains why a `graph_url` 404s in CI).
 - [ ] No third-party CDN added without a pinned version + integrity hash where possible.
-- [ ] No backend / always-on LLM dependency introduced — the registry stays a static-pointer service (see [How it works](../blob/main/README.md#how-it-works)).
+- [ ] No backend / always-on LLM dependency introduced — the registry stays a static-pointer service (see [How it works](../README.md#how-it-works)).
 - [ ] First-time contributor? Include a `Signed-off-by:` line per [DCO](https://developercertificate.org/), or note in the PR that you'd like help adding one.
 
 ## For non-technical contributors 👋

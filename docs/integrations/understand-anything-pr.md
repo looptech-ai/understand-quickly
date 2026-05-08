@@ -52,6 +52,8 @@ A drop-in workflow snippet lives at [`docs/integrations/sample-publish-workflow.
 - The registry is in early adoption; this integration is opt-in for early users. If you'd rather wait until adoption grows before merging, that's fine — users can still register manually via the wizard or CLI today.
 - Once Understand-Anything has shipped this flag and a few users land in the registry, we can add `Lum1104/Understand-Anything` to the [verified-publisher allowlist](https://github.com/looptech-ai/understand-quickly/blob/main/docs/verified-publishers.md), which auto-merges registry-only PRs from the integration.
 
+- **What this means licensing-wise for your users.** Submitting via `--publish` is governed by the [Understand-Quickly Data License 1.0](https://github.com/looptech-ai/understand-quickly/blob/main/DATA-LICENSE.md) — see [protocol §10](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/protocol.md#10-licensing-of-submitted-data). It is opt-in, gated on the user setting `UNDERSTAND_QUICKLY_TOKEN`; consider mirroring this paragraph in your own `--publish` documentation so users know what they are consenting to.
+
 ## Links
 
 - Registry: <https://github.com/looptech-ai/understand-quickly>

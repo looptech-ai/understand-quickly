@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import type {
   FetchImpl,
   Registry,
@@ -224,24 +225,31 @@ export function assertSafeFetchUrl(rawUrl: string): URL {
     throw new Error(`Refusing internal host: ${host}`);
   }
   // Block IPv4 literals in private/link-local/loopback ranges.
-  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-  if (ipv4) {
-    const [a, b] = ipv4.slice(1).map(Number);
-    if (
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) || // link-local incl. AWS/GCP metadata 169.254.169.254
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      a === 0
-    ) {
-      throw new Error(`Refusing private IPv4 host: ${host}`);
+  const ipKind = isIP(host);
+  if (ipKind === 4) {
+    const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+    if (ipv4) {
+      const [a, b] = ipv4.slice(1).map(Number);
+      if (
+        a === 10 ||
+        a === 127 ||
+        (a === 169 && b === 254) || // link-local incl. AWS/GCP metadata 169.254.169.254
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && b === 168) ||
+        a === 0
+      ) {
+        throw new Error(`Refusing private IPv4 host: ${host}`);
+      }
     }
-  }
-  // Block IPv6 unique-local (fc00::/7) and link-local (fe80::/10) literals.
-  if (host.startsWith("[")) {
-    const inner = host.slice(1, -1);
-    if (/^f[cd]/i.test(inner) || /^fe[89ab]/i.test(inner)) {
+  } else if (ipKind === 6) {
+    // URL.hostname strips the brackets from IPv6 literals (e.g. `fc00::1`,
+    // not `[fc00::1]`), so a startsWith("[") check would never fire. Match
+    // against the normalized address prefix directly.
+    // - fc00::/7 (unique-local) → first hex digit 'f' + second 'c' or 'd'
+    // - fe80::/10 (link-local) → first hex digit 'f' + second 'e' + third 8|9|a|b
+    // - ::1 loopback (caught earlier by literal hostname check)
+    // - ::ffff:0:0/96 IPv4-mapped → defer to Node which will resolve via dual-stack
+    if (/^f[cd]/i.test(host) || /^fe[89ab]/i.test(host)) {
       throw new Error(`Refusing private IPv6 host: ${host}`);
     }
   }

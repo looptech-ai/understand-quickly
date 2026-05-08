@@ -381,8 +381,13 @@ async function main() {
   // of how `registry.entries.map` happens to interleave originals and updates.
   // The sort is idempotent — registries that are already sorted produce no
   // diff. Pinning the order also makes adversarial reordering attacks visible.
+  //
+  // O(n) merge via a Map of updated entries by id; the previous version did an
+  // updated.find() per original entry, which was O(n²) and got noticeable past
+  // a few hundred entries.
+  const updatedById = new Map(updated.map(u => [u.id, u]));
   const mergedEntries = registry.entries
-    .map(orig => updated.find(u => u.id === orig.id) || orig)
+    .map(orig => updatedById.get(orig.id) || orig)
     .sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
   const next = {

@@ -14,6 +14,7 @@
 // network access.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { Buffer } from 'node:buffer';
 import { dirname, basename, resolve } from 'node:path';
 import { loadRegistry } from './shard.mjs';
 
@@ -141,7 +142,10 @@ async function fetchBody(entry, fetchImpl) {
     // them oversize on the next run.
     if (Number.isFinite(len) && len > MAX_BODY_BYTES) return null;
     const text = await res.text();
-    if (text.length > MAX_BODY_BYTES) return null;
+    // Compare bytes, not UTF-16 code units. A non-ASCII body would otherwise
+    // slip past `text.length` and only fail at JSON.parse with a much larger
+    // memory footprint than the cap intends to enforce.
+    if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) return null;
     return JSON.parse(text);
   } catch {
     return null;

@@ -171,3 +171,14 @@ The registry sync workflow tolerates producer-side faults. For each entry, the p
 Drift fields (`source_sha`, `head_sha`, `commits_behind`, `drift_checked_at`) are populated only when the producer embeds a commit sha in graph metadata. If `commits_behind > 0`, the graph is stale relative to the source repo's default branch — agents may want to surface this to the user. If the producer omits the sha entirely, drift values stay `null` and the registry skips the check silently.
 
 To debug a single entry without waiting for the nightly sync, fire the dispatch in §4 with the entry id; the workflow logs the per-entry result publicly under [Actions → sync](https://github.com/looptech-ai/understand-quickly/actions/workflows/sync.yml).
+
+## 10. Licensing of submitted data
+
+When a Producer ships a `--publish` flag, they are arranging for their users' graphs and bundles to be ingested by the registry. Each ingestion is governed by [`DATA-LICENSE.md`](../../DATA-LICENSE.md) — the **Understand-Quickly Data License 1.0**. In short:
+
+- **What Users get.** Anyone may download, redistribute, and use Registry Data — including for AI/ML training, indexing, and commercial products. Users get this grant directly from the Licensor; the rights travel with any fork or extension of the Registry.
+- **What Producers grant on submission (§4).** When a Producer's `--publish` flag fires `repository_dispatch`, the producer warrants that the submitter has the right to publish the linked graph/bundle, and grants the Registry's beneficiaries (Alex Macdonald-Smith and LoopTech.AI) the right to fetch, cache, redistribute, aggregate, and train on the linked artifact and its metadata. The same rights extend to all Users.
+- **What Forkers grant (§3).** Anyone hosting a fork or extension of the Registry passes the same back-grant upstream to the beneficiaries.
+- **What Producers should communicate to their own users.** A one-paragraph note in the `--publish` documentation pointing at this protocol and `DATA-LICENSE.md` is sufficient. The submission is opt-in (gated on the flag and a token), so users are never surprised. If your users' content is on a license that conflicts with §2 of `DATA-LICENSE.md`, the producer-side docs SHOULD recommend they not enable `--publish` for those repos.
+
+Producers integrating today don't need to do anything extra beyond the §4 dispatch — the grant attaches automatically at the moment of submission. The relevant point for upstream review is that **enabling `--publish` is a deliberate, user-facing act** with documented downstream effects, not an invisible default.

@@ -61,6 +61,8 @@ A drop-in workflow snippet lives at [`docs/integrations/sample-publish-workflow.
 - This is opt-in for early adopters; nothing in Graphify's existing API surface needs to break.
 - Once Graphify has shipped this and a few users land in the registry, we can add `safishamsi/graphify` to the [verified-publisher allowlist](https://github.com/looptech-ai/understand-quickly/blob/main/docs/verified-publishers.md) for auto-merge of registry updates from the integration.
 
+- **What this means licensing-wise for your users.** Submitting via `--publish` is governed by the [Understand-Quickly Data License 1.0](https://github.com/looptech-ai/understand-quickly/blob/main/DATA-LICENSE.md) — see [protocol §10](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/protocol.md#10-licensing-of-submitted-data). It is opt-in, gated on the user setting `UNDERSTAND_QUICKLY_TOKEN`; consider mirroring this paragraph in your own `--publish` documentation so users know what they are consenting to.
+
 ## Links
 
 - Registry: <https://github.com/looptech-ai/understand-quickly>

@@ -1777,6 +1777,13 @@ function applyDeeplinkToViewer(viewer, dl) {
 // ---------- wiring ----------
 
 function bindToolbar() {
+  const form = document.getElementById('toolbar');
+  if (form) {
+    // Prevent the default form submit (which would reload the page when a
+    // user presses Enter). The previous inline onsubmit attribute conflicts
+    // with the strict CSP and so was moved here.
+    form.addEventListener('submit', (ev) => ev.preventDefault());
+  }
   const q = document.getElementById('q');
   q.addEventListener('input', () => {
     state.q = q.value;
