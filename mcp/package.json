@@ -4,7 +4,10 @@
   "private": true,
   "description": "Thin MCP server exposing the understand-quickly registry as MCP tools.",
   "author": "Alex Macdonald-Smith <Alex.Mac@LoopTech.AI>",
-  "license": "MIT",
+  "contributors": [
+    "LoopTech.AI <https://looptech.ai>"
+  ],
+  "license": "Apache-2.0 AND LicenseRef-Understand-Quickly-Data-License-1.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/looptech-ai/understand-quickly.git",

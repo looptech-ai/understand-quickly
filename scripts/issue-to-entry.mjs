@@ -35,20 +35,41 @@ const FIELD_LABELS = {
 
 const REQUIRED_FIELDS = ['id', 'format', 'graph_url', 'description'];
 
+// Maximum body size we'll parse. GitHub limits issue bodies to 65536 chars but
+// fork PR webhooks can carry larger payloads. Enforce a hard cap so a
+// pathologically-large body can't induce a slowdown anywhere downstream.
+const MAX_ISSUE_BODY_CHARS = 200_000;
+
 // Split a GitHub form body into a `{ label: rawValue }` map. Robust to CRLF,
 // extra blank lines, and trailing whitespace.
+//
+// Implementation note: the prior version used a single multiline regex with a
+// lazy quantifier and a lookahead. That pattern is technically vulnerable to
+// catastrophic backtracking on adversarial inputs (e.g., a body of 100k `#`
+// characters). Splitting on `\n###` line boundaries is O(n) and not subject
+// to the same pathology.
 function splitSections(body) {
-  const normalized = String(body || '').replace(/\r\n?/g, '\n');
+  let normalized = String(body || '').replace(/\r\n?/g, '\n');
+  if (normalized.length > MAX_ISSUE_BODY_CHARS) {
+    normalized = normalized.slice(0, MAX_ISSUE_BODY_CHARS);
+  }
   const sections = {};
 
-  // Match `### <label>` headers and capture everything up to the next `### `
-  // (or end of string).
-  const re = /^###[ \t]+(.+?)[ \t]*\r?\n([\s\S]*?)(?=^###[ \t]+|$(?![\r\n]))/gm;
-  let m;
-  while ((m = re.exec(normalized)) !== null) {
-    const label = m[1].trim();
-    const value = m[2].replace(/^\n+/, '').replace(/\n+$/, '').trim();
-    sections[label] = value;
+  // Use a sentinel split so the very first `###` (no leading newline) still
+  // counts. After splitting, even-indexed elements are content before the
+  // first header (discarded); after that, pairs of [label, content] follow.
+  const parts = ('\n' + normalized).split(/\n###[ \t]+/);
+  // parts[0] is anything before the first header — discard.
+  for (let i = 1; i < parts.length; i++) {
+    const chunk = parts[i];
+    // Header line is everything up to the first newline; the rest is content.
+    const nl = chunk.indexOf('\n');
+    const label = (nl < 0 ? chunk : chunk.slice(0, nl)).trim();
+    const value = (nl < 0 ? '' : chunk.slice(nl + 1))
+      .replace(/^\n+/, '')
+      .replace(/\n+$/, '')
+      .trim();
+    if (label) sections[label] = value;
   }
   return sections;
 }

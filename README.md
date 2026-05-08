@@ -9,7 +9,8 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 [![sync](https://github.com/looptech-ai/understand-quickly/actions/workflows/sync.yml/badge.svg)](https://github.com/looptech-ai/understand-quickly/actions/workflows/sync.yml)
 [![pages](https://github.com/looptech-ai/understand-quickly/actions/workflows/pages.yml/badge.svg)](https://looptech-ai.github.io/understand-quickly/)
 [![release](https://img.shields.io/github/v/release/looptech-ai/understand-quickly?label=release&sort=semver)](https://github.com/looptech-ai/understand-quickly/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Data License](https://img.shields.io/badge/Data%20License-UQ--Data%201.0-orange.svg)](DATA-LICENSE.md)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![issues](https://img.shields.io/github/issues/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/issues)
 [![last commit](https://img.shields.io/github/last-commit/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/commits/main)
@@ -174,4 +175,6 @@ npm run render     # regenerate README table
 
 ## License
 
-MIT © 2026 Alex Macdonald-Smith. See [LICENSE](LICENSE).
+- **Code** — [Apache License 2.0](LICENSE) © 2026 Alex Macdonald-Smith and LoopTech.AI. Includes a patent grant and contributor terms.
+- **Registry data** — [Understand-Quickly Data License 1.0](DATA-LICENSE.md). Anyone can use the registry, including for AI/ML training; in exchange, contributions and submissions grant Alex Macdonald-Smith and LoopTech.AI a perpetual, sublicensable data-use right that travels with any fork or extension. See [`DATA-LICENSE.md`](DATA-LICENSE.md) for the full terms.
+- **NOTICE** file: [`NOTICE`](NOTICE).

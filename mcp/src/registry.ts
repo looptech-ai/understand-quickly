@@ -62,6 +62,9 @@ export async function loadRegistry(
 
   const response = await fetchImpl(source);
   if (!response.ok) {
+    // 5xx is transient; if we have a stale cache entry, prefer it over a hard
+    // throw so an upstream Pages outage doesn't take down every MCP client.
+    if (response.status >= 500 && cached) return cached.registry;
     throw new Error(
       `Failed to fetch registry from ${source}: ${response.status} ${response.statusText}`,
     );
@@ -70,6 +73,16 @@ export async function loadRegistry(
   if (!body || !Array.isArray(body.entries)) {
     throw new Error(
       `Registry at ${source} is malformed: missing \`entries\` array`,
+    );
+  }
+  // Guard against silently consuming a future v2 registry with v1-shaped
+  // tools. The registry's meta.schema.json pins schema_version to const 1; an
+  // older MCP build hitting a newer registry should fail loudly so users know
+  // to upgrade rather than getting half-broken responses.
+  const sv = (body as { schema_version?: unknown }).schema_version;
+  if (sv !== undefined && sv !== 1) {
+    throw new Error(
+      `Registry at ${source} reports schema_version=${String(sv)}; this MCP build supports schema_version=1. Upgrade @understand-quickly/mcp.`,
     );
   }
   cache.set(cacheKey, { fetchedAt: now(), registry: body });
@@ -176,11 +189,71 @@ export function findEntryById(
   return registry.entries.find((entry) => entry.id === id);
 }
 
+// SSRF guard: reject URLs that resolve to private / link-local / loopback /
+// metadata addresses, or that use a non-https scheme. The registry's own
+// schemas pin graph_url to https; this is defence-in-depth for the MCP path,
+// where a malicious registry mirror or a misconfigured URL could otherwise
+// trick this process into fetching cloud-metadata endpoints.
+//
+// Note: this checks the literal hostname, not a resolved IP. Full DNS-rebind
+// protection requires a custom dispatcher; for v0.1 we accept that gap and
+// rely on the surrounding HTTPS-only invariant (TLS makes rebinding harder
+// since the cert must match the literal hostname).
+export function assertSafeFetchUrl(rawUrl: string): URL {
+  let u: URL;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    throw new Error(`Invalid URL: ${rawUrl}`);
+  }
+  if (u.protocol !== "https:") {
+    throw new Error(`Refusing non-https URL: ${rawUrl}`);
+  }
+  const host = u.hostname.toLowerCase();
+  // Block obvious local / metadata targets by literal hostname.
+  if (
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    host === "metadata.google.internal" ||
+    host === "metadata" ||
+    host.endsWith(".internal") ||
+    host.endsWith(".local")
+  ) {
+    throw new Error(`Refusing internal host: ${host}`);
+  }
+  // Block IPv4 literals in private/link-local/loopback ranges.
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ipv4) {
+    const [a, b] = ipv4.slice(1).map(Number);
+    if (
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) || // link-local incl. AWS/GCP metadata 169.254.169.254
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      a === 0
+    ) {
+      throw new Error(`Refusing private IPv4 host: ${host}`);
+    }
+  }
+  // Block IPv6 unique-local (fc00::/7) and link-local (fe80::/10) literals.
+  if (host.startsWith("[")) {
+    const inner = host.slice(1, -1);
+    if (/^f[cd]/i.test(inner) || /^fe[89ab]/i.test(inner)) {
+      throw new Error(`Refusing private IPv6 host: ${host}`);
+    }
+  }
+  return u;
+}
+
 /** Fetch and parse a single graph URL. Used by `get_graph` and `search_concepts`. */
 export async function fetchGraph(
   graphUrl: string,
   fetchImpl: FetchImpl = globalThis.fetch as unknown as FetchImpl,
 ): Promise<unknown> {
+  assertSafeFetchUrl(graphUrl);
   const response = await fetchImpl(graphUrl);
   if (!response.ok) {
     throw new Error(
