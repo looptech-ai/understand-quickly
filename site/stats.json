@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-08T04:04:53.525Z",
+  "totals": {
+    "entries": 3,
+    "nodes": 25,
+    "edges": 31
+  },
+  "kinds": [
+    {
+      "kind": "function",
+      "count": 7,
+      "entries": 2
+    },
+    {
+      "kind": "file",
+      "count": 6,
+      "entries": 3
+    },
+    {
+      "kind": "concept",
+      "count": 2,
+      "entries": 1
+    },
+    {
+      "kind": "interface",
+      "count": 2,
+      "entries": 1
+    },
+    {
+      "kind": "type",
+      "count": 2,
+      "entries": 1
+    },
+    {
+      "kind": "class",
+      "count": 1,
+      "entries": 1
+    },
+    {
+      "kind": "community",
+      "count": 1,
+      "entries": 1
+    },
+    {
+      "kind": "module",
+      "count": 1,
+      "entries": 1
+    },
+    {
+      "kind": "package",
+      "count": 1,
+      "entries": 1
+    },
+    {
+      "kind": "project",
+      "count": 1,
+      "entries": 1
+    },
+    {
+      "kind": "test",
+      "count": 1,
+      "entries": 1
+    }
+  ],
+  "languages": [
+    {
+      "language": "python",
+      "entries": 1
+    },
+    {
+      "language": "typescript",
+      "entries": 1
+    }
+  ],
+  "concepts": [
+    {
+      "term": "graph",
+      "entries": 3,
+      "samples": [
+        "understand-quickly/demo-understand-anything",
+        "understand-quickly/demo-gitnexus",
+        "understand-quickly/demo-code-review-graph"
+      ]
+    }
+  ]
+}

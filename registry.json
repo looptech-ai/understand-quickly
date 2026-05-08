@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-05-07T09:04:16.558Z",
+  "generated_at": "2026-05-08T04:04:53.180Z",
   "entries": [
     {
       "id": "understand-quickly/demo-understand-anything",
@@ -17,9 +17,34 @@
       "miss_count": 0,
       "status": "ok",
       "last_error": null,
-      "last_synced": "2026-05-07T09:04:16.408Z",
+      "last_synced": "2026-05-08T04:04:52.910Z",
       "last_sha": "8076fa075a94ade41b2df7f3a8f1f6a8ace220f609ec5823be51e47ab30b418b",
-      "size_bytes": 4366
+      "size_bytes": 4366,
+      "nodes_count": 10,
+      "edges_count": 14,
+      "top_kinds": [
+        {
+          "kind": "file",
+          "count": 4
+        },
+        {
+          "kind": "function",
+          "count": 3
+        },
+        {
+          "kind": "concept",
+          "count": 2
+        },
+        {
+          "kind": "module",
+          "count": 1
+        }
+      ],
+      "languages": [],
+      "source_sha": null,
+      "head_sha": null,
+      "commits_behind": null,
+      "drift_checked_at": "2026-05-08T04:04:52.822Z"
     },
     {
       "id": "understand-quickly/demo-gitnexus",
@@ -38,7 +63,42 @@
       "last_error": null,
       "last_sha": "5c9a843fa7ffda007cc4ef4fce80beb54bbdd5d8995db06b8db606980c07239a",
       "size_bytes": 8713,
-      "last_synced": "2026-05-07T09:04:16.498Z"
+      "last_synced": "2026-05-08T04:04:53.056Z",
+      "nodes_count": 8,
+      "edges_count": 10,
+      "top_kinds": [
+        {
+          "kind": "interface",
+          "count": 2
+        },
+        {
+          "kind": "type",
+          "count": 2
+        },
+        {
+          "kind": "community",
+          "count": 1
+        },
+        {
+          "kind": "file",
+          "count": 1
+        },
+        {
+          "kind": "package",
+          "count": 1
+        },
+        {
+          "kind": "project",
+          "count": 1
+        }
+      ],
+      "languages": [
+        "typescript"
+      ],
+      "source_sha": null,
+      "head_sha": null,
+      "commits_behind": null,
+      "drift_checked_at": "2026-05-08T04:04:52.982Z"
     },
     {
       "id": "understand-quickly/demo-code-review-graph",
@@ -57,7 +117,35 @@
       "last_error": null,
       "last_sha": "db43045f1341c8ba1f20c666497bc78500fad64b411ed8a8b6836e958d58fb39",
       "size_bytes": 8545,
-      "last_synced": "2026-05-07T09:04:16.558Z"
+      "last_synced": "2026-05-08T04:04:53.180Z",
+      "nodes_count": 7,
+      "edges_count": 7,
+      "top_kinds": [
+        {
+          "kind": "function",
+          "count": 4
+        },
+        {
+          "kind": "class",
+          "count": 1
+        },
+        {
+          "kind": "file",
+          "count": 1
+        },
+        {
+          "kind": "test",
+          "count": 1
+        }
+      ],
+      "languages": [
+        "python"
+      ],
+      "source_sha": null,
+      "head_sha": null,
+      "commits_behind": null,
+      "drift_checked_at": "2026-05-08T04:04:53.117Z"
     }
-  ]
+  ],
+  "last_drift_index": 0
 }
