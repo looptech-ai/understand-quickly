@@ -167,7 +167,7 @@ npm run render     # regenerate README table
 
 ## Contributing
 
-[`CONTRIBUTING.md`](CONTRIBUTING.md) walks through every contribution flow. Trusted authors can land registry-only PRs without review — see [`docs/verified-publishers.md`](docs/verified-publishers.md). By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: [`SECURITY.md`](SECURITY.md).
+[`CONTRIBUTING.md`](CONTRIBUTING.md) walks through every contribution flow. Trusted authors can land registry-only PRs without review — see [`docs/verified-publishers.md`](docs/verified-publishers.md). By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: [`SECURITY.md`](SECURITY.md). Security model: see [threat-model](docs/threat-model.md).
 
 ## License
 

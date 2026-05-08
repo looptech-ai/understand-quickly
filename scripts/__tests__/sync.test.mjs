@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { syncEntry } from '../sync.mjs';
+import { syncEntry, checkDrift, selectDriftBatch } from '../sync.mjs';
 import { loadRegistry, shouldShard, makeMapFs, listShardFiles } from '../shard.mjs';
 import { createHash } from 'node:crypto';
 
@@ -417,6 +417,213 @@ test('stats: extractStats returns {} for unknown formats', async () => {
   const { extractStats } = await import('../extract.mjs');
   const stats = extractStats('not-a-real-format@99', { nodes: [], edges: [] });
   assert.deepEqual(stats, {});
+});
+
+// ---------------------------------------------------------------------------
+// Goal 1: source_sha sniffing + drift detection.
+// ---------------------------------------------------------------------------
+
+const SHA_A = 'a'.repeat(40);
+const SHA_B = 'b'.repeat(40);
+
+test('drift: happy path sets head_sha + commits_behind, leaves status ok', async () => {
+  // Body that includes a valid 40-hex source sha in the documented location
+  // for understand-anything@1 (metadata.source_sha).
+  const body = JSON.stringify({
+    nodes: [{ id: 'n1', kind: 'file', label: 'a' }],
+    edges: [],
+    metadata: { source_sha: SHA_A }
+  });
+  const f = async (url) => {
+    if (url === 'https://example.com/g.json') return new Response(body, { status: 200 });
+    if (url.includes('/commits/main')) {
+      return new Response(JSON.stringify({ sha: SHA_B }), { status: 200 });
+    }
+    if (url.includes('/compare/')) {
+      return new Response(JSON.stringify({ behind_by: 7, ahead_by: 0 }), { status: 200 });
+    }
+    throw new Error(`unexpected url ${url}`);
+  };
+  const r = await syncEntry({ ...baseEntry }, {
+    fetchImpl: f,
+    now: () => new Date('2026-05-07T01:00:00Z'),
+    driftCheck: checkDrift
+  });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.source_sha, SHA_A);
+  assert.equal(r.head_sha, SHA_B);
+  assert.equal(r.commits_behind, 7);
+  assert.equal(r.drift_checked_at, '2026-05-07T01:00:00.000Z');
+});
+
+test('drift: missing source_sha leaves head_sha + commits_behind null but stamps drift_checked_at', async () => {
+  // No metadata.source_sha → can't compare. checkDrift still resolves
+  // head_sha but commits_behind stays null and the entry remains ok.
+  const body = JSON.stringify({
+    nodes: [{ id: 'n1', kind: 'file', label: 'a' }],
+    edges: []
+  });
+  const f = async (url) => {
+    if (url === 'https://example.com/g.json') return new Response(body, { status: 200 });
+    if (url.includes('/commits/main')) {
+      return new Response(JSON.stringify({ sha: SHA_B }), { status: 200 });
+    }
+    throw new Error(`unexpected url ${url}`);
+  };
+  const r = await syncEntry({ ...baseEntry }, {
+    fetchImpl: f,
+    now: () => new Date('2026-05-07T01:00:00Z'),
+    driftCheck: checkDrift
+  });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.source_sha, null);
+  assert.equal(r.head_sha, SHA_B);
+  assert.equal(r.commits_behind, null);
+  assert.equal(r.drift_checked_at, '2026-05-07T01:00:00.000Z');
+});
+
+test('drift: GitHub rate-limit (403) leaves drift fields null, status still ok', async () => {
+  const body = JSON.stringify({
+    nodes: [{ id: 'n1', kind: 'file', label: 'a' }],
+    edges: [],
+    metadata: { source_sha: SHA_A }
+  });
+  const f = async (url) => {
+    if (url === 'https://example.com/g.json') return new Response(body, { status: 200 });
+    // Simulate the unauthenticated-API 403 you get when hitting the
+    // 60 req/hr budget.
+    return new Response(JSON.stringify({ message: 'API rate limit exceeded' }), { status: 403 });
+  };
+  const r = await syncEntry({ ...baseEntry }, {
+    fetchImpl: f,
+    now: () => new Date('2026-05-07T01:00:00Z'),
+    driftCheck: checkDrift
+  });
+  // Sync did NOT fail — drift detection is best-effort.
+  assert.equal(r.status, 'ok');
+  assert.equal(r.source_sha, SHA_A);
+  assert.equal(r.head_sha, null);
+  assert.equal(r.commits_behind, null);
+  assert.equal(r.drift_checked_at, '2026-05-07T01:00:00.000Z');
+});
+
+test('drift: source_sha already matches head → commits_behind = 0 without compare call', async () => {
+  const body = JSON.stringify({
+    nodes: [{ id: 'n1', kind: 'file', label: 'a' }],
+    edges: [],
+    metadata: { source_sha: SHA_A }
+  });
+  let compareCalls = 0;
+  const f = async (url) => {
+    if (url === 'https://example.com/g.json') return new Response(body, { status: 200 });
+    if (url.includes('/commits/main')) {
+      return new Response(JSON.stringify({ sha: SHA_A }), { status: 200 });
+    }
+    if (url.includes('/compare/')) { compareCalls++; throw new Error('should not compare'); }
+    throw new Error(`unexpected url ${url}`);
+  };
+  const r = await syncEntry({ ...baseEntry }, {
+    fetchImpl: f,
+    now: () => new Date('2026-05-07T01:00:00Z'),
+    driftCheck: checkDrift
+  });
+  assert.equal(r.head_sha, SHA_A);
+  assert.equal(r.commits_behind, 0);
+  assert.equal(compareCalls, 0);
+});
+
+test('selectDriftBatch: rotates within budget and skips revoked', () => {
+  const entries = [
+    { id: 'a/1' }, { id: 'a/2' }, { id: 'a/3', status: 'revoked' },
+    { id: 'a/4' }, { id: 'a/5' }
+  ];
+  const r = selectDriftBatch(entries, 0, 2);
+  assert.equal(r.ids.size, 2);
+  assert.ok(r.ids.has('a/1'));
+  assert.ok(r.ids.has('a/2'));
+  // nextIndex points past the last picked entry (here index 2, the revoked one).
+  // Rotation from there should pick a/4 and a/5 next run.
+  const r2 = selectDriftBatch(entries, r.nextIndex, 2);
+  assert.ok(r2.ids.has('a/4'));
+  assert.ok(r2.ids.has('a/5'));
+  // Empty + bad inputs don't throw.
+  assert.equal(selectDriftBatch([], 0, 5).ids.size, 0);
+  assert.equal(selectDriftBatch(null, 0, 5).ids.size, 0);
+});
+
+// ---------------------------------------------------------------------------
+// Goal 2: revoked status is honored as a no-op pass-through.
+// ---------------------------------------------------------------------------
+
+test('revoked: sync is a pure pass-through, no fetch + no field changes', async () => {
+  let calls = 0;
+  const f = async () => { calls++; return new Response('', { status: 200 }); };
+  const entry = {
+    ...baseEntry,
+    status: 'revoked',
+    last_sha: 'beef',
+    last_synced: '2026-01-01T00:00:00Z',
+    last_error: 'pre-existing'
+  };
+  const r = await syncEntry(entry, { fetchImpl: f, now: () => new Date('2026-05-07T01:00:00Z') });
+  assert.equal(calls, 0);
+  assert.equal(r.status, 'revoked');
+  assert.equal(r.last_sha, 'beef');
+  // last_synced is intentionally NOT bumped — revoked means frozen.
+  assert.equal(r.last_synced, '2026-01-01T00:00:00Z');
+  assert.equal(r.last_error, 'pre-existing');
+});
+
+// ---------------------------------------------------------------------------
+// Goal 3: structural body-size caps (adversarial graph defense).
+// ---------------------------------------------------------------------------
+
+test('cap: > 100k nodes → oversize, last_error "too many nodes"', async () => {
+  const nodes = Array.from({ length: 100_001 }, (_, i) => ({ id: `n${i}`, kind: 'file', label: `f${i}` }));
+  const body = JSON.stringify({ nodes, edges: [] });
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry({ ...baseEntry }, { fetchImpl: f, now: () => new Date() });
+  assert.equal(r.status, 'oversize');
+  assert.equal(r.last_error, 'too many nodes');
+});
+
+test('cap: > 500k edges → oversize, last_error "too many edges"', async () => {
+  const edges = Array.from({ length: 500_001 }, (_, i) => ({ from: 'a', to: 'b', kind: 'calls' }));
+  const body = JSON.stringify({ nodes: [{ id: 'a', kind: 'file', label: 'x' }, { id: 'b', kind: 'file', label: 'y' }], edges });
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry({ ...baseEntry }, { fetchImpl: f, now: () => new Date() });
+  assert.equal(r.status, 'oversize');
+  assert.equal(r.last_error, 'too many edges');
+});
+
+test('cap: label > 4096 chars → invalid, last_error "label too long"', async () => {
+  const body = JSON.stringify({
+    nodes: [{ id: 'n1', kind: 'file', label: 'x'.repeat(4097) }],
+    edges: []
+  });
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry({ ...baseEntry }, { fetchImpl: f, now: () => new Date() });
+  assert.equal(r.status, 'invalid');
+  assert.equal(r.last_error, 'label too long');
+});
+
+test('cap: nested depth > 32 → invalid, last_error "schema bomb"', async () => {
+  // Build a deeply-nested object: { a: { a: { a: ... } } } at depth 40.
+  let nested = 'leaf';
+  for (let i = 0; i < 40; i++) nested = { a: nested };
+  const body = JSON.stringify({ nodes: [], edges: [], extra: nested });
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry({ ...baseEntry }, { fetchImpl: f, now: () => new Date() });
+  assert.equal(r.status, 'invalid');
+  assert.equal(r.last_error, 'schema bomb');
 });
 
 test('stats: previously-stat\'d entry that now fails schema clears stats fields', async () => {

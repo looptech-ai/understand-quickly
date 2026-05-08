@@ -7,6 +7,11 @@
   "properties": {
     "schema_version": { "const": 1 },
     "generated_at": { "type": "string", "format": "date-time" },
+    "last_drift_index": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Rotating cursor into entries[] for the per-run drift-detection budget. sync.mjs processes a soft cap of entries per run starting at this index and writes back the next index so successive runs cover the whole registry."
+    },
     "entries": {
       "type": "array",
       "items": { "$ref": "#/$defs/entry" }
@@ -32,8 +37,9 @@
         "size_bytes": { "type": ["integer", "null"], "minimum": 0 },
         "status": {
           "type": "string",
-          "enum": ["ok", "missing", "invalid", "oversize", "transient_error", "dead", "renamed"],
-          "default": "ok"
+          "enum": ["ok", "missing", "invalid", "oversize", "transient_error", "dead", "renamed", "revoked"],
+          "default": "ok",
+          "description": "Lifecycle status. `revoked` is a maintainer-only state for entries that have been intentionally retracted; agents MUST NOT consume revoked entries, and sync skips fetch + leaves the entry untouched."
         },
         "last_error": { "type": ["string", "null"] },
         "miss_count": { "type": "integer", "minimum": 0, "default": 0 },
@@ -57,6 +63,26 @@
           "type": "array",
           "maxItems": 10,
           "items": { "type": "string", "minLength": 1 }
+        },
+        "source_sha": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{40}$",
+          "description": "40-hex sha of the source commit the graph was generated against. Producer-supplied (sniffed from graph metadata) — never set automatically by sync."
+        },
+        "head_sha": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{40}$",
+          "description": "Latest 40-hex sha on the source repo's default branch at sync time. null when drift detection was skipped or failed."
+        },
+        "commits_behind": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Number of commits between source_sha and head_sha. 0 means up-to-date, null means drift detection was skipped or failed."
+        },
+        "drift_checked_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO-8601 timestamp of the last drift-detection attempt, set whether the attempt succeeded or not."
         }
       }
     }
