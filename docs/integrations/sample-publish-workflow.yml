@@ -1,0 +1,23 @@
+# Drop into .github/workflows/understand-quickly-publish.yml in your project.
+# Add a fine-grained PAT (UNDERSTAND_QUICKLY_TOKEN) scoped to repository_dispatch
+# on looptech-ai/understand-quickly.
+name: understand-quickly publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.understand-anything/**'
+      - '.gitnexus/**'
+      - '.code-review-graph/**'
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
+          repository: looptech-ai/understand-quickly
+          event-type: sync-entry
+          client-payload: '{"id":"${{ github.repository }}"}'

@@ -101,6 +101,8 @@ Then read [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Adding a new format: PR `schemas/<name>@<int>.json` + an `ok` and `bad` fixture under `schemas/__fixtures__/<name>/`. Full instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Upstream tools that produce these formats can integrate via [the integration protocol](docs/integrations/protocol.md). PR templates are in `docs/integrations/`.
+
 ## Add your repo
 
 The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @understand-quickly/cli add`. The manual flow:

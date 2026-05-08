@@ -102,6 +102,10 @@ Open an issue using the **Add my repo** template (`.github/ISSUE_TEMPLATE/add-re
 
 If your `id` is on the verified-publisher allowlist, registry-only "add my repo" PRs auto-merge once `validate` goes green — no human review needed. See [`docs/verified-publishers.md`](./docs/verified-publishers.md) for what it means and how to apply.
 
+### Integrating an upstream tool
+
+If you maintain a tool that emits one of the supported formats, see [`docs/integrations/protocol.md`](./docs/integrations/protocol.md) — auto-publish via `repository_dispatch` removes manual registration entirely.
+
 ---
 
 ## 2. Add a new graph format
