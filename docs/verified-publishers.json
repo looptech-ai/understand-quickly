@@ -1,0 +1,4 @@
+{
+  "$comment": "Allowlist of registry ids whose PRs auto-merge. See verified-publishers.md.",
+  "publishers": []
+}

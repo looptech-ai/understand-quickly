@@ -1,8 +1,15 @@
 # @understand-quickly/cli
 
+[![npm version](https://img.shields.io/npm/v/@understand-quickly/cli)](https://www.npmjs.com/package/@understand-quickly/cli)
+[![node engines](https://img.shields.io/node/v/@understand-quickly/cli)](https://nodejs.org)
+
 Add your repo to the [understand-quickly registry](https://looptech-ai.github.io/understand-quickly/) without touching JSON.
 
+## Install
+
 ```bash
+npm install -g @understand-quickly/cli
+# or, no install:
 npx @understand-quickly/cli add
 ```
 
@@ -30,3 +37,7 @@ npx @understand-quickly/cli add
 ## No graph yet?
 
 Pick a tool from the registry's [Supported formats](https://github.com/looptech-ai/understand-quickly#supported-formats), run it locally, commit the output, then come back here.
+
+## Releasing
+
+Tags `cli-v<semver>` trigger the publish workflow. Maintainer must add `NPM_TOKEN` to repo secrets (Automation token). Provenance is enabled.

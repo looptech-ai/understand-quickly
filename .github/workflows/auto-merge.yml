@@ -1,0 +1,116 @@
+name: auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: write
+  checks: read
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Evaluate auto-merge eligibility
+        id: eligibility
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # 1. Verify the PR ONLY touches registry.json.
+          changed_files=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          echo "Changed files:"
+          echo "$changed_files"
+
+          if [ "$changed_files" != "registry.json" ]; then
+            echo "PR touches more than registry.json; skipping auto-merge."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 2. Diff must be purely additive on the entries array.
+          git show "${BASE_SHA}:registry.json" > /tmp/base-registry.json
+          git show "${HEAD_SHA}:registry.json" > /tmp/head-registry.json
+
+          additive=$(node -e '
+            const fs = require("fs");
+            const base = JSON.parse(fs.readFileSync("/tmp/base-registry.json","utf8"));
+            const head = JSON.parse(fs.readFileSync("/tmp/head-registry.json","utf8"));
+            const headById = new Map((head.entries||[]).map(e => [e.id, e]));
+            for (const b of (base.entries||[])) {
+              const h = headById.get(b.id);
+              if (!h) { console.log("removed:" + b.id); process.exit(0); }
+              if (JSON.stringify(b) !== JSON.stringify(h)) { console.log("modified:" + b.id); process.exit(0); }
+            }
+            console.log("ok");
+          ')
+          if [ "$additive" != "ok" ]; then
+            echo "Diff is not purely additive ($additive); skipping auto-merge."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 3. Each newly-added entry's id must appear in docs/verified-publishers.json.
+          if [ ! -f docs/verified-publishers.json ]; then
+            echo "docs/verified-publishers.json not present on head; skipping auto-merge."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          verified=$(node -e '
+            const fs = require("fs");
+            const base = JSON.parse(fs.readFileSync("/tmp/base-registry.json","utf8"));
+            const head = JSON.parse(fs.readFileSync("/tmp/head-registry.json","utf8"));
+            const allow = JSON.parse(fs.readFileSync("docs/verified-publishers.json","utf8"));
+            const baseIds = new Set((base.entries||[]).map(e => e.id));
+            const newIds = (head.entries||[]).map(e => e.id).filter(id => !baseIds.has(id));
+            const allowSet = new Set((allow.publishers||[]).map(p => p.id));
+            if (newIds.length === 0) { console.log("none"); process.exit(0); }
+            const blocked = newIds.filter(id => !allowSet.has(id));
+            if (blocked.length > 0) { console.log("blocked:" + blocked.join(",")); process.exit(0); }
+            console.log("ok");
+          ')
+          if [ "$verified" != "ok" ]; then
+            echo "Not all new entries are verified ($verified); skipping auto-merge."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 4. The "validate" check-run on the head SHA must be conclusion=success.
+          validate_status=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" \
+            --jq '[.check_runs[] | select(.name=="validate")] | (.[-1].conclusion // "missing")')
+          echo "validate check-run conclusion: $validate_status"
+          if [ "$validate_status" != "success" ]; then
+            echo "validate check is not green ($validate_status); skipping auto-merge."
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "eligible=true" >> "$GITHUB_OUTPUT"
+
+      - name: Approve PR
+        if: steps.eligibility.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr review "$PR_NUMBER" --approve --body "Auto-approved: registry-only addition from a verified publisher; validate check is green."
+
+      - name: Enable auto-merge (squash)
+        if: steps.eligibility.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --auto --squash

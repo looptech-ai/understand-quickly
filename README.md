@@ -35,7 +35,7 @@ Pick entries with `status: "ok"`. Fetch `entry.graph_url`. Cache by `last_sha`. 
 Pick the path that fits:
 
 - 🖱️ **Wizard:** [Add your repo →](https://looptech-ai.github.io/understand-quickly/add.html). Fills the issue for you; the bot opens the PR.
-- 💻 **CLI:** `npx @understand-quickly/cli add` — auto-detects everything.
+- 💻 **CLI:** `npx @understand-quickly/cli add` — auto-detects everything. ([npm](https://www.npmjs.com/package/@understand-quickly/cli))
 - ✍️ **Manual PR:** see [Add your repo](#add-your-repo) below.
 
 ### I want to use it from Claude / Codex / Cursor (MCP)
@@ -167,7 +167,7 @@ npm run render     # regenerate README table
 
 ## Contributing
 
-[`CONTRIBUTING.md`](CONTRIBUTING.md) walks through every contribution flow. By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: [`SECURITY.md`](SECURITY.md).
+[`CONTRIBUTING.md`](CONTRIBUTING.md) walks through every contribution flow. Trusted authors can land registry-only PRs without review — see [`docs/verified-publishers.md`](docs/verified-publishers.md). By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: [`SECURITY.md`](SECURITY.md).
 
 ## License
 

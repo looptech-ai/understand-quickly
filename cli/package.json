@@ -9,7 +9,8 @@
   "files": [
     "bin",
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20.0.0"
@@ -19,8 +20,10 @@
   },
   "keywords": [
     "understand-quickly",
-    "knowledge-graph",
     "registry",
+    "knowledge-graph",
+    "agents",
+    "mcp",
     "cli"
   ],
   "license": "MIT",
@@ -30,5 +33,9 @@
     "type": "git",
     "url": "git+https://github.com/looptech-ai/understand-quickly.git",
     "directory": "cli"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

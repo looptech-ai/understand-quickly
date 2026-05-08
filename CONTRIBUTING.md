@@ -98,6 +98,10 @@ This is the path most contributors want. You're publishing a knowledge graph fro
 
 Open an issue using the **Add my repo** template (`.github/ISSUE_TEMPLATE/add-repo.yml`). A maintainer will translate it into a PR. A PR is still faster — the form just collects the same fields we'd otherwise paste in.
 
+### Verified publishers
+
+If your `id` is on the verified-publisher allowlist, registry-only "add my repo" PRs auto-merge once `validate` goes green — no human review needed. See [`docs/verified-publishers.md`](./docs/verified-publishers.md) for what it means and how to apply.
+
 ---
 
 ## 2. Add a new graph format
