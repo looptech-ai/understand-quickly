@@ -95,8 +95,39 @@ export function validateGraph(format, body) {
   return { ok: false, errors };
 }
 
+// Retry network-failure-class errors. We retry on:
+//   - thrown errors (TLS, DNS, ECONNRESET, abort, etc.)
+//   - 5xx and 408/429 (server-side transient)
+// 4xx (404, 410, etc.) are NOT retried — those are deterministic producer
+// faults and should fail fast with a clear message.
+async function fetchWithRetry(fetchImpl, url, opts = {}, { maxRetries = 3, baseDelay = 200 } = {}) {
+  let lastErr;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const res = await fetchImpl(url, opts);
+      if (res.ok || (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429)) {
+        return res;
+      }
+      lastErr = new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (i < maxRetries) {
+      // Linear backoff with a small ceiling — registry has dozens of entries
+      // and exponential would compound long-tail latency.
+      await new Promise(r => setTimeout(r, baseDelay * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function fetchAndValidate(entry, fetchImpl = fetch) {
-  const head = await fetchImpl(entry.graph_url, { method: 'HEAD' });
+  let head;
+  try {
+    head = await fetchWithRetry(fetchImpl, entry.graph_url, { method: 'HEAD' });
+  } catch (e) {
+    return { ok: false, errors: [{ message: `HEAD ${entry.graph_url} failed: ${e?.message || e}` }] };
+  }
   if (!head.ok) {
     return { ok: false, errors: [{ message: `HEAD ${entry.graph_url} returned ${head.status}` }] };
   }
@@ -105,7 +136,12 @@ export async function fetchAndValidate(entry, fetchImpl = fetch) {
   if (size !== null && size > 50 * 1024 * 1024) {
     return { ok: false, errors: [{ message: `oversize: ${size} bytes` }] };
   }
-  const res = await fetchImpl(entry.graph_url);
+  let res;
+  try {
+    res = await fetchWithRetry(fetchImpl, entry.graph_url);
+  } catch (e) {
+    return { ok: false, errors: [{ message: `GET ${entry.graph_url} failed: ${e?.message || e}` }] };
+  }
   if (!res.ok) return { ok: false, errors: [{ message: `GET ${entry.graph_url} returned ${res.status}` }] };
   const text = await res.text();
   let body;

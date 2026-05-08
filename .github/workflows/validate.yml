@@ -25,7 +25,64 @@ jobs:
           cache: 'npm'
       - run: npm ci
 
-      - name: Validate (full registry; CI scale fine at MVP size)
+      - name: Compute changed registry entry ids
+        id: changed
+        # Set CHANGED_IDS to the set of registry entry ids that changed in
+        # this PR's diff, OR leave it unset when schemas changed (so all
+        # entries get re-validated against the new shape). Code-only PRs
+        # with no registry.json or schema diff produce an empty set, which
+        # validate.mjs treats as "no entries to fetch" — keeps CI fast and
+        # immune to transient producer-URL flakiness.
+        run: |
+          set -e
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" || true
+          DIFF=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"
+          echo "$DIFF"
+          # If any schema changed, force a full validate.
+          if echo "$DIFF" | grep -q '^schemas/'; then
+            echo "Schema change detected — full validate (CHANGED_IDS unset)."
+            echo "full=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # If registry.json wasn't touched, no entries need re-fetching.
+          if ! echo "$DIFF" | grep -q '^registry.json$'; then
+            echo "No registry.json change and no schema change — skip per-entry validate."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # registry.json changed — extract added / modified entry ids.
+          IDS=$(git diff "$BASE_SHA" "$HEAD_SHA" -- registry.json \
+            | grep -E '^\+.*"id":' \
+            | sed -E 's/.*"id":[[:space:]]*"([^"]+)".*/\1/' \
+            | sort -u | paste -sd, -)
+          echo "Changed ids: $IDS"
+          echo "changed_ids=$IDS" >> "$GITHUB_OUTPUT"
+
+      - name: Validate registry shape (always)
+        # Pure schema check — no network. Catches any registry.json or
+        # meta.schema.json regression even when no entries are touched.
+        run: |
+          node -e "
+            import('./scripts/validate.mjs').then(async (m) => {
+              const fs = await import('node:fs');
+              const reg = JSON.parse(fs.readFileSync('registry.json', 'utf8'));
+              const r = m.validateRegistry(reg);
+              if (!r.ok) {
+                console.error('REGISTRY INVALID:');
+                for (const e of r.errors) console.error('  - ' + e.message);
+                process.exit(1);
+              }
+              console.log('Registry shape OK (' + reg.entries.length + ' entries).');
+            });
+          "
+
+      - name: Validate (per-entry fetch)
+        if: steps.changed.outputs.skip != 'true'
+        env:
+          CHANGED_IDS: ${{ steps.changed.outputs.changed_ids }}
         run: npm run validate
 
       - name: Run unit + integration tests
