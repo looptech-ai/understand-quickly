@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    { "id": "f1", "kind": "File", "name": "src/main.py", "qualified_name": "src/main.py", "file_path": "src/main.py" },
+    { "id": "c1", "kind": "Class", "name": "App", "qualified_name": "src/main.py::App", "file_path": "src/main.py" },
+    { "id": "fn1", "kind": "Function", "name": "run", "qualified_name": "src/main.py::App::run", "file_path": "src/main.py" },
+    { "id": "t1", "kind": "Test", "name": "test_run", "qualified_name": "tests/test_main.py::test_run", "file_path": "tests/test_main.py" }
+  ],
+  "edges": [
+    { "from": "f1", "to": "c1", "kind": "contains" },
+    { "from": "c1", "to": "fn1", "kind": "contains", "confidence_tier": "EXTRACTED" },
+    { "from": "t1", "to": "fn1", "kind": "tests", "confidence_tier": "INFERRED" }
+  ]
+}

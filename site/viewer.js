@@ -1,14 +1,12 @@
 // understand-quickly — graph viewer.
-// Lazy-loads vis-network from a pinned CDN, fetches the entry's graph_url,
-// normalizes node/edge shapes per format, and renders an in-pane
+// Lazy-loads vis-network from a vendored bundle, fetches the entry's
+// graph_url, normalizes node/edge shapes per format, and renders an in-pane
 // graph using a node-type color palette.
 //
 // State: a `Viewer` instance encapsulates one vis-network instance + its
 // data sets, hidden-node tracking, hover-focus state, and layout choice.
-// app.js can hold up to two Viewer instances at once for compare mode.
 
-const VIS_NETWORK_URL =
-  'https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js';
+const VIS_NETWORK_URL = './vendor/vis-network@9.1.9/vis-network.min.js';
 
 let visLoader = null;
 let primaryViewer = null; // Viewer | null
@@ -470,111 +468,6 @@ function buildTourSteps(format, rawGraph, normalized) {
   return steps;
 }
 
-// Given normalized {nodes,edges} + format, produce the full step set
-// (un-capped) so personas can re-rank/filter, or sample to TOUR_STEP_CAP.
-function buildAllNodeSteps(format, rawGraph, normalized) {
-  // Same as buildTourSteps but without the cap, for re-ranking by persona.
-  const normById = new Map();
-  for (const n of normalized.nodes) normById.set(String(n.id), n);
-
-  let steps = [];
-  if (format === 'understand-anything@1') {
-    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
-    steps = src.filter((n) => n && n.id != null).map((n) => ({
-      id: String(n.id),
-      label: n.label != null ? String(n.label) : String(n.id),
-      kind: resolveKind(n.kind),
-      text: n.summary || n.label || String(n.id),
-      _summaryLen: n.summary ? n.summary.length : 0,
-    }));
-  } else if (format === 'gitnexus@1') {
-    const inner = rawGraph && rawGraph.graph;
-    const src = inner && Array.isArray(inner.nodes) ? inner.nodes : [];
-    steps = src.filter((n) => n && n.id != null).map((n) => {
-      const props = n.properties || {};
-      const kindRaw = n.label != null ? n.label : n.type;
-      const display = props.name != null ? props.name : (n.name != null ? n.name : String(n.id));
-      const text = props.description || props.name || (n.label != null ? String(n.label) : String(n.id));
-      return {
-        id: String(n.id),
-        label: String(display),
-        kind: resolveKind(kindRaw),
-        text: String(text),
-        _summaryLen: (props.description || '').length,
-      };
-    });
-  } else if (format === 'code-review-graph@1') {
-    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
-    steps = src.filter((n) => n && n.id != null).map((n) => {
-      const display = n.name != null ? String(n.name) : (n.qualified_name != null ? String(n.qualified_name) : String(n.id));
-      const fallbackText = `${n.kind || ''} ${n.qualified_name || n.name || String(n.id)}`.trim();
-      return {
-        id: String(n.id),
-        label: display,
-        kind: resolveKind(n.kind),
-        text: n.summary ? String(n.summary) : fallbackText,
-        _summaryLen: n.summary ? n.summary.length : 0,
-      };
-    });
-  } else {
-    const src = Array.isArray(rawGraph?.nodes) ? rawGraph.nodes : [];
-    steps = src.filter((n) => n && n.id != null).map((n) => {
-      const label = n.label != null ? String(n.label) : (n.name != null ? String(n.name) : String(n.id));
-      return {
-        id: String(n.id),
-        label,
-        kind: resolveKind(n.kind != null ? n.kind : n.type),
-        text: label,
-        _summaryLen: 0,
-      };
-    });
-  }
-  return steps.filter((s) => normById.has(s.id));
-}
-
-const PM_KINDS = new Set(['concept', 'module', 'service', 'endpoint', 'pipeline']);
-const JUNIOR_ORDER = ['file', 'function', 'class', 'module', 'concept', 'service'];
-
-export function reorderTourStepsForPersona(format, rawGraph, normalized, persona, defaultSteps) {
-  if (persona === 'default' || !persona) return defaultSteps;
-  const all = buildAllNodeSteps(format, rawGraph, normalized);
-  if (!all.length) return defaultSteps;
-
-  // Compute degree centrality from normalized.edges
-  const deg = new Map();
-  for (const e of normalized.edges) {
-    deg.set(e.from, (deg.get(e.from) || 0) + 1);
-    deg.set(e.to, (deg.get(e.to) || 0) + 1);
-  }
-
-  let ranked;
-  if (persona === 'architect') {
-    ranked = all.slice().sort((a, b) => (deg.get(b.id) || 0) - (deg.get(a.id) || 0));
-  } else if (persona === 'junior') {
-    ranked = all.slice().sort((a, b) => {
-      const ai = JUNIOR_ORDER.indexOf(a.kind || '');
-      const bi = JUNIOR_ORDER.indexOf(b.kind || '');
-      const aRank = ai === -1 ? JUNIOR_ORDER.length : ai;
-      const bRank = bi === -1 ? JUNIOR_ORDER.length : bi;
-      if (aRank !== bRank) return aRank - bRank;
-      return (a.label || '').localeCompare(b.label || '');
-    });
-  } else if (persona === 'pm') {
-    const matching = all.filter((s) => s.kind && PM_KINDS.has(s.kind));
-    const rest = all.filter((s) => !(s.kind && PM_KINDS.has(s.kind)));
-    matching.sort((a, b) => (b._summaryLen || 0) - (a._summaryLen || 0));
-    rest.sort((a, b) => (b._summaryLen || 0) - (a._summaryLen || 0));
-    ranked = matching.concat(rest);
-  } else {
-    ranked = all;
-  }
-
-  // Strip helper fields and cap.
-  ranked = ranked.map(({ _summaryLen, ...rest }) => rest);
-  if (ranked.length > TOUR_STEP_CAP) ranked = sampleEvenly(ranked, TOUR_STEP_CAP);
-  return ranked;
-}
-
 // ---- Viewer class ------------------------------------------------------
 
 class Viewer {
@@ -591,10 +484,6 @@ class Viewer {
     this.layout = 'force';
     this.hidden = new Set(); // node ids the user has hidden
     this.kindHidden = new Set(); // legend-toggled-off kinds
-    this.spotlightActive = false;
-    this.spotlightHops = 2;
-    this.spotlightAnchor = null;
-    this.minDegree = 0;
     this.degreeMap = new Map();
     this.maxDegree = 0;
     this._hoverFocusId = null;
@@ -655,14 +544,9 @@ class Viewer {
   _computeDegrees() {
     this.degreeMap.clear();
     this.maxDegree = 0;
-    // Also track in/out degree separately for the tour "Why this step?" heuristic.
-    this._inDeg = new Map();
-    this._outDeg = new Map();
     for (const e of this.allEdges) {
       this.degreeMap.set(e.from, (this.degreeMap.get(e.from) || 0) + 1);
       this.degreeMap.set(e.to, (this.degreeMap.get(e.to) || 0) + 1);
-      this._outDeg.set(e.from, (this._outDeg.get(e.from) || 0) + 1);
-      this._inDeg.set(e.to, (this._inDeg.get(e.to) || 0) + 1);
     }
     for (const v of this.degreeMap.values()) {
       if (v > this.maxDegree) this.maxDegree = v;
@@ -679,15 +563,11 @@ class Viewer {
     return adj;
   }
 
-  // Apply the current visibility predicate (hidden, kindHidden, minDegree,
-  // spotlight) to all nodes and edges in one batched update.
+  // Apply the current visibility predicate (hidden, kindHidden) to all
+  // nodes and edges in one batched update.
   applyVisibility() {
     if (!this.nodesDS || !this.edgesDS) return;
     const visible = new Set();
-    let spotlightSet = null;
-    if (this.spotlightActive && this.spotlightAnchor) {
-      spotlightSet = this._kHopNeighborhood(this.spotlightAnchor, this.spotlightHops);
-    }
     const updates = [];
     for (const n of this.allNodes) {
       const id = n.id;
@@ -695,51 +575,16 @@ class Viewer {
       if (this.hidden.has(id)) hidden = true;
       const kind = this._kindByNode.get(id);
       if (!hidden && kind && this.kindHidden.has(kind)) hidden = true;
-      if (!hidden && this.minDegree > 0 && (this.degreeMap.get(id) || 0) < this.minDegree) hidden = true;
-      if (!hidden && spotlightSet && !spotlightSet.has(id)) hidden = true;
       if (!hidden) visible.add(id);
       updates.push({ id, hidden });
     }
     this.nodesDS.update(updates);
-    // Edges: hide if either endpoint hidden
     const edgeUpdates = [];
     for (const e of this.allEdges) {
       const hidden = !visible.has(e.from) || !visible.has(e.to);
       edgeUpdates.push({ id: e.id, hidden });
     }
     this.edgesDS.update(edgeUpdates);
-    // Notify outside listeners (e.g. min-degree caption)
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('uq-visibility-changed', {
-        detail: {
-          hiddenCount: this.hidden.size,
-          totalNodes: this.allNodes.length,
-          minDegree: this.minDegree,
-        },
-      }));
-    }
-  }
-
-  _kHopNeighborhood(anchorId, k) {
-    const adj = this._adj || (this._adj = this._buildAdjacency());
-    const out = new Set([anchorId]);
-    let frontier = new Set([anchorId]);
-    for (let i = 0; i < k; i++) {
-      const next = new Set();
-      for (const id of frontier) {
-        const nbrs = adj.get(id);
-        if (!nbrs) continue;
-        for (const nb of nbrs) {
-          if (!out.has(nb)) {
-            out.add(nb);
-            next.add(nb);
-          }
-        }
-      }
-      if (next.size === 0) break;
-      frontier = next;
-    }
-    return out;
   }
 
   // Hover focus: full opacity for hovered node + 1-hop, dim everything else.
@@ -824,18 +669,6 @@ class Viewer {
     this.applyVisibility();
   }
 
-  setMinDegree(v) {
-    this.minDegree = Math.max(0, Math.floor(v));
-    this.applyVisibility();
-  }
-
-  setSpotlight(active, hops, anchorId) {
-    this.spotlightActive = !!active;
-    if (typeof hops === 'number') this.spotlightHops = Math.max(1, Math.min(4, Math.floor(hops)));
-    if (anchorId !== undefined) this.spotlightAnchor = anchorId;
-    this.applyVisibility();
-  }
-
   // Search. Returns array of matched node ids.
   search(query) {
     const q = String(query || '').trim().toLowerCase();
@@ -866,80 +699,6 @@ class Viewer {
       });
       this.nodesDS.update(restore);
     }, 600);
-  }
-
-  // BFS shortest path from src -> dst (undirected).
-  shortestPath(src, dst) {
-    if (src === dst) return [src];
-    const adj = this._adj || (this._adj = this._buildAdjacency());
-    const prev = new Map();
-    prev.set(src, null);
-    const queue = [src];
-    while (queue.length) {
-      const cur = queue.shift();
-      const nbrs = adj.get(cur);
-      if (!nbrs) continue;
-      for (const nb of nbrs) {
-        if (prev.has(nb)) continue;
-        if (this.hidden.has(nb)) continue;
-        prev.set(nb, cur);
-        if (nb === dst) {
-          const path = [];
-          let n = dst;
-          while (n != null) {
-            path.unshift(n);
-            n = prev.get(n);
-          }
-          return path;
-        }
-        queue.push(nb);
-      }
-    }
-    return null;
-  }
-
-  highlightPath(path) {
-    if (!path || !this.nodesDS || !this.edgesDS) return;
-    const pathIds = new Set(path);
-    const pathEdges = new Set();
-    for (let i = 0; i < path.length - 1; i++) {
-      pathEdges.add(`${path[i]}|${path[i + 1]}`);
-      pathEdges.add(`${path[i + 1]}|${path[i]}`);
-    }
-    const accent = '#e8c49a';
-    const nodeUpdates = [];
-    for (const n of this.allNodes) {
-      const orig = this._origColors.get(n.id);
-      if (!orig) continue;
-      const inPath = pathIds.has(n.id);
-      nodeUpdates.push({
-        id: n.id,
-        color: inPath ? { background: accent, border: '#fff' } : orig.color,
-        opacity: inPath ? 1 : 0.2,
-      });
-    }
-    this.nodesDS.update(nodeUpdates);
-    const edgeUpdates = [];
-    for (const e of this.allEdges) {
-      const k = `${e.from}|${e.to}`;
-      const inPath = pathEdges.has(k);
-      edgeUpdates.push({
-        id: e.id,
-        color: inPath
-          ? { color: '#e8c49a', highlight: '#fff', opacity: 1 }
-          : { opacity: 0.15 },
-        width: inPath ? 3 : 1,
-      });
-    }
-    this.edgesDS.update(edgeUpdates);
-  }
-
-  clearPathHighlight() {
-    this._applyHoverFocus(); // restores all to current hover state (i.e. none)
-    // Reset edge widths
-    if (!this.edgesDS) return;
-    const edgeUpdates = this.allEdges.map((e) => ({ id: e.id, width: 1 }));
-    this.edgesDS.update(edgeUpdates);
   }
 
   // Drive view to fit a set of nodes

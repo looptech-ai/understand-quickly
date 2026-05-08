@@ -64,6 +64,15 @@ jobs:
           '
           rm _readme.html
 
+      - name: Apply Cloudflare beacon token
+        if: env.CF_BEACON_TOKEN != ''
+        env:
+          CF_BEACON_TOKEN: ${{ secrets.CF_BEACON_TOKEN }}
+        run: |
+          for f in _site/index.html _site/about.html _site/add.html; do
+            [ -f "$f" ] && sed -i 's/PLACEHOLDER_TOKEN/'"$CF_BEACON_TOKEN"'/g' "$f"
+          done
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

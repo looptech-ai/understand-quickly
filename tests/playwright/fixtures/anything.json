@@ -1,0 +1,14 @@
+{
+  "metadata": { "tool_version": "0.1.0-fixture" },
+  "nodes": [
+    { "id": "alpha", "label": "alpha", "kind": "module", "summary": "Root module of the fixture." },
+    { "id": "beta", "label": "beta", "kind": "function", "summary": "Helper function." },
+    { "id": "gamma", "label": "gamma", "kind": "class", "summary": "Helper class." },
+    { "id": "delta", "label": "delta", "kind": "concept", "summary": "Domain concept." }
+  ],
+  "edges": [
+    { "from": "alpha", "to": "beta", "kind": "uses" },
+    { "from": "alpha", "to": "gamma", "kind": "uses" },
+    { "from": "gamma", "to": "delta", "kind": "represents" }
+  ]
+}

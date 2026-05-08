@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-05-07T00:00:00Z",
+  "entries": [
+    {
+      "id": "looptech-ai/uq-fixture-anything",
+      "format": "understand-anything@1",
+      "description": "understand-anything fixture entry for smoke tests.",
+      "graph_url": "http://localhost:8080/__fixture__/anything.json",
+      "status": "ok",
+      "last_synced": "2026-05-07T00:00:00Z",
+      "tags": ["fixture", "smoke"]
+    },
+    {
+      "id": "looptech-ai/uq-fixture-gitnexus",
+      "format": "gitnexus@1",
+      "description": "gitnexus fixture entry for smoke tests.",
+      "graph_url": "http://localhost:8080/__fixture__/gitnexus.json",
+      "status": "ok",
+      "last_synced": "2026-05-07T00:00:00Z",
+      "tags": ["fixture", "smoke"]
+    },
+    {
+      "id": "looptech-ai/uq-fixture-codereview",
+      "format": "code-review-graph@1",
+      "description": "code-review-graph fixture entry for smoke tests.",
+      "graph_url": "http://localhost:8080/__fixture__/codereview.json",
+      "status": "ok",
+      "last_synced": "2026-05-07T00:00:00Z",
+      "tags": ["fixture", "smoke"]
+    }
+  ]
+}

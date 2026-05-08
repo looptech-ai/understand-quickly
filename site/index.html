@@ -14,7 +14,7 @@
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
 
-  <link rel="stylesheet" href="./styles.css?v=20260507g">
+  <link rel="stylesheet" href="./styles.css?v=20260507h">
 </head>
 <body>
   <div class="app">
@@ -32,12 +32,6 @@
         <span class="search-counter" id="search-counter" hidden aria-live="polite"></span>
       </form>
       <nav class="topbar-actions" aria-label="Site">
-        <div class="compare-cart" id="compare-cart" hidden aria-label="Compare cart">
-          <span class="compare-cart-label">Compare</span>
-          <ul class="compare-cart-list" id="compare-cart-list"></ul>
-          <button type="button" class="compare-cart-go" id="compare-cart-go" hidden>Compare</button>
-          <button type="button" class="compare-cart-clear" id="compare-cart-clear" aria-label="Clear compare cart">&times;</button>
-        </div>
         <a href="./about.html">About</a>
         <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">GitHub</a>
         <a class="cta-add-repo" href="./add.html" aria-label="Add your repo">
@@ -70,7 +64,6 @@
         <div id="error" class="error-banner" hidden role="alert"></div>
         <div class="graph-host" id="graph-host">
           <div id="graph-canvas" class="graph-state-graph" aria-label="Knowledge graph viewer" role="img"></div>
-          <div id="graph-canvas-b" class="graph-state-graph compare-canvas-b" hidden aria-label="Knowledge graph viewer (B)" role="img"></div>
           <canvas id="graph-minimap" class="graph-state-graph" hidden aria-hidden="true"></canvas>
           <div class="graph-empty graph-state-empty" id="graph-empty">
             <h2>A registry of knowledge graphs.</h2>
@@ -115,34 +108,6 @@
             <button type="button" data-layout="circle" aria-pressed="false" title="Circle layout">Circle</button>
             <button type="button" data-layout="tree" aria-pressed="false" title="Tree layout">Tree</button>
           </div>
-          <div class="spotlight-control graph-state-graph" id="spotlight-control" hidden>
-            <label class="spotlight-toggle">
-              <input type="checkbox" id="spotlight-on">
-              <span>Spotlight</span>
-            </label>
-            <label class="spotlight-hops" id="spotlight-hops-wrap" hidden>
-              <span>k=<span id="spotlight-hops-val">2</span></span>
-              <input type="range" id="spotlight-hops" min="1" max="4" step="1" value="2" aria-label="Spotlight hop depth">
-            </label>
-          </div>
-          <div class="degree-control graph-state-graph" id="degree-control" hidden>
-            <label class="degree-label">
-              <span>min deg</span>
-              <input type="range" id="degree-slider" min="0" max="0" step="1" value="0" aria-label="Minimum degree filter">
-              <span class="degree-value" id="degree-value">0</span>
-            </label>
-            <span class="degree-hidden-count" id="degree-hidden-count" aria-live="polite"></span>
-          </div>
-          <div class="path-banner graph-state-graph" id="path-banner" hidden role="status">
-            <span class="path-banner-icon" aria-hidden="true">&#10010;</span>
-            <span class="path-banner-text" id="path-banner-text">Click target node</span>
-            <button type="button" class="path-banner-cancel" id="path-banner-cancel" aria-label="Cancel path-finder">&times;</button>
-          </div>
-          <div class="path-result graph-state-graph" id="path-result" hidden role="status">
-            <span class="path-result-text" id="path-result-text"></span>
-            <button type="button" class="path-result-copy" id="path-result-copy">Copy path</button>
-            <button type="button" class="path-result-clear" id="path-result-clear" aria-label="Clear path">&times;</button>
-          </div>
           <button type="button" class="details-pill" id="details-pill" hidden aria-label="Show entry details">
             <span class="details-pill-icon" aria-hidden="true">&#9776;</span>
             <span>Details</span>
@@ -170,7 +135,7 @@
               <article class="tour-active-card" aria-label="Active step">
                 <div class="tour-label" id="tour-label"></div>
                 <p class="tour-text" id="tour-text"></p>
-                <p class="tour-why" id="tour-why" hidden></p>
+                <a class="tour-discuss-link" id="tour-discuss" hidden href="#" rel="noopener" target="_blank" title="Open Discussions tagged with this entry id.">Discuss &#8599;</a>
                 <a class="tour-github-link" id="tour-github" hidden href="#" rel="noopener" target="_blank">View on GitHub &#8599;</a>
               </article>
               <section class="tour-section tour-neighbors-section" id="tour-neighbors-section" hidden aria-label="Neighbors">
@@ -215,10 +180,6 @@
                     <option value="2">2&times;</option>
                   </select>
                 </label>
-                <button type="button" class="tour-voice-btn" id="tour-voice" aria-pressed="false" title="Toggle voice narration (v)" hidden>
-                  <span class="tour-voice-icon" aria-hidden="true">&#128266;</span>
-                  <span class="tour-voice-label">Voice</span>
-                </button>
               </div>
             </footer>
           </section>
@@ -252,29 +213,6 @@
 
     <div class="ctx-menu" id="ctx-menu" role="menu" hidden></div>
 
-    <div class="palette-overlay" id="palette-overlay" hidden role="dialog" aria-label="Command palette" aria-modal="true">
-      <div class="palette" id="palette" role="combobox" aria-haspopup="listbox" aria-expanded="true">
-        <div class="palette-head">
-          <input
-            type="text"
-            id="palette-input"
-            class="palette-input"
-            placeholder="Search entries, nodes, actions…"
-            autocomplete="off"
-            spellcheck="false"
-            aria-label="Command palette input"
-            aria-controls="palette-results"
-            aria-autocomplete="list">
-        </div>
-        <div class="palette-results" id="palette-results" role="listbox"></div>
-        <div class="palette-foot">
-          <span><kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate</span>
-          <span><kbd>&crarr;</kbd> select</span>
-          <span><kbd>esc</kbd> close</span>
-        </div>
-      </div>
-    </div>
-
     <div class="cheatsheet-overlay" id="cheatsheet-overlay" hidden role="dialog" aria-label="Keyboard shortcuts" aria-modal="true">
       <div class="cheatsheet" id="cheatsheet" tabindex="-1">
         <header class="cheatsheet-head">
@@ -291,17 +229,19 @@
             <dt><kbd>1</kbd>&hellip;<kbd>9</kbd></dt><dd>Toggle nth legend chip</dd>
             <dt><kbd>[</kbd> / <kbd>]</kbd></dt><dd>Previous / next sidebar entry</dd>
             <dt><kbd>g</kbd> <kbd>g</kbd></dt><dd>Jump to first sidebar entry</dd>
-            <dt><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd></dt><dd>Open command palette</dd>
             <dt><kbd>Esc</kbd></dt><dd>Close any overlay</dd>
             <dt class="tour-only-help"><kbd>&larr;</kbd>/<kbd>&rarr;</kbd> &middot; <kbd>p</kbd></dt><dd class="tour-only-help">Tour: prev/next &middot; play-pause</dd>
-            <dt class="tour-only-help"><kbd>v</kbd> &middot; <kbd>+</kbd>/<kbd>&minus;</kbd></dt><dd class="tour-only-help">Tour: voice &middot; speed</dd>
-            <dt class="tour-only-help"><kbd>j</kbd>/<kbd>k</kbd> &middot; <kbd>o</kbd></dt><dd class="tour-only-help">Tour outline: down/up &middot; jump</dd>
           </dl>
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="./app.js?v=20260507g"></script>
+  <script type="module" src="./app.js?v=20260507h"></script>
+  <script
+    defer
+    src="https://static.cloudflareinsights.com/beacon.min.js"
+    data-cf-beacon='{"token": "PLACEHOLDER_TOKEN", "spa": false}'
+    referrerpolicy="no-referrer-when-downgrade"></script>
 </body>
 </html>

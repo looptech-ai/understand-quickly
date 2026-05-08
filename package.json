@@ -22,9 +22,11 @@
     "aggregate": "node scripts/aggregate.mjs",
     "test": "node --test 'scripts/__tests__/*.test.mjs'",
     "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 80 node --test 'scripts/__tests__/*.test.mjs'",
-    "smoke": "node scripts/sync.mjs --registry tests/registry-smoke.json --dry-run"
+    "smoke": "node scripts/sync.mjs --registry tests/registry-smoke.json --dry-run",
+    "smoke:browser": "playwright test --config tests/playwright/playwright.config.cjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "c8": "^10.1.2"

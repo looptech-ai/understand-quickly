@@ -1,0 +1,28 @@
+{
+  "graph": {
+    "nodes": [
+      {
+        "id": "n1",
+        "label": "module",
+        "name": "core",
+        "properties": { "name": "core", "description": "Core module.", "community_id": "1" }
+      },
+      {
+        "id": "n2",
+        "label": "function",
+        "name": "load_config",
+        "properties": { "name": "load_config", "description": "Load runtime config.", "community_id": "1" }
+      },
+      {
+        "id": "n3",
+        "label": "service",
+        "name": "syncer",
+        "properties": { "name": "syncer", "description": "Background sync service.", "community_id": "2" }
+      }
+    ],
+    "links": [
+      { "source": "n1", "target": "n2", "type": "contains" },
+      { "source": "n1", "target": "n3", "type": "uses" }
+    ]
+  }
+}

@@ -10,10 +10,9 @@ import {
   clearGraph,
   getCurrentNetwork,
   getPrimaryViewer,
-  reorderTourStepsForPersona,
-} from './viewer.js?v=20260507g';
+} from './viewer.js?v=20260507h';
 
-const PAGE_VERSION = '20260507g';
+const PAGE_VERSION = '20260507h';
 const MOBILE_BREAKPOINT = 800;
 
 function isMobile() {
@@ -49,26 +48,12 @@ const state = {
   format: '',
   statuses: new Set(DEFAULT_STATUSES),
   selectedId: null,
-  // Graph-aware search (when graph loaded): matched node ids + cursor.
   graphSearchMatches: [],
   graphSearchIdx: 0,
-  // Last legend rendered (for keyboard-shortcut chip toggling).
   legend: [],
-  // Compare cart of entry ids (max 2).
-  compareCart: [],
-  compareMode: false,
-  compareSecondary: null, // { viewer, steps } for canvas B
-  // Layout for the currently-loaded entry.
   layout: 'force',
-  // Current tour persona ('default' | 'architect' | 'junior' | 'pm')
-  tourPersona: 'default',
-  // Tour state
   tourSteps: [],
-  // Path-finder state: { phase: 'idle'|'awaiting'|'shown', src, dst, path }
-  pathFinder: { phase: 'idle', src: null, dst: null, path: null },
-  // gg jump
   ggPending: false,
-  // Suppress URL replace until first selection happens
   suppressUrlSync: false,
 };
 
@@ -123,6 +108,15 @@ function showError(msg) {
   banner.hidden = false;
 }
 
+// Build a Discussions search URL for an entry.
+// Slug rule: replace `/` with `--` and lowercase.
+function buildDiscussUrl(entryId) {
+  if (!entryId) return null;
+  const slug = String(entryId).toLowerCase().replace(/\//g, '--');
+  const q = `label:entry-${slug} OR "${entryId}"`;
+  return `https://github.com/looptech-ai/understand-quickly/discussions?discussions_q=${encodeURIComponent(q)}`;
+}
+
 // ---------- data ----------
 
 async function loadRegistry() {
@@ -141,7 +135,6 @@ async function loadRegistry() {
     populateStatusFilter();
     applyFilters();
     renderEmptyMainStateIfNeeded();
-    // After registry has loaded, attempt to apply deeplink params.
     applyDeeplinkOnLoad();
   } catch (err) {
     console.error(err);
@@ -269,9 +262,8 @@ function renderCard(entry) {
   const statusMeta = STATUS_META[status] ?? { emoji: '', label: status };
 
   const isSelected = state.selectedId === entry.id;
-  const inCart = state.compareCart.includes(entry.id);
   const card = el('div', {
-    className: `entry-card${isSelected ? ' is-selected' : ''}${inCart ? ' is-in-cart' : ''}`,
+    className: `entry-card${isSelected ? ' is-selected' : ''}`,
     attrs: { role: 'option', 'aria-selected': isSelected ? 'true' : 'false' },
   });
 
@@ -281,21 +273,6 @@ function renderCard(entry) {
     text: entry.description || 'No description.',
   });
 
-  const compareBtn = el('button', {
-    className: 'entry-card-compare',
-    attrs: {
-      type: 'button',
-      title: inCart ? 'Remove from compare' : 'Add to compare',
-      'aria-label': inCart ? `Remove ${entry.id || ''} from compare` : `Add ${entry.id || ''} to compare`,
-      'aria-pressed': inCart ? 'true' : 'false',
-    },
-    text: inCart ? '✓ Compare' : '+ Compare',
-  });
-  compareBtn.addEventListener('click', (ev) => {
-    ev.stopPropagation();
-    toggleCompareCart(entry.id);
-  });
-
   const foot = el('div', { className: 'entry-card-foot' }, [
     el('span', { className: 'format-pill', text: entry.format || 'unknown' }),
     el('span', {
@@ -303,7 +280,6 @@ function renderCard(entry) {
       attrs: { 'data-status': status, title: `status: ${statusMeta.label}` },
       text: `${statusMeta.emoji} ${statusMeta.label}`,
     }),
-    compareBtn,
   ]);
 
   card.appendChild(id);
@@ -326,10 +302,6 @@ function renderCard(entry) {
 function selectEntry(entry, opts = {}) {
   const sameEntry = state.selectedId === entry.id;
   state.selectedId = entry.id;
-  // Exit compare mode when selecting a single entry from the list.
-  if (state.compareMode && !opts.fromCompare) {
-    exitCompareMode();
-  }
   render();
 
   if (isMobile()) {
@@ -427,7 +399,6 @@ function showDetail(entry) {
     ]));
   }
 
-  // understand-anything@1: show metadata.tool_version chip if present.
   if (entry._toolVersion) {
     body.appendChild(el('section', { className: 'detail-section' }, [
       el('h3', { text: 'Tool version' }),
@@ -440,7 +411,6 @@ function showDetail(entry) {
     ]));
   }
 
-  // Selected-node card (if a node is currently selected in the network)
   const nodeCard = renderSelectedNodeCard(entry);
   if (nodeCard) body.appendChild(nodeCard);
 
@@ -468,6 +438,19 @@ function showDetail(entry) {
         target: '_blank',
       },
     }));
+    const discussUrl = buildDiscussUrl(entry.id);
+    if (discussUrl) {
+      actions.appendChild(el('a', {
+        className: 'btn btn-ghost detail-discuss-link',
+        text: 'Discuss ↗',
+        attrs: {
+          href: discussUrl,
+          rel: 'noopener',
+          target: '_blank',
+          title: 'Open Discussions tagged with this entry id.',
+        },
+      }));
+    }
   }
   const copyBtn = el('button', {
     className: 'btn btn-ghost',
@@ -517,8 +500,6 @@ function showDetail(entry) {
   }
 }
 
-// Render a small "selected node" card in the detail pane when a node is
-// selected in the network. Includes a "View on GitHub" icon button.
 function renderSelectedNodeCard(entry) {
   const v = getPrimaryViewer();
   if (!v || !v.network) return null;
@@ -659,16 +640,8 @@ function setMainState(name) {
     if (zc) zc.hidden = true;
     const lt = document.getElementById('layout-toggle');
     if (lt) lt.hidden = true;
-    const sc = document.getElementById('spotlight-control');
-    if (sc) sc.hidden = true;
-    const dc = document.getElementById('degree-control');
-    if (dc) dc.hidden = true;
     const rh = document.getElementById('restore-hidden');
     if (rh) rh.hidden = true;
-    const pb = document.getElementById('path-banner');
-    if (pb) pb.hidden = true;
-    const pr = document.getElementById('path-result');
-    if (pr) pr.hidden = true;
     hideSearchCounter();
   }
 }
@@ -715,7 +688,6 @@ async function loadGraphFor(entry, opts = {}) {
   try {
     const prepared = await prepareGraph(entry);
     setMainState('graph');
-    // Pull tool_version (understand-anything@1) for detail pane chip.
     if (prepared.format === 'understand-anything@1' && prepared.graph?.metadata?.tool_version) {
       entry._toolVersion = prepared.graph.metadata.tool_version;
     }
@@ -733,32 +705,13 @@ async function loadGraphFor(entry, opts = {}) {
       state.legend = [];
     }
     Tour.attach(state.tourSteps, result.network);
-    // Per-graph chrome
     const lt = document.getElementById('layout-toggle');
     if (lt) lt.hidden = false;
     syncLayoutToggleUI();
-    const sc = document.getElementById('spotlight-control');
-    if (sc) sc.hidden = false;
-    const dc = document.getElementById('degree-control');
-    if (dc) {
-      dc.hidden = false;
-      const slider = document.getElementById('degree-slider');
-      if (slider) {
-        slider.max = String(Math.max(1, result.viewer.maxDegree));
-        slider.value = '0';
-        const val = document.getElementById('degree-value');
-        if (val) val.textContent = '0';
-        const cap = document.getElementById('degree-hidden-count');
-        if (cap) cap.textContent = '';
-      }
-    }
-    // Hover events: vis-network
-    bindNetworkInteractions(result.viewer, false);
-    // Apply deeplink params if present (q, kind, hops, node)
+    bindNetworkInteractions(result.viewer);
     if (opts.deeplink) {
       applyDeeplinkToViewer(result.viewer, opts.deeplink);
     }
-    // Refresh the detail pane if it's open (selected-node card)
     if (!isMobile() && state.selectedId) {
       const cur = getSelectedEntry();
       if (cur) showDetail(cur);
@@ -780,11 +733,8 @@ function setStatusText(text, isError, withSpinner = false) {
   status.appendChild(document.createTextNode(text));
 }
 
-// Wire vis-network event listeners on a Viewer instance: hover focus,
-// right-click menu, path-finder click handling, selection tracking.
-function bindNetworkInteractions(viewer, isCompareB) {
+function bindNetworkInteractions(viewer) {
   if (!viewer || !viewer.network) return;
-  // Right-click context menu (desktop) — vis-network fires `oncontext`.
   viewer.network.on('oncontext', (params) => {
     if (params && params.event && params.event.preventDefault) params.event.preventDefault();
     const nodeId = viewer.network.getNodeAt(params.pointer.DOM);
@@ -794,26 +744,10 @@ function bindNetworkInteractions(viewer, isCompareB) {
     }
     showContextMenu(viewer, nodeId, params.event);
   });
-  // Click for path-finder targeting.
   viewer.network.on('click', (params) => {
     hideContextMenu();
     const nodeId = (params && params.nodes && params.nodes.length) ? params.nodes[0] : null;
-    if (state.pathFinder.phase === 'awaiting' && nodeId != null) {
-      finishPathFinder(viewer, nodeId);
-      return;
-    }
-    // Spotlight: re-center on selected node when active.
-    if (viewer.spotlightActive && nodeId != null) {
-      viewer.setSpotlight(true, viewer.spotlightHops, nodeId);
-    }
-    if (nodeId != null && !isCompareB) {
-      // Mirror selection in compare canvas B if present.
-      if (state.compareSecondary && state.compareSecondary.viewer) {
-        try { state.compareSecondary.viewer.network.selectNodes([nodeId]); } catch (_) { /* node may not exist in B */ }
-      }
-      // If a tour is running, update the panel to reflect the new
-      // selection (explore mode) — do NOT exit the tour. Otherwise refresh
-      // the desktop detail-pane node card.
+    if (nodeId != null) {
       if (Tour.isActive()) {
         try { Tour.syncToSelectedNode(nodeId); } catch (_) { /* noop */ }
       } else if (!isMobile() && state.selectedId) {
@@ -821,13 +755,8 @@ function bindNetworkInteractions(viewer, isCompareB) {
         if (cur) showDetail(cur);
       }
     }
-    if (isCompareB && nodeId != null) {
-      const a = getPrimaryViewer();
-      if (a) try { a.network.selectNodes([nodeId]); } catch (_) { /* ok */ }
-    }
     updateDeeplink();
   });
-  // Close context menu on canvas-level events.
   viewer.network.on('zoom', () => hideContextMenu());
   viewer.network.on('dragStart', () => hideContextMenu());
 }
@@ -875,7 +804,7 @@ function showSearchCounter(total, current) {
     c.hidden = false;
     return;
   }
-  c.textContent = `${current} / ${total}`;
+  c.textContent = `${current} of ${total}`;
   c.hidden = false;
 }
 
@@ -887,8 +816,7 @@ function hideSearchCounter() {
 // ---------- guided tour ----------
 
 const TOUR_AUTOSHOW_KEY = 'uq:tour-autoshown';
-const TOUR_VOICE_KEY = 'uq:tour:voice';
-const TOUR_AUTO_ADVANCE_MS = 6000; // base; multiplied by 1/speed
+const TOUR_AUTO_ADVANCE_MS = 6000;
 const TOUR_DESKTOP_BP = '(min-width: 800px)';
 
 function tourPrefersReducedMotion() {
@@ -900,12 +828,6 @@ function tourIsDesktop() {
   return window.matchMedia(TOUR_DESKTOP_BP).matches;
 }
 
-function tourSpeechSupported() {
-  return typeof window !== 'undefined'
-    && typeof window.speechSynthesis !== 'undefined'
-    && typeof window.SpeechSynthesisUtterance !== 'undefined';
-}
-
 const Tour = (() => {
   let steps = [];
   let net = null;
@@ -914,13 +836,9 @@ const Tour = (() => {
   let playing = true;
   let timer = null;
   let triggerEl = null;
-  let speed = 1; // 0.5 / 1 / 1.5 / 2
-  let voiceOn = false;
+  let speed = 1;
   let outlineExpanded = true;
-  // Cache of the entry whose detail pane was visible before the tour
-  // started — restored on exit.
   let priorDetailVisible = false;
-  // Track if we're currently exploring (selected node != current step)
   let exploreNodeId = null;
 
   function gid(id) { return document.getElementById(id); }
@@ -932,32 +850,20 @@ const Tour = (() => {
   function kindChipEl()      { return gid('tour-kind'); }
   function labelEl()         { return gid('tour-label'); }
   function textEl()          { return gid('tour-text'); }
-  function whyEl()           { return gid('tour-why'); }
   function githubEl()        { return gid('tour-github'); }
+  function discussEl()       { return gid('tour-discuss'); }
   function neighborsSecEl()  { return gid('tour-neighbors-section'); }
   function neighborsEl()     { return gid('tour-neighbors'); }
   function relatedSecEl()    { return gid('tour-related-section'); }
   function relatedEl()       { return gid('tour-related'); }
   function outlineEl()       { return gid('tour-outline'); }
   function outlineToggleEl() { return gid('tour-outline-toggle'); }
-  function liveEl()           { return gid('tour-live'); }
+  function liveEl()          { return gid('tour-live'); }
   function pauseBtnEl()      { return gid('tour-pause'); }
   function pauseLblEl()      { return gid('tour-pause-label'); }
   function nextBtnEl()       { return gid('tour-next'); }
   function speedSelEl()      { return gid('tour-speed'); }
-  function voiceBtnEl()      { return gid('tour-voice'); }
   function stepStripEl()     { return gid('tour-step-strip'); }
-
-  // Persisted user prefs (voice).
-  function loadVoicePref() {
-    if (typeof localStorage === 'undefined') return false;
-    try { return localStorage.getItem(TOUR_VOICE_KEY) === '1'; }
-    catch (_) { return false; }
-  }
-  function saveVoicePref(on) {
-    if (typeof localStorage === 'undefined') return;
-    try { localStorage.setItem(TOUR_VOICE_KEY, on ? '1' : '0'); } catch (_) { /* noop */ }
-  }
 
   function attach(newSteps, network) {
     steps = Array.isArray(newSteps) ? newSteps.filter(Boolean) : [];
@@ -980,7 +886,6 @@ const Tour = (() => {
     const strip = stepStripEl();
     if (strip) strip.hidden = true;
     if (steps.length === 0) return;
-    // Auto-show once per session.
     if (typeof sessionStorage !== 'undefined') {
       try {
         if (!sessionStorage.getItem(TOUR_AUTOSHOW_KEY)) {
@@ -988,22 +893,6 @@ const Tour = (() => {
           start(sb || null);
         }
       } catch (_) { /* private mode etc. */ }
-    }
-  }
-
-  function applySteps(newSteps) {
-    steps = Array.isArray(newSteps) ? newSteps.filter(Boolean) : [];
-    if (!steps.length) {
-      exit();
-      return;
-    }
-    idx = 0;
-    exploreNodeId = null;
-    if (active) {
-      renderOutline();
-      renderStepStrip();
-      renderStep();
-      schedule();
     }
   }
 
@@ -1017,14 +906,9 @@ const Tour = (() => {
     if (typeof document !== 'undefined' && document.body) {
       document.body.dataset.tourRunning = 'true';
     }
-    // Voice pref: load from storage; show button only if speech supported.
-    voiceOn = loadVoicePref();
-    syncVoiceUI();
     syncSpeedUI();
 
     const isDesktop = tourIsDesktop();
-    // On desktop, hide the detail pane while the tour panel takes over
-    // the right column.
     if (isDesktop) {
       const detailPane = document.getElementById('detail');
       priorDetailVisible = !!(detailPane && !detailPane.hidden);
@@ -1044,7 +928,6 @@ const Tour = (() => {
     renderStep();
     syncPauseLabel();
     schedule();
-    // Move focus to the active step card for screen-reader users.
     if (p && typeof p.focus === 'function') {
       try { p.focus({ preventScroll: true }); } catch (_) { p.focus(); }
     }
@@ -1055,7 +938,6 @@ const Tour = (() => {
     if (!active && (!panel() || panel().hidden)) return;
     active = false;
     stopTimer();
-    cancelSpeak();
     if (typeof document !== 'undefined' && document.body) {
       delete document.body.dataset.tourRunning;
     }
@@ -1066,7 +948,6 @@ const Tour = (() => {
     }
     const strip = stepStripEl();
     if (strip) strip.hidden = true;
-    // Restore the desktop detail pane (if it was previously shown).
     if (wasActive && priorDetailVisible && tourIsDesktop()) {
       const entry = getSelectedEntry();
       if (entry && !isMobile()) {
@@ -1078,9 +959,8 @@ const Tour = (() => {
     if (triggerEl && typeof triggerEl.focus === 'function') {
       try { triggerEl.focus({ preventScroll: true }); } catch (_) { /* ok */ }
     } else {
-      // Fall back to the entry sidebar card.
       const card = state.selectedId
-        ? document.querySelector(`.entry-card.is-selected`)
+        ? document.querySelector('.entry-card.is-selected')
         : null;
       if (card && typeof card.focus === 'function') {
         try { card.focus({ preventScroll: true }); } catch (_) { /* ok */ }
@@ -1121,16 +1001,9 @@ const Tour = (() => {
     playing = !playing;
     syncPauseLabel();
     if (playing) {
-      // Resume narration if voice on.
-      if (voiceOn && tourSpeechSupported()) {
-        try { window.speechSynthesis.resume(); } catch (_) { /* noop */ }
-      }
       schedule();
     } else {
       stopTimer();
-      if (voiceOn && tourSpeechSupported()) {
-        try { window.speechSynthesis.pause(); } catch (_) { /* noop */ }
-      }
     }
   }
 
@@ -1148,18 +1021,6 @@ const Tour = (() => {
     if (i < 0) i = 1;
     i = Math.max(0, Math.min(ladder.length - 1, i + (dir > 0 ? 1 : -1)));
     setSpeed(ladder[i]);
-  }
-
-  function toggleVoice() {
-    if (!tourSpeechSupported()) return;
-    voiceOn = !voiceOn;
-    saveVoicePref(voiceOn);
-    syncVoiceUI();
-    if (voiceOn) {
-      speakCurrentStep();
-    } else {
-      cancelSpeak();
-    }
   }
 
   function schedule() {
@@ -1186,7 +1047,7 @@ const Tour = (() => {
     if (btn) {
       btn.setAttribute('aria-label', playing ? 'Pause auto-advance' : 'Resume auto-advance');
       const icon = btn.querySelector('.tour-pause-icon');
-      if (icon) icon.textContent = playing ? '⏸⏸' : '▶';
+      if (icon) icon.textContent = playing ? '⏸' : '▶';
     }
   }
 
@@ -1195,120 +1056,14 @@ const Tour = (() => {
     if (sel) sel.value = String(speed);
   }
 
-  function syncVoiceUI() {
-    const btn = voiceBtnEl();
-    if (!btn) return;
-    if (!tourSpeechSupported()) {
-      btn.hidden = true;
-      return;
-    }
-    btn.hidden = false;
-    btn.setAttribute('aria-pressed', voiceOn ? 'true' : 'false');
-  }
-
-  function speakCurrentStep() {
-    if (!voiceOn || !tourSpeechSupported()) return;
-    if (!active || !steps.length) return;
-    const step = currentStep();
-    if (!step) return;
-    cancelSpeak();
-    try {
-      // iOS Safari truncates long utterances; cap at a sane length.
-      const raw = `${step.label || step.id}. ${step.text || ''}`;
-      const text = raw.length > 360 ? `${raw.slice(0, 357)}...` : raw;
-      const utter = new window.SpeechSynthesisUtterance(text);
-      utter.rate = 1;
-      window.speechSynthesis.speak(utter);
-    } catch (_) { /* noop */ }
-  }
-
-  function cancelSpeak() {
-    if (!tourSpeechSupported()) return;
-    try { window.speechSynthesis.cancel(); } catch (_) { /* noop */ }
-  }
-
   function currentStep() {
     return steps[idx] || null;
   }
 
-  // Active node = exploration override OR current step
   function activeNodeId() {
     return exploreNodeId != null ? exploreNodeId : (currentStep() ? currentStep().id : null);
   }
 
-  // Heuristic-driven "Why this step?" one-liner.
-  // Inputs: degree, kind, in/out balance, community membership.
-  function buildWhyText(nodeId) {
-    const v = getPrimaryViewer();
-    if (!v || !nodeId) return '';
-    const inDeg = v._inDeg ? (v._inDeg.get(nodeId) || 0) : 0;
-    const outDeg = v._outDeg ? (v._outDeg.get(nodeId) || 0) : 0;
-    const total = (v.degreeMap.get(nodeId) || 0);
-    const kind = v._kindByNode.get(nodeId) || '';
-    const comm = v._communityHueByNode.get(nodeId);
-    const isHub = total >= 6 || (v.maxDegree && total >= v.maxDegree * 0.6);
-
-    const parts = [];
-    if (isHub && kind) {
-      parts.push(`${kind.charAt(0).toUpperCase() + kind.slice(1)} hub — ${inDeg} incoming, ${outDeg} outgoing edges. High centrality.`);
-    } else if (total >= 4 && kind) {
-      parts.push(`${kind.charAt(0).toUpperCase() + kind.slice(1)} with ${total} connections (${inDeg} in / ${outDeg} out).`);
-    } else if (kind) {
-      parts.push(`${kind.charAt(0).toUpperCase() + kind.slice(1)} node, ${total} connection${total === 1 ? '' : 's'}.`);
-    } else if (total > 0) {
-      parts.push(`${total} connection${total === 1 ? '' : 's'} (${inDeg} in / ${outDeg} out).`);
-    }
-    if (comm && comm.id != null) {
-      parts.push(`In community ${comm.id}.`);
-    }
-    return parts.join(' ');
-  }
-
-  // Persona-aware prose. The base text comes from the step; we prepend or
-  // append context per persona.
-  function personaProse(step, nodeId) {
-    const v = getPrimaryViewer();
-    const persona = state.tourPersona || 'default';
-    const base = step.text || step.label || step.id;
-    if (persona === 'architect') {
-      const why = buildWhyText(nodeId);
-      const layered = step.kind ? `Layered role: ${step.kind}.` : '';
-      return [layered, base, why].filter(Boolean).join(' ');
-    }
-    if (persona === 'junior') {
-      const nbrs = v ? firstNeighborLabels(v, nodeId, null, 3) : [];
-      const what = `What it is: ${base}`;
-      const touches = nbrs.length ? ` Touches: ${nbrs.join(', ')}.` : '';
-      return what + touches;
-    }
-    if (persona === 'pm') {
-      const nbrs = v ? firstNeighborLabels(v, nodeId, ['concept', 'module', 'service'], 3) : [];
-      const domain = `Domain: ${base}`;
-      const conn = nbrs.length ? ` Connects to: ${nbrs.join(', ')}.` : '';
-      return domain + conn;
-    }
-    return base;
-  }
-
-  function firstNeighborLabels(viewer, nodeId, kindFilter, max) {
-    if (!viewer || !nodeId) return [];
-    const adj = viewer._adj || (viewer._adj = viewer._buildAdjacency());
-    const nbrs = adj.get(nodeId);
-    if (!nbrs) return [];
-    const out = [];
-    for (const id of nbrs) {
-      if (kindFilter) {
-        const k = viewer._kindByNode.get(id);
-        if (!k || !kindFilter.includes(k)) continue;
-      }
-      const node = viewer.allNodes.find((n) => n.id === id);
-      if (node) out.push(String(node.label || id));
-      if (out.length >= max) break;
-    }
-    return out;
-  }
-
-  // Build neighbor objects (first 8) for rendering, with kind colors.
   function getNeighbors(nodeId, max = 8) {
     const v = getPrimaryViewer();
     if (!v || !nodeId) return [];
@@ -1329,7 +1084,6 @@ const Tour = (() => {
     return out;
   }
 
-  // Distinct related concepts/modules/services neighbor labels (max 12).
   function getRelatedConcepts(nodeId, max = 12) {
     const v = getPrimaryViewer();
     if (!v || !nodeId) return [];
@@ -1362,12 +1116,10 @@ const Tour = (() => {
 
   function jumpToNode(nodeId) {
     if (!active) return;
-    // Find a step matching this node (if any) to keep outline in sync.
     const i = steps.findIndex((s) => s.id === nodeId);
     if (i >= 0) {
       jumpTo(i);
     } else {
-      // Explore mode: not in steps; render the panel with this node's data.
       exploreNodeId = nodeId;
       const v = getPrimaryViewer();
       if (v && v.network) {
@@ -1377,18 +1129,15 @@ const Tour = (() => {
       renderActiveCard();
       renderNeighbors();
       renderRelated();
-      // Stop auto-advance — user is exploring.
       stopTimer();
     }
   }
 
-  // Called by app when network selection changes during the tour.
   function syncToSelectedNode(nodeId) {
     if (!active || !nodeId) return;
     if (nodeId === activeNodeId()) return;
     const i = steps.findIndex((s) => s.id === nodeId);
     if (i >= 0) {
-      // Update internal index without focusing (network already focused)
       idx = i;
       exploreNodeId = null;
     } else {
@@ -1411,7 +1160,6 @@ const Tour = (() => {
     renderOutlineSelection();
     renderStepStripSelection();
     renderNextLabel();
-    // Drive the network to the current step's node.
     const step = currentStep();
     if (net && step && step.id) {
       try { net.selectNodes([step.id]); } catch (_) { /* node may have been pruned */ }
@@ -1424,10 +1172,6 @@ const Tour = (() => {
         });
       } catch (_) { /* noop */ }
     }
-    // Voice narration on each step change.
-    if (voiceOn && tourSpeechSupported()) {
-      speakCurrentStep();
-    }
   }
 
   function renderActiveCard() {
@@ -1436,7 +1180,6 @@ const Tour = (() => {
     if (!step) return;
     const chip = kindChipEl();
     if (chip) {
-      // Use the active node's kind if exploring, else step kind.
       let kind = step.kind || '';
       if (exploreNodeId != null) {
         const v = getPrimaryViewer();
@@ -1446,7 +1189,6 @@ const Tour = (() => {
       chip.textContent = kind || '—';
       chip.dataset.kind = kind || '';
     }
-    // Label + text (use exploring node if any).
     let label = step.label || step.id;
     let prose = step.text || step.label || step.id;
     if (exploreNodeId != null) {
@@ -1457,28 +1199,14 @@ const Tour = (() => {
       if (norm && norm._raw) {
         const r = norm._raw;
         const props = r.properties || {};
-        prose = r.summary || props.description || props.summary || node && String(node.label || nodeId) || '';
+        prose = r.summary || props.description || props.summary
+                || (node ? String(node.label || nodeId) : '');
       }
-    } else {
-      // Persona prose only applied for "step" rendering — for explore
-      // we keep raw label. Personas modify the step's prose.
-      prose = personaProse(step, nodeId);
     }
     const lbl = labelEl();
     if (lbl) lbl.textContent = String(label);
     const txt = textEl();
     if (txt) txt.textContent = String(prose || '');
-    const why = whyEl();
-    if (why) {
-      const w = buildWhyText(nodeId);
-      if (w) {
-        why.textContent = w;
-        why.hidden = false;
-      } else {
-        why.textContent = '';
-        why.hidden = true;
-      }
-    }
     const gh = githubEl();
     if (gh) {
       const url = getGithubUrl(nodeId);
@@ -1488,6 +1216,19 @@ const Tour = (() => {
       } else {
         gh.removeAttribute('href');
         gh.hidden = true;
+      }
+    }
+    const dis = discussEl();
+    if (dis) {
+      const v = getPrimaryViewer();
+      const entry = v && v.entry;
+      const url = entry && entry.id ? buildDiscussUrl(entry.id) : null;
+      if (url) {
+        dis.href = url;
+        dis.hidden = false;
+      } else {
+        dis.removeAttribute('href');
+        dis.hidden = true;
       }
     }
     const live = liveEl();
@@ -1624,29 +1365,6 @@ const Tour = (() => {
     });
   }
 
-  function moveOutline(dir) {
-    if (!steps.length) return;
-    const ul = outlineEl();
-    if (!ul) return;
-    // Highlighted (focused) row: read current focused item; default to idx.
-    const items = Array.from(ul.querySelectorAll('.tour-outline-item'));
-    if (!items.length) return;
-    const cur = document.activeElement;
-    let i = items.indexOf(cur);
-    if (i < 0) i = idx;
-    i = Math.max(0, Math.min(items.length - 1, i + dir));
-    try { items[i].focus({ preventScroll: false }); } catch (_) { items[i].focus(); }
-  }
-
-  function jumpToHighlightedOutline() {
-    const ul = outlineEl();
-    if (!ul) return;
-    const items = Array.from(ul.querySelectorAll('.tour-outline-item'));
-    const cur = document.activeElement;
-    const i = items.indexOf(cur);
-    if (i >= 0) jumpTo(i);
-  }
-
   function toggleOutline() {
     outlineExpanded = !outlineExpanded;
     const toggle = outlineToggleEl();
@@ -1707,22 +1425,13 @@ const Tour = (() => {
     if (typeof document === 'undefined') return;
     if (document.hidden) {
       stopTimer();
-      // iOS Safari quirk: speechSynthesis can be suspended on tab switch.
-      cancelSpeak();
     } else {
       schedule();
-      // Re-prime speech if voice was on and speech got suspended.
-      if (voiceOn && tourSpeechSupported()) {
-        try {
-          if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-        } catch (_) { /* noop */ }
-      }
     }
   }
 
   return {
     attach,
-    applySteps,
     start,
     exit,
     next,
@@ -1731,10 +1440,7 @@ const Tour = (() => {
     togglePlay,
     setSpeed,
     cycleSpeed,
-    toggleVoice,
     toggleOutline,
-    moveOutline,
-    jumpToHighlightedOutline,
     syncToSelectedNode,
     isActive,
     isPlaying,
@@ -1774,13 +1480,11 @@ function renderLegend(items) {
     if (!isCommunity) {
       chip.addEventListener('click', () => toggleLegendChipByIndex(i));
     } else {
-      // Communities are display-only chips.
       chip.disabled = true;
       chip.setAttribute('aria-disabled', 'true');
     }
     legend.appendChild(chip);
   }
-  // "Reset" button at the end if any kind chips
   if (items.some((x) => !x.community)) {
     const reset = el('button', {
       className: 'legend-reset',
@@ -1791,7 +1495,6 @@ function renderLegend(items) {
       const v = getPrimaryViewer();
       if (!v) return;
       v.resetKindFilters();
-      // Sync chip aria-pressed.
       legend.querySelectorAll('.legend-chip:not(.is-community)').forEach((c) => {
         c.setAttribute('aria-pressed', 'true');
         c.classList.remove('is-off');
@@ -1821,7 +1524,7 @@ function toggleLegendChipByIndex(index) {
   if (!kind || kind === 'other') return;
   const chip = document.querySelector(`.legend-chip[data-kind="${CSS.escape(kind)}"]`);
   const wasPressed = chip ? chip.getAttribute('aria-pressed') === 'true' : true;
-  const nowHidden = wasPressed; // pressed=visible, so toggling sets hidden=true
+  const nowHidden = wasPressed;
   v.toggleKind(kind, nowHidden);
   if (chip) {
     chip.setAttribute('aria-pressed', nowHidden ? 'false' : 'true');
@@ -1840,91 +1543,6 @@ function applyLegendVisibility() {
     const lbl = toggle.querySelector('.legend-toggle-label');
     if (lbl) lbl.textContent = legendExpanded ? 'Hide legend' : 'Show legend';
   }
-}
-
-// ---------- compare cart / mode ----------
-
-function toggleCompareCart(id) {
-  const i = state.compareCart.indexOf(id);
-  if (i >= 0) {
-    state.compareCart.splice(i, 1);
-  } else {
-    if (state.compareCart.length >= 2) state.compareCart.shift();
-    state.compareCart.push(id);
-  }
-  syncCompareCartUI();
-  render();
-}
-
-function syncCompareCartUI() {
-  const cart = document.getElementById('compare-cart');
-  const list = document.getElementById('compare-cart-list');
-  const go = document.getElementById('compare-cart-go');
-  if (!cart || !list) return;
-  list.replaceChildren();
-  for (const id of state.compareCart) {
-    const li = el('li', {}, [
-      el('span', { className: 'compare-cart-id', text: id }),
-      (() => {
-        const x = el('button', {
-          className: 'compare-cart-x',
-          attrs: { type: 'button', 'aria-label': `Remove ${id}` },
-          text: '×',
-        });
-        x.addEventListener('click', () => toggleCompareCart(id));
-        return x;
-      })(),
-    ]);
-    list.appendChild(li);
-  }
-  cart.hidden = state.compareCart.length === 0;
-  if (go) go.hidden = state.compareCart.length < 2;
-}
-
-async function enterCompareMode() {
-  if (state.compareCart.length < 2) return;
-  const [aId, bId] = state.compareCart;
-  const aEntry = state.entries.find((e) => e.id === aId);
-  const bEntry = state.entries.find((e) => e.id === bId);
-  if (!aEntry || !bEntry) return;
-  // Mark compare mode and show secondary canvas
-  state.compareMode = true;
-  state.selectedId = aId;
-  render();
-  document.getElementById('graph-host').classList.add('is-compare');
-  const canvasB = document.getElementById('graph-canvas-b');
-  if (canvasB) canvasB.hidden = false;
-  if (isMobile()) {
-    hideDetail();
-    showDetailsPill();
-  } else {
-    showDetail(aEntry);
-  }
-  // Load A as primary
-  await loadGraphFor(aEntry, { fromCompare: true });
-  // Load B as secondary
-  try {
-    const preparedB = await prepareGraph(bEntry);
-    const layoutB = (typeof localStorage !== 'undefined'
-      && localStorage.getItem(`uq:layout:${bEntry.id}`)) || 'force';
-    const resultB = commitGraph(preparedB, canvasB, { primary: false, layout: layoutB });
-    state.compareSecondary = { viewer: resultB.viewer, entry: bEntry };
-    bindNetworkInteractions(resultB.viewer, true);
-  } catch (err) {
-    console.error('compare B load failed', err);
-  }
-}
-
-function exitCompareMode() {
-  if (!state.compareMode) return;
-  state.compareMode = false;
-  if (state.compareSecondary && state.compareSecondary.viewer) {
-    state.compareSecondary.viewer.destroy();
-  }
-  state.compareSecondary = null;
-  document.getElementById('graph-host').classList.remove('is-compare');
-  const canvasB = document.getElementById('graph-canvas-b');
-  if (canvasB) canvasB.hidden = true;
 }
 
 // ---------- right-click menu ----------
@@ -1948,21 +1566,22 @@ function showContextMenu(viewer, nodeId, mouseEvent) {
     items.push({ label: 'Copy graph_url', fn: () => copyText(entry.graph_url) });
   }
   items.push({
-    label: 'Expand 1-hop', fn: () => {
-      // Spotlight 1-hop on this node briefly
-      viewer.setSpotlight(true, 1, String(nodeId));
-      const sc = document.getElementById('spotlight-on');
-      if (sc) sc.checked = true;
-      const wrap = document.getElementById('spotlight-hops-wrap');
-      if (wrap) wrap.hidden = false;
-      const hopsEl = document.getElementById('spotlight-hops');
-      if (hopsEl) hopsEl.value = '1';
-      const hopsVal = document.getElementById('spotlight-hops-val');
-      if (hopsVal) hopsVal.textContent = '1';
+    label: 'Expand 1-hop',
+    fn: () => {
+      // Lightweight: focus + select, then briefly pulse neighbors.
+      try { viewer.network.selectNodes([String(nodeId)]); } catch (_) { /* noop */ }
+      const adj = viewer._adj || (viewer._adj = viewer._buildAdjacency());
+      const nbrs = adj.get(String(nodeId));
+      if (nbrs && nbrs.size) {
+        const ids = [String(nodeId), ...nbrs];
+        viewer.focusNodes(ids);
+        viewer.pulse(ids);
+      } else {
+        viewer.focusNodes([String(nodeId)]);
+      }
     },
   });
   items.push({ label: 'Hide node', fn: () => { viewer.hideNode(String(nodeId)); refreshRestoreHidden(); } });
-  items.push({ label: 'Find paths to…', fn: () => beginPathFinder(viewer, String(nodeId)) });
   if (ghUrl) {
     items.push({
       label: 'View on GitHub ↗',
@@ -1983,20 +1602,17 @@ function showContextMenu(viewer, nodeId, mouseEvent) {
     menu.appendChild(btn);
   }
 
-  // Position
   const x = mouseEvent.clientX || (mouseEvent.touches && mouseEvent.touches[0]?.clientX) || 100;
   const y = mouseEvent.clientY || (mouseEvent.touches && mouseEvent.touches[0]?.clientY) || 100;
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
   menu.hidden = false;
-  // Adjust if overflow
   requestAnimationFrame(() => {
     const r = menu.getBoundingClientRect();
     if (r.right > window.innerWidth) menu.style.left = `${Math.max(8, window.innerWidth - r.width - 8)}px`;
     if (r.bottom > window.innerHeight) menu.style.top = `${Math.max(8, window.innerHeight - r.height - 8)}px`;
   });
 
-  // Close handlers
   ctxMenuOutsideHandler = (ev) => {
     if (!menu.contains(ev.target)) hideContextMenu();
   };
@@ -2041,171 +1657,6 @@ function refreshRestoreHidden() {
   }
 }
 
-// ---------- path finder ----------
-
-function beginPathFinder(_viewer, srcId) {
-  state.pathFinder = { phase: 'awaiting', src: srcId, dst: null, path: null };
-  const banner = document.getElementById('path-banner');
-  if (banner) banner.hidden = false;
-  const txt = document.getElementById('path-banner-text');
-  if (txt) txt.textContent = `From ${srcId} — click target node`;
-  document.body.classList.add('path-cursor');
-}
-
-function finishPathFinder(viewer, dstId) {
-  const src = state.pathFinder.src;
-  if (!src || src === dstId) {
-    cancelPathFinder();
-    return;
-  }
-  const path = viewer.shortestPath(src, dstId);
-  state.pathFinder = { phase: 'shown', src, dst: dstId, path: path || null };
-  const banner = document.getElementById('path-banner');
-  if (banner) banner.hidden = true;
-  const result = document.getElementById('path-result');
-  const txt = document.getElementById('path-result-text');
-  if (path && txt && result) {
-    viewer.highlightPath(path);
-    txt.textContent = `Path length ${path.length - 1} (${path.length} nodes)`;
-    result.hidden = false;
-  } else if (result && txt) {
-    txt.textContent = 'No path found';
-    result.hidden = false;
-  }
-  document.body.classList.remove('path-cursor');
-}
-
-function cancelPathFinder() {
-  state.pathFinder = { phase: 'idle', src: null, dst: null, path: null };
-  const banner = document.getElementById('path-banner');
-  if (banner) banner.hidden = true;
-  const result = document.getElementById('path-result');
-  if (result) result.hidden = true;
-  document.body.classList.remove('path-cursor');
-  const v = getPrimaryViewer();
-  if (v) v.clearPathHighlight();
-}
-
-// ---------- command palette ----------
-
-let paletteResults = [];
-let paletteIdx = 0;
-
-function openPalette() {
-  const overlay = document.getElementById('palette-overlay');
-  const input = document.getElementById('palette-input');
-  if (!overlay || !input) return;
-  overlay.hidden = false;
-  input.value = '';
-  paletteIdx = 0;
-  refreshPaletteResults('');
-  setTimeout(() => input.focus(), 0);
-}
-
-function closePalette() {
-  const overlay = document.getElementById('palette-overlay');
-  if (overlay) overlay.hidden = true;
-}
-
-function paletteIsOpen() {
-  const overlay = document.getElementById('palette-overlay');
-  return overlay && !overlay.hidden;
-}
-
-function refreshPaletteResults(query) {
-  const q = String(query || '').trim().toLowerCase();
-  const out = [];
-  // Entries
-  for (const e of state.entries) {
-    const idLower = String(e.id || '').toLowerCase();
-    const descLower = String(e.description || '').toLowerCase();
-    if (!q || idLower.includes(q) || descLower.includes(q)) {
-      out.push({
-        section: 'Entries',
-        label: e.id || '(unknown)',
-        sub: e.description || '',
-        action: () => { closePalette(); selectEntry(e); },
-      });
-    }
-    if (out.length > 60) break;
-  }
-  // Nodes (current graph)
-  const v = getPrimaryViewer();
-  if (v) {
-    let count = 0;
-    for (const n of v.allNodes) {
-      const idL = String(n.id).toLowerCase();
-      const labelL = String(n.label || '').toLowerCase();
-      if (!q || idL.includes(q) || labelL.includes(q)) {
-        out.push({
-          section: 'Nodes',
-          label: String(n.label || n.id),
-          sub: String(n.id),
-          action: () => {
-            closePalette();
-            try { v.network.selectNodes([n.id]); } catch (_) { /* noop */ }
-            v.focusNodes([n.id]);
-            updateDeeplink();
-          },
-        });
-        if (++count > 30) break;
-      }
-    }
-  }
-  // Actions
-  const actions = [
-    { label: 'Start tour', fn: () => Tour.start() },
-    { label: 'Toggle layout: Force', fn: () => setLayout('force') },
-    { label: 'Toggle layout: Hierarchy', fn: () => setLayout('hierarchy') },
-    { label: 'Toggle layout: Circle', fn: () => setLayout('circle') },
-    { label: 'Toggle layout: Tree', fn: () => setLayout('tree') },
-    { label: 'Toggle spotlight', fn: () => toggleSpotlight() },
-    { label: 'Fit graph', fn: () => window.dispatchEvent(new CustomEvent('uq-zoom', { detail: { dir: 'fit' } })) },
-    { label: 'Show keyboard shortcuts', fn: () => openCheatsheet() },
-    { label: 'Restore hidden nodes', fn: () => { const vv = getPrimaryViewer(); if (vv) { vv.restoreHidden(); refreshRestoreHidden(); } } },
-    { label: 'Reset legend filters', fn: () => { const vv = getPrimaryViewer(); if (vv) vv.resetKindFilters(); } },
-  ];
-  for (const a of actions) {
-    if (!q || a.label.toLowerCase().includes(q)) {
-      out.push({ section: 'Actions', label: a.label, sub: '', action: () => { closePalette(); try { a.fn(); } catch (e) { console.error(e); } } });
-    }
-  }
-  paletteResults = out;
-  paletteIdx = 0;
-  renderPaletteResults();
-}
-
-function renderPaletteResults() {
-  const container = document.getElementById('palette-results');
-  if (!container) return;
-  container.replaceChildren();
-  let lastSection = '';
-  paletteResults.forEach((r, i) => {
-    if (r.section !== lastSection) {
-      container.appendChild(el('div', { className: 'palette-section', text: r.section }));
-      lastSection = r.section;
-    }
-    const row = el('div', {
-      className: `palette-row${i === paletteIdx ? ' is-active' : ''}`,
-      attrs: { role: 'option', 'aria-selected': i === paletteIdx ? 'true' : 'false' },
-    }, [
-      el('div', { className: 'palette-row-label', text: r.label }),
-      r.sub ? el('div', { className: 'palette-row-sub', text: r.sub }) : null,
-    ]);
-    row.addEventListener('mouseenter', () => {
-      paletteIdx = i;
-      renderPaletteResults();
-    });
-    row.addEventListener('click', () => r.action());
-    container.appendChild(row);
-  });
-  // Scroll active into view
-  const active = container.querySelector('.palette-row.is-active');
-  if (active && active.scrollIntoView) {
-    try { active.scrollIntoView({ block: 'nearest' }); } catch (_) { /* noop */ }
-  }
-}
-
 // ---------- cheatsheet ----------
 
 function openCheatsheet() {
@@ -2225,7 +1676,7 @@ function cheatsheetOpen() {
   return overlay && !overlay.hidden;
 }
 
-// ---------- layout toggle / spotlight / min-degree ----------
+// ---------- layout toggle ----------
 
 function setLayout(layout) {
   const v = getPrimaryViewer();
@@ -2248,34 +1699,6 @@ function syncLayoutToggleUI() {
   });
 }
 
-function toggleSpotlight() {
-  const v = getPrimaryViewer();
-  const cb = document.getElementById('spotlight-on');
-  if (!v || !cb) return;
-  cb.checked = !cb.checked;
-  applySpotlightFromUI();
-}
-
-function applySpotlightFromUI() {
-  const v = getPrimaryViewer();
-  if (!v) return;
-  const cb = document.getElementById('spotlight-on');
-  const hopsEl = document.getElementById('spotlight-hops');
-  const wrap = document.getElementById('spotlight-hops-wrap');
-  const valLabel = document.getElementById('spotlight-hops-val');
-  const active = !!(cb && cb.checked);
-  const hops = hopsEl ? parseInt(hopsEl.value, 10) || 2 : 2;
-  if (wrap) wrap.hidden = !active;
-  if (valLabel) valLabel.textContent = String(hops);
-  let anchor = null;
-  if (active && v.network) {
-    const sel = v.network.getSelectedNodes();
-    if (sel && sel.length) anchor = sel[0];
-    else if (v.allNodes.length) anchor = v.allNodes[0].id;
-  }
-  v.setSpotlight(active, hops, anchor);
-}
-
 // ---------- deeplinks ----------
 
 function updateDeeplink() {
@@ -2292,7 +1715,6 @@ function updateDeeplink() {
       const arr = [...v.kindHidden].map((k) => '-' + k);
       params.set('kind', arr.join(','));
     }
-    if (v.spotlightActive) params.set('hops', String(v.spotlightHops));
   }
   if (state.q) params.set('q', state.q);
   const search = params.toString();
@@ -2311,29 +1733,27 @@ function applyDeeplinkOnLoad() {
   const q = params.get('q') || '';
   const kindParam = params.get('kind') || '';
   const node = params.get('node') || null;
-  const hops = parseInt(params.get('hops') || '0', 10) || 0;
   if (q) {
     state.q = q;
     const qInput = document.getElementById('q');
     if (qInput) qInput.value = q;
     applyFilters();
   }
-  // Defer the graph load + post-load apply until after the entry is selected.
   selectEntry(entry, {
     layout,
-    deeplink: { node, q, kindParam, hops },
+    deeplink: { node, q, kindParam },
   });
 }
 
 function applyDeeplinkToViewer(viewer, dl) {
   if (!viewer) return;
   if (dl.kindParam) {
-    const kinds = dl.kindParam.split(',').map((s) => s.trim()).filter((s) => s.startsWith('-')).map((s) => s.slice(1));
+    const kinds = dl.kindParam.split(',').map((s) => s.trim())
+      .filter((s) => s.startsWith('-')).map((s) => s.slice(1));
     for (const k of kinds) {
       viewer.kindHidden.add(k);
     }
     viewer.applyVisibility();
-    // Sync legend chips
     const legend = document.getElementById('graph-legend');
     if (legend) {
       legend.querySelectorAll('.legend-chip').forEach((chip) => {
@@ -2351,13 +1771,6 @@ function applyDeeplinkToViewer(viewer, dl) {
   if (dl.node) {
     try { viewer.network.selectNodes([dl.node]); } catch (_) { /* noop */ }
     viewer.focusNodes([dl.node]);
-  }
-  if (dl.hops > 0 && dl.node) {
-    const cb = document.getElementById('spotlight-on');
-    if (cb) cb.checked = true;
-    const hopsEl = document.getElementById('spotlight-hops');
-    if (hopsEl) hopsEl.value = String(Math.max(1, Math.min(4, dl.hops)));
-    applySpotlightFromUI();
   }
 }
 
@@ -2538,46 +1951,6 @@ function bindLayoutToggle() {
   });
 }
 
-function bindSpotlight() {
-  const cb = document.getElementById('spotlight-on');
-  const hopsEl = document.getElementById('spotlight-hops');
-  if (cb) cb.addEventListener('change', applySpotlightFromUI);
-  if (hopsEl) hopsEl.addEventListener('input', applySpotlightFromUI);
-}
-
-function bindMinDegreeSlider() {
-  const slider = document.getElementById('degree-slider');
-  if (!slider) return;
-  slider.addEventListener('input', () => {
-    const v = getPrimaryViewer();
-    const val = parseInt(slider.value, 10) || 0;
-    const valLabel = document.getElementById('degree-value');
-    if (valLabel) valLabel.textContent = String(val);
-    if (!v) return;
-    v.setMinDegree(val);
-  });
-  if (typeof window !== 'undefined') {
-    window.addEventListener('uq-visibility-changed', (ev) => {
-      const cap = document.getElementById('degree-hidden-count');
-      if (cap && ev && ev.detail) {
-        const v = getPrimaryViewer();
-        if (!v) return;
-        let hiddenN = 0;
-        // Count nodes hidden by min-degree only (not user-hidden / kind-filter)
-        for (const n of v.allNodes) {
-          const id = n.id;
-          if (v.hidden.has(id)) continue;
-          const kind = v._kindByNode.get(id);
-          if (kind && v.kindHidden.has(kind)) continue;
-          if (v.minDegree > 0 && (v.degreeMap.get(id) || 0) < v.minDegree) hiddenN++;
-        }
-        cap.textContent = hiddenN > 0 ? `${hiddenN} hidden` : '';
-      }
-      refreshRestoreHidden();
-    });
-  }
-}
-
 function bindRestoreHidden() {
   const btn = document.getElementById('restore-hidden');
   if (!btn) return;
@@ -2587,61 +1960,6 @@ function bindRestoreHidden() {
     v.restoreHidden();
     refreshRestoreHidden();
   });
-}
-
-function bindCompareCart() {
-  const clear = document.getElementById('compare-cart-clear');
-  if (clear) clear.addEventListener('click', () => {
-    state.compareCart = [];
-    syncCompareCartUI();
-    render();
-    if (state.compareMode) exitCompareMode();
-  });
-  const go = document.getElementById('compare-cart-go');
-  if (go) go.addEventListener('click', () => enterCompareMode());
-}
-
-function bindPathFinderUI() {
-  const cancel = document.getElementById('path-banner-cancel');
-  const clear = document.getElementById('path-result-clear');
-  const copy = document.getElementById('path-result-copy');
-  if (cancel) cancel.addEventListener('click', cancelPathFinder);
-  if (clear) clear.addEventListener('click', cancelPathFinder);
-  if (copy) copy.addEventListener('click', () => {
-    if (state.pathFinder.path && state.pathFinder.path.length) {
-      copyText(state.pathFinder.path.join(' → '));
-    }
-  });
-}
-
-function bindPalette() {
-  const overlay = document.getElementById('palette-overlay');
-  const input = document.getElementById('palette-input');
-  if (!input) return;
-  input.addEventListener('input', () => refreshPaletteResults(input.value));
-  input.addEventListener('keydown', (ev) => {
-    if (ev.key === 'ArrowDown') {
-      ev.preventDefault();
-      paletteIdx = Math.min(paletteResults.length - 1, paletteIdx + 1);
-      renderPaletteResults();
-    } else if (ev.key === 'ArrowUp') {
-      ev.preventDefault();
-      paletteIdx = Math.max(0, paletteIdx - 1);
-      renderPaletteResults();
-    } else if (ev.key === 'Enter') {
-      ev.preventDefault();
-      const r = paletteResults[paletteIdx];
-      if (r) r.action();
-    } else if (ev.key === 'Escape') {
-      ev.preventDefault();
-      closePalette();
-    }
-  });
-  if (overlay) {
-    overlay.addEventListener('click', (ev) => {
-      if (ev.target === overlay) closePalette();
-    });
-  }
 }
 
 function bindCheatsheet() {
@@ -2662,7 +1980,6 @@ function bindTour() {
   const nextBtn = document.getElementById('tour-next');
   const pauseBtn = document.getElementById('tour-pause');
   const speedSel = document.getElementById('tour-speed');
-  const voiceBtn = document.getElementById('tour-voice');
   const outlineToggle = document.getElementById('tour-outline-toggle');
 
   if (startBtn) startBtn.addEventListener('click', () => Tour.start(startBtn));
@@ -2671,14 +1988,12 @@ function bindTour() {
   if (nextBtn)  nextBtn.addEventListener('click', () => Tour.next());
   if (pauseBtn) pauseBtn.addEventListener('click', () => Tour.togglePlay());
   if (speedSel) speedSel.addEventListener('change', () => Tour.setSpeed(speedSel.value));
-  if (voiceBtn) voiceBtn.addEventListener('click', () => Tour.toggleVoice());
   if (outlineToggle) outlineToggle.addEventListener('click', () => Tour.toggleOutline());
 
   document.addEventListener('keydown', (ev) => {
     if (!Tour.isActive()) return;
     const t = ev.target;
     const inEditable = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable || t.tagName === 'SELECT');
-    // Allow Esc to always work; otherwise skip when editing.
     if (ev.key === 'Escape') {
       ev.preventDefault();
       Tour.exit();
@@ -2694,24 +2009,12 @@ function bindTour() {
     } else if (ev.key === 'p' || ev.key === 'P') {
       ev.preventDefault();
       Tour.togglePlay();
-    } else if (ev.key === 'v' || ev.key === 'V') {
-      ev.preventDefault();
-      Tour.toggleVoice();
     } else if (ev.key === '+' || ev.key === '=') {
       ev.preventDefault();
       Tour.cycleSpeed(+1);
     } else if (ev.key === '-' || ev.key === '_') {
       ev.preventDefault();
       Tour.cycleSpeed(-1);
-    } else if (ev.key === 'j' || ev.key === 'J') {
-      ev.preventDefault();
-      Tour.moveOutline(+1);
-    } else if (ev.key === 'k' || ev.key === 'K') {
-      ev.preventDefault();
-      Tour.moveOutline(-1);
-    } else if (ev.key === 'o' || ev.key === 'O') {
-      ev.preventDefault();
-      Tour.jumpToHighlightedOutline();
     }
   });
 
@@ -2754,71 +2057,13 @@ function bindTour() {
     handle.addEventListener('touchcancel', end);
   }
 
-  // Resize: re-render strip / re-eval desktop-vs-mobile.
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', () => {
       if (!Tour.isActive()) return;
-      // Show/hide step strip based on breakpoint; preserve everything else.
       const strip = document.getElementById('tour-step-strip');
       if (strip) strip.hidden = !tourIsDesktop();
     });
   }
-
-  // Persona segmented control inside the tour panel head
-  const head = document.querySelector('.tour-panel-head');
-  if (head && !document.getElementById('tour-personas')) {
-    const personas = el('div', {
-      className: 'tour-personas',
-      attrs: { id: 'tour-personas', role: 'group', 'aria-label': 'Tour persona' },
-    });
-    const opts = [
-      { id: 'default', label: 'Default' },
-      { id: 'architect', label: 'Architect' },
-      { id: 'junior', label: 'Junior' },
-      { id: 'pm', label: 'PM' },
-    ];
-    for (const o of opts) {
-      const b = el('button', {
-        className: 'tour-persona-btn',
-        attrs: {
-          type: 'button',
-          'data-persona': o.id,
-          'aria-pressed': o.id === state.tourPersona ? 'true' : 'false',
-          title: o.label,
-        },
-        text: o.label,
-      });
-      b.addEventListener('click', () => {
-        state.tourPersona = o.id;
-        personas.querySelectorAll('button').forEach((bb) => {
-          bb.setAttribute('aria-pressed', bb.getAttribute('data-persona') === o.id ? 'true' : 'false');
-        });
-        rebuildTourSteps();
-      });
-      personas.appendChild(b);
-    }
-    // Insert after kind-chip but before exit btn.
-    const exitBtn = document.getElementById('tour-exit');
-    if (exitBtn) head.insertBefore(personas, exitBtn);
-    else head.appendChild(personas);
-  }
-}
-
-function rebuildTourSteps() {
-  const v = getPrimaryViewer();
-  if (!v || !v.entry) return;
-  // We need raw graph data — cache from prepareGraph isn't kept on viewer.
-  // Easiest: re-extract from viewer.normalized + persona.
-  const persona = state.tourPersona;
-  const newSteps = reorderTourStepsForPersona(
-    v.format,
-    { nodes: v.normalized.nodes.map((n) => n._raw), graph: { nodes: v.normalized.nodes.map((n) => n._raw), links: v.normalized.edges.map((e) => e._raw) } },
-    v.normalized,
-    persona,
-    state.tourSteps,
-  );
-  state.tourSteps = newSteps;
-  Tour.applySteps(newSteps);
 }
 
 function bindGlobalKeys() {
@@ -2829,11 +2074,8 @@ function bindGlobalKeys() {
     const t = ev.target;
     const inEditable = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
 
-    // Global Esc (close any overlay)
     if (ev.key === 'Escape') {
-      if (paletteIsOpen()) { ev.preventDefault(); closePalette(); return; }
       if (cheatsheetOpen()) { ev.preventDefault(); closeCheatsheet(); return; }
-      if (state.pathFinder.phase !== 'idle') { ev.preventDefault(); cancelPathFinder(); return; }
       const ctx = document.getElementById('ctx-menu');
       if (ctx && !ctx.hidden) { ev.preventDefault(); hideContextMenu(); return; }
       const detail = document.getElementById('detail');
@@ -2850,25 +2092,15 @@ function bindGlobalKeys() {
       }
     }
 
-    // Cmd/Ctrl+K palette
-    if ((ev.metaKey || ev.ctrlKey) && (ev.key === 'k' || ev.key === 'K')) {
-      ev.preventDefault();
-      if (paletteIsOpen()) closePalette();
-      else openPalette();
-      return;
-    }
-
     if (inEditable) return;
-    if (Tour.isActive()) return; // Tour owns its own keys
+    if (Tour.isActive()) return;
 
-    // ? cheatsheet
     if (ev.key === '?' || (ev.key === '/' && ev.shiftKey)) {
       ev.preventDefault();
       openCheatsheet();
       return;
     }
 
-    // / focus search
     if (ev.key === '/') {
       ev.preventDefault();
       const q = document.getElementById('q');
@@ -2879,7 +2111,6 @@ function bindGlobalKeys() {
       return;
     }
 
-    // t start tour
     if (ev.key === 't' || ev.key === 'T') {
       if (state.tourSteps.length) {
         ev.preventDefault();
@@ -2888,7 +2119,6 @@ function bindGlobalKeys() {
       return;
     }
 
-    // f fit
     if (ev.key === 'f' || ev.key === 'F') {
       if (getPrimaryViewer()) {
         ev.preventDefault();
@@ -2897,7 +2127,6 @@ function bindGlobalKeys() {
       return;
     }
 
-    // c center selected
     if (ev.key === 'c' || ev.key === 'C') {
       const v = getPrimaryViewer();
       if (v && v.network) {
@@ -2910,7 +2139,6 @@ function bindGlobalKeys() {
       return;
     }
 
-    // 1..9 toggle nth legend chip
     if (/^[1-9]$/.test(ev.key)) {
       const idx = parseInt(ev.key, 10) - 1;
       if (state.legend && state.legend[idx] && !state.legend[idx].community) {
@@ -2920,7 +2148,6 @@ function bindGlobalKeys() {
       return;
     }
 
-    // [ ] previous/next sidebar entry
     if (ev.key === '[' || ev.key === ']') {
       const list = state.filtered;
       if (list.length === 0) return;
@@ -2933,7 +2160,6 @@ function bindGlobalKeys() {
       return;
     }
 
-    // gg jump to first
     if (ev.key === 'g' || ev.key === 'G') {
       if (ggArmed) {
         ggArmed = false;
@@ -3012,12 +2238,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindTour();
     bindLegendToggle();
     bindLayoutToggle();
-    bindSpotlight();
-    bindMinDegreeSlider();
     bindRestoreHidden();
-    bindCompareCart();
-    bindPathFinderUI();
-    bindPalette();
     bindCheatsheet();
     bindGlobalKeys();
     loadRegistry();
