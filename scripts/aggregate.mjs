@@ -159,7 +159,7 @@ async function mapWithConcurrency(items, concurrency, worker) {
     while (true) {
       const i = cursor++;
       if (i >= items.length) return;
-      out[i] = await worker(items[i], i);
+      out[i] = await worker(items[i]);
     }
   }
   const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => pull());

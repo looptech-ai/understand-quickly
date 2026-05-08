@@ -16,6 +16,8 @@ const BEGIN = '<!-- BEGIN ENTRIES -->';
 const END = '<!-- END ENTRIES -->';
 
 // Sanitize producer-supplied description text before embedding in markdown:
+//   - escape backslashes first (otherwise a literal `\` in input would
+//     concatenate with our pipe-escape and leak past the table-cell boundary)
 //   - escape table pipes
 //   - neutralize raw HTML tags (so a `<script>` in a description can't ride
 //     into a downstream HTML render of the README)
@@ -24,6 +26,7 @@ const END = '<!-- END ENTRIES -->';
 function sanitizeDescription(s) {
   if (!s) return '';
   return String(s)
+    .replace(/\\/g, '\\\\')
     .replace(/\|/g, '\\|')
     .replace(/[<>]/g, (c) => (c === '<' ? '&lt;' : '&gt;'))
     .replace(/\]\(\s*(?:javascript|data|vbscript|file):/gi, '](#:');
