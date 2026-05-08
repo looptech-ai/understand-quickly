@@ -419,6 +419,58 @@ test('stats: extractStats returns {} for unknown formats', async () => {
   assert.deepEqual(stats, {});
 });
 
+test('stats: bundle@1 200 ok yields nodes_count = manifest.file_count, edges_count = 0', async () => {
+  const body = JSON.stringify({
+    format: 'bundle@1',
+    manifest: {
+      tool: 'repomix',
+      tool_version: '0.2.27',
+      generated_at: '2026-05-08T12:00:00Z',
+      file_count: 3,
+      byte_count: 4096,
+      token_estimate: 1024,
+      format: 'xml'
+    },
+    content_url: 'https://raw.githubusercontent.com/example/demo/main/.repomix/repomix-output.xml',
+    files: [
+      { path: 'src/index.ts', bytes: 1234, lines: 50 },
+      { path: 'src/server.ts', bytes: 2210, lines: 80 },
+      { path: 'tests/smoke.test.ts', bytes: 652, lines: 25 }
+    ]
+  });
+  const entry = { ...baseEntry, format: 'bundle@1' };
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry(entry, { fetchImpl: f, now: () => new Date('2026-05-08T00:00:00Z') });
+  assert.equal(r.status, 'ok');
+  assert.equal(r.nodes_count, 3);
+  assert.equal(r.edges_count, 0);
+  assert.deepEqual(r.top_kinds, [{ kind: 'file', count: 3 }]);
+  assert.deepEqual(r.languages, []);
+});
+
+test('stats: bundle@1 missing content_url → status invalid', async () => {
+  const body = JSON.stringify({
+    format: 'bundle@1',
+    manifest: {
+      tool: 'repomix',
+      tool_version: '0.2.27',
+      generated_at: '2026-05-08T12:00:00Z',
+      file_count: 0,
+      byte_count: 0,
+      token_estimate: 0,
+      format: 'xml'
+    }
+  });
+  const entry = { ...baseEntry, format: 'bundle@1' };
+  const f = makeFetch({
+    'https://example.com/g.json': () => new Response(body, { status: 200 })
+  });
+  const r = await syncEntry(entry, { fetchImpl: f, now: () => new Date('2026-05-08T00:00:00Z') });
+  assert.equal(r.status, 'invalid');
+});
+
 // ---------------------------------------------------------------------------
 // Goal 1: source_sha sniffing + drift detection.
 // ---------------------------------------------------------------------------

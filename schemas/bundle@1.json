@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://understand-quickly.dev/schemas/bundle@1.json",
+  "title": "bundle@1",
+  "description": "Repo-context bundle: a packed-text representation of a repo (e.g. emitted by Repomix, gitingest, codebase-digest). Unlike graph formats there are no nodes/edges — just packed content + a manifest pointing at it. The bundle JSON itself is small; the actual packed body lives at `content_url` so registry consumers can stream the raw markdown/xml/plaintext.",
+  "type": "object",
+  "required": [
+    "manifest",
+    "content_url"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "format": {
+      "description": "Optional self-identifier; the registry already knows the format from the entry, but producers commonly stamp it.",
+      "const": "bundle@1"
+    },
+    "manifest": {
+      "type": "object",
+      "description": "Producer-side metadata. Required so consumers can sniff tool identity, version, freshness, and the content body encoding without fetching it.",
+      "required": [
+        "tool",
+        "tool_version",
+        "generated_at",
+        "file_count",
+        "byte_count",
+        "token_estimate",
+        "format"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifier of the producing tool, e.g. \"repomix\", \"gitingest\", \"codebase-digest\". Free-form so future packers can self-identify without a schema bump."
+        },
+        "tool_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$",
+          "description": "40-hex source-repo HEAD sha at generation time. Optional but strongly recommended — used by the registry drift detection."
+        },
+        "file_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byte_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total size in bytes of the packed body at content_url."
+        },
+        "token_estimate": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Approximate token count of the packed body. Estimator is producer-defined; consumers SHOULD treat as a hint only."
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "markdown",
+            "xml",
+            "json",
+            "plaintext"
+          ],
+          "description": "Encoding of the packed body at content_url. Lets consumers pick a parser without sniffing."
+        }
+      }
+    },
+    "content_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Raw URL of the packed text/xml/markdown body. Mandatory — without it there is no bundle."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Optional one-paragraph plain-text summary of what is in the bundle."
+    },
+    "files": {
+      "type": "array",
+      "description": "Optional per-file manifest. Producers MAY omit when the file list would balloon the registry pointer; in that case file_count still gives a count.",
+      "items": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lines": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

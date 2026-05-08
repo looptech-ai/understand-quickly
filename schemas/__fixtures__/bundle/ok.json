@@ -1,0 +1,32 @@
+{
+  "format": "bundle@1",
+  "manifest": {
+    "tool": "repomix",
+    "tool_version": "0.2.27",
+    "generated_at": "2026-05-08T12:00:00Z",
+    "commit": "1234567890abcdef1234567890abcdef12345678",
+    "file_count": 3,
+    "byte_count": 4096,
+    "token_estimate": 1024,
+    "format": "xml"
+  },
+  "content_url": "https://raw.githubusercontent.com/example/demo/main/.repomix/repomix-output.xml",
+  "summary": "TypeScript demo project with an entrypoint, a server, and a smoke test.",
+  "files": [
+    {
+      "path": "src/index.ts",
+      "bytes": 1234,
+      "lines": 50
+    },
+    {
+      "path": "src/server.ts",
+      "bytes": 2210,
+      "lines": 80
+    },
+    {
+      "path": "tests/smoke.test.ts",
+      "bytes": 652,
+      "lines": 25
+    }
+  ]
+}

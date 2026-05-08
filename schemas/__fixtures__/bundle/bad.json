@@ -1,0 +1,13 @@
+{
+  "format": "bundle@1",
+  "manifest": {
+    "tool": "repomix",
+    "tool_version": "0.2.27",
+    "generated_at": "2026-05-08T12:00:00Z",
+    "file_count": 3,
+    "byte_count": 4096,
+    "token_estimate": 1024,
+    "format": "xml"
+  },
+  "summary": "Missing the mandatory content_url — a bundle without a body URL is not consumable."
+}

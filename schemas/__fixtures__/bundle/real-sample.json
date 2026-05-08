@@ -1,0 +1,68 @@
+{
+  "_comment_top": "Shape inferred from Repomix README + gitingest output examples (Repomix v0.2.x emits an XML body and a JSON manifest; gitingest emits a markdown body with a tree + content; codebase-digest emits a plaintext concatenation). The bundle@1 schema normalizes all three into a small JSON pointer that consumers can resolve to the raw packed body via content_url. _comment_* keys are not part of the upstream shape — they document inference. Real-world bundles in the wild typically embed the file list inline (Repomixs file_summary block, gitingests tree section); we mirror that here with a representative ~10-file slice.",
+  "format": "bundle@1",
+  "manifest": {
+    "tool": "repomix",
+    "tool_version": "0.2.34",
+    "generated_at": "2026-05-08T09:42:11Z",
+    "commit": "abcdef0123456789abcdef0123456789abcdef01",
+    "file_count": 10,
+    "byte_count": 78342,
+    "token_estimate": 19420,
+    "format": "xml"
+  },
+  "content_url": "https://raw.githubusercontent.com/example/sample-app/main/.repomix/repomix-output.xml",
+  "summary": "Sample TypeScript service: HTTP server, two route handlers, an in-memory store, a small CLI shim, plus unit and integration tests. Bundled at HEAD of main. Suitable as a one-shot context drop for an LLM doing a code-review or architecture-overview pass.",
+  "files": [
+    {
+      "path": "package.json",
+      "bytes": 1124,
+      "lines": 38
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 612,
+      "lines": 22
+    },
+    {
+      "path": "src/index.ts",
+      "bytes": 842,
+      "lines": 32
+    },
+    {
+      "path": "src/server.ts",
+      "bytes": 4188,
+      "lines": 152
+    },
+    {
+      "path": "src/routes/health.ts",
+      "bytes": 376,
+      "lines": 18
+    },
+    {
+      "path": "src/routes/items.ts",
+      "bytes": 2914,
+      "lines": 110
+    },
+    {
+      "path": "src/store/memory.ts",
+      "bytes": 2010,
+      "lines": 84
+    },
+    {
+      "path": "src/cli.ts",
+      "bytes": 1102,
+      "lines": 44
+    },
+    {
+      "path": "tests/server.test.ts",
+      "bytes": 3320,
+      "lines": 121
+    },
+    {
+      "path": "tests/store.test.ts",
+      "bytes": 1854,
+      "lines": 70
+    }
+  ]
+}

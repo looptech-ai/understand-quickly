@@ -97,6 +97,7 @@ Then read [`CONTRIBUTING.md`](CONTRIBUTING.md).
 | `understand-anything@1` | [Understand-Anything](https://github.com/Lum1104/Understand-Anything) | first-class |
 | `gitnexus@1` | [GitNexus](https://github.com/abhigyanpatwari/GitNexus) | first-class |
 | `code-review-graph@1` | [code-review-graph](https://github.com/tirth8205/code-review-graph) | first-class |
+| `bundle@1` | repo-context packers ([Repomix](https://github.com/yamadashy/repomix), [gitingest](https://github.com/cyclotruc/gitingest), [codebase-digest](https://github.com/kamilstanuch/codebase-digest), …) | first-class |
 | `generic@1` | any `{nodes, edges}` graph | fallback |
 
 Adding a new format: PR `schemas/<name>@<int>.json` + an `ok` and `bad` fixture under `schemas/__fixtures__/<name>/`. Full instructions in [CONTRIBUTING.md](CONTRIBUTING.md).

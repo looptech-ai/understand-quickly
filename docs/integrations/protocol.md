@@ -17,7 +17,7 @@ A producer is anything that, given a source repo, writes a JSON graph file. To b
   - GitNexus: `.gitnexus/graph.json`
   - code-review-graph: `.crg/graph.json`
   - new tools: `.<tool-slug>/graph.json` (or similar)
-- **Conform to a registered format schema.** The format is identified by a `<name>@<int>` slug (e.g. `understand-anything@1`) backed by a JSON Schema at `schemas/<name>@<int>.json` in this repo. Adding a new format is a PR — see [§7](#7-format-authoring).
+- **Conform to a registered format schema.** The format is identified by a `<name>@<int>` slug (e.g. `understand-anything@1`) backed by a JSON Schema at `schemas/<name>@<int>.json` in this repo. Adding a new format is a PR — see [§7](#7-format-authoring). Repo-context **packers** (Repomix, gitingest, codebase-digest, and similar tools that emit a packed-text dump rather than a node/edge graph) target the [`bundle@1`](../../schemas/bundle@1.json) format: a small JSON pointer with a `manifest` block plus a `content_url` for the raw markdown/xml/plaintext body.
 - **Be ≤ 50 MB.** Larger files are not fetched; the entry will be marked `oversize`.
 
 A producer **SHOULD**:

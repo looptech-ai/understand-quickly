@@ -126,11 +126,32 @@ function genericStats(body) {
   };
 }
 
+// bundle@1 is not a graph — it's a packed-text bundle pointer (Repomix,
+// gitingest, codebase-digest, ...). We still surface a `nodes_count` so the
+// registry's existing UI columns light up: it represents files-in-the-bundle.
+// `edges_count` is always 0 (bundles have no graph edges) and `top_kinds`
+// collapses to a single `file` bucket. Languages are derivable from file
+// extensions but that's out of scope for v0.1.0 of bundle@1.
+function bundleStats(body) {
+  const manifestCount = Number.isInteger(body?.manifest?.file_count)
+    ? body.manifest.file_count
+    : null;
+  const filesArr = Array.isArray(body?.files) ? body.files : null;
+  const nodes_count = manifestCount ?? (filesArr ? filesArr.length : 0);
+  return {
+    nodes_count,
+    edges_count: 0,
+    top_kinds: nodes_count > 0 ? [{ kind: 'file', count: nodes_count }] : [],
+    languages: []
+  };
+}
+
 const EXTRACTORS = {
   'understand-anything@1': understandAnythingStats,
   'gitnexus@1': gitnexusStats,
   'code-review-graph@1': codeReviewGraphStats,
-  'generic@1': genericStats
+  'generic@1': genericStats,
+  'bundle@1': bundleStats
 };
 
 /**
@@ -180,6 +201,9 @@ export function extractSourceSha(format, body) {
     );
   } else if (format === 'code-review-graph@1') {
     candidates.push(body?.metadata?.commit, body?.stats?.commit);
+  } else if (format === 'bundle@1') {
+    // bundle@1: producer stamps the source-repo HEAD into manifest.commit.
+    candidates.push(body?.manifest?.commit);
   } else {
     // generic@1 + unknown formats: no producer convention.
     return null;
