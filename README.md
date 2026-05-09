@@ -119,6 +119,20 @@ Adding a new format: PR `schemas/<name>@<int>.json` + an `ok` and `bad` fixture 
 
 Upstream tools that produce these formats can integrate via [the integration protocol](docs/integrations/protocol.md). PR templates are in `docs/integrations/`.
 
+### Integrating an upstream tool
+
+Easiest path: drop the [`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action) into your release/build workflow.
+
+```yaml
+- uses: looptech-ai/uq-publish-action@v0.1.0
+  with:
+    graph-path: '.your-tool/graph.json'
+    format: 'your-format@1'
+    token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
+```
+
+The Action stamps `metadata.{tool, tool_version, generated_at, commit}` into the graph and fires a `repository_dispatch` (`event_type=sync-entry`) at this registry. See [`docs/integrations/protocol.md`](docs/integrations/protocol.md) for the full producer contract.
+
 ## Add your repo
 
 The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @understand-quickly/cli add`. The manual flow:

@@ -87,29 +87,16 @@ The `id` field MUST match the `id` in `registry.json` (i.e. `owner/repo` shape).
 
 ## 5. CI integration (recommended)
 
-Most users will not run `--publish` locally. The reliable path is a GitHub Action that fires the dispatch on every push that touches the graph file. Drop the snippet in [`sample-publish-workflow.yml`](./sample-publish-workflow.yml) into the user's repo as `.github/workflows/understand-quickly-publish.yml`.
+Most users will not run `--publish` locally. The reliable path is a GitHub Action that fires the dispatch on every push that touches the graph file.
 
-Excerpt:
+The first-class integration is the **[`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action)** Marketplace Action. It stamps `metadata.{tool, tool_version, generated_at, commit}` into the graph and posts the `sync-entry` dispatch in one step. The full snippet at [`sample-publish-workflow.yml`](./sample-publish-workflow.yml) drops into the user's repo as `.github/workflows/understand-quickly-publish.yml` — the publish step itself is five lines:
 
 ```yaml
-on:
-  push:
-    branches: [main]
-    paths:
-      - '.understand-anything/**'
-      - '.gitnexus/**'
-      - '.code-review-graph/**'
-
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
-          repository: looptech-ai/understand-quickly
-          event-type: sync-entry
-          client-payload: '{"id":"${{ github.repository }}"}'
+- uses: looptech-ai/uq-publish-action@v0.1.0
+  with:
+    graph-path: '.understand-anything/knowledge-graph.json'
+    format: 'understand-anything@1'
+    token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
 ```
 
 ### PAT setup
@@ -119,7 +106,11 @@ jobs:
 - **Repository access:** `looptech-ai/understand-quickly` only.
 - **Permissions:** `Contents: read`, `Metadata: read`, **`Repository dispatches: write`**. (Nothing else.)
 
-The user adds the PAT as a repo secret in their own repository (`Settings → Secrets and variables → Actions`). The secret is consumed by `peter-evans/repository-dispatch@v3`. No write access to the registry is needed; the registry only listens for the `sync-entry` event type.
+The user adds the PAT as a repo secret in their own repository (`Settings → Secrets and variables → Actions`). The Action consumes it via the `token` input. No write access to the registry is needed; the registry only listens for the `sync-entry` event type.
+
+### Fallback: raw dispatch
+
+For environments that can't use Marketplace Actions (private runners with restricted egress, non-GitHub CI), use the raw dispatch from §4 directly. Either `gh api repos/looptech-ai/understand-quickly/dispatches ...` or a plain `curl -X POST` against the same endpoint works; the Action is a thin wrapper around exactly that call plus metadata stamping.
 
 ## 6. Becoming a verified publisher
 
