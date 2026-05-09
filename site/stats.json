@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-05-08T04:04:53.525Z",
+  "generated_at": "2026-05-09T04:09:11.078Z",
   "totals": {
     "entries": 3,
     "nodes": 25,
@@ -78,9 +78,9 @@
       "term": "graph",
       "entries": 3,
       "samples": [
-        "understand-quickly/demo-understand-anything",
+        "understand-quickly/demo-code-review-graph",
         "understand-quickly/demo-gitnexus",
-        "understand-quickly/demo-code-review-graph"
+        "understand-quickly/demo-understand-anything"
       ]
     }
   ]
