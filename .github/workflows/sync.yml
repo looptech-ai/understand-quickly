@@ -72,17 +72,20 @@ jobs:
       - name: Render badges
         run: node scripts/render-badges.mjs --registry registry.json --out site/badges
 
+      - name: Render well-known
+        run: node scripts/well-known.mjs --registry registry.json --out site/.well-known
+
       - name: Commit changes
         id: commit
         run: |
-          if git diff --quiet registry.json README.md site/stats.json site/badges; then
+          if git diff --quiet registry.json README.md site/stats.json site/badges site/.well-known; then
             echo "no changes"
             echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add registry.json README.md site/stats.json site/badges
+          git add registry.json README.md site/stats.json site/badges site/.well-known
           git commit -m "chore(sync): update registry and README"
           git push
           echo "pushed=true" >> "$GITHUB_OUTPUT"

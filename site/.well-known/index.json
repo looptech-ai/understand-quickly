@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "endpoints": [
+    {
+      "path": "/.well-known/code-graph.json",
+      "url": "https://looptech-ai.github.io/understand-quickly/.well-known/code-graph.json",
+      "description": "About this aggregator: registry url, stats url, spec, discovery page.",
+      "schema_version": 1
+    },
+    {
+      "path": "/.well-known/repos.json",
+      "url": "https://looptech-ai.github.io/understand-quickly/.well-known/repos.json",
+      "description": "Flat list of ok entries: { id, format, graph_url, last_synced, status, source_sha }.",
+      "schema_version": 1
+    },
+    {
+      "path": "/.well-known/code-graph-discovery.html",
+      "url": "https://looptech-ai.github.io/understand-quickly/.well-known/code-graph-discovery.html",
+      "description": "Browser-friendly discovery UI; supports ?repo=<owner>/<repo> lookup.",
+      "schema_version": 1
+    }
+  ]
+}

@@ -143,6 +143,17 @@ Once registered, link a status badge in your repo's README:
 
 Lower-case the owner/repo and replace `/` with `--`. The badge auto-updates as your entry's status changes.
 
+### Discovery (`.well-known/code-graph`)
+
+Agents can discover this registry's contents without going through `registry.json`:
+
+```bash
+curl -fsSL https://looptech-ai.github.io/understand-quickly/.well-known/repos.json
+# returns { schema_version, repos: [{id, format, graph_url, last_synced, status, source_sha}] }
+```
+
+To make YOUR repo discoverable without registering here, publish a `.well-known/code-graph.json` at the root of your repo. See the [Code-Knowledge-Graph Protocol spec](docs/spec/code-graph-protocol.md).
+
 ## Add your repo
 
 The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @understand-quickly/cli add`. The manual flow:

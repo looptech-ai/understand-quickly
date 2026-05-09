@@ -171,7 +171,13 @@ Every registered entry gets a public SVG badge at:
 
 It updates on every sync. Status flips colors automatically. Wrap it in a link to the live entry view to give your README readers a one-click jump into the registry browser.
 
-## 11. Licensing of submitted data
+## 11. Discovery via `.well-known`
+
+Producers MAY publish a `.well-known/code-graph.json` at their repo root. Agents will probe this path before falling back to the registry. This makes a producer's graph discoverable even if their repo isn't yet registered with us.
+
+The full protocol spec lives at [`docs/spec/code-graph-protocol.md`](../spec/code-graph-protocol.md).
+
+## 12. Licensing of submitted data
 
 When a Producer ships a `--publish` flag, they are arranging for their users' graphs and bundles to be ingested by the registry. Each ingestion is governed by [`DATA-LICENSE.md`](../../DATA-LICENSE.md) — the **Understand-Quickly Data License 1.0**. In short:
 

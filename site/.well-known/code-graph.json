@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "service": {
+    "name": "understand-quickly registry",
+    "url": "https://looptech-ai.github.io/understand-quickly/",
+    "registry_url": "https://looptech-ai.github.io/understand-quickly/registry.json",
+    "stats_url": "https://looptech-ai.github.io/understand-quickly/stats.json",
+    "badge_base": "https://looptech-ai.github.io/understand-quickly/badges/",
+    "spec_url": "https://looptech-ai.github.io/understand-quickly/docs/spec/code-graph-protocol.md",
+    "discovery_url": "https://looptech-ai.github.io/understand-quickly/.well-known/code-graph-discovery.html"
+  }
+}
