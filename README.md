@@ -133,6 +133,16 @@ Easiest path: drop the [`looptech-ai/uq-publish-action`](https://github.com/loop
 
 The Action stamps `metadata.{tool, tool_version, generated_at, commit}` into the graph and fires a `repository_dispatch` (`event_type=sync-entry`) at this registry. See [`docs/integrations/protocol.md`](docs/integrations/protocol.md) for the full producer contract.
 
+### Embed an indexed-by badge
+
+Once registered, link a status badge in your repo's README:
+
+```markdown
+[![indexed by understand-quickly](https://looptech-ai.github.io/understand-quickly/badges/<owner>--<repo>.svg)](https://looptech-ai.github.io/understand-quickly/?entry=<owner>/<repo>)
+```
+
+Lower-case the owner/repo and replace `/` with `--`. The badge auto-updates as your entry's status changes.
+
 ## Add your repo
 
 The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @understand-quickly/cli add`. The manual flow:

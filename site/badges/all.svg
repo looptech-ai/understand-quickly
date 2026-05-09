@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="109" height="20" role="img" aria-label="indexed: 3 entries">
+  <title>indexed: 3 entries</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r">
+    <rect width="109" height="20" rx="3" fill="#fff"/>
+  </clipPath>
+  <g clip-path="url(#r)">
+    <rect width="52" height="20" fill="#555555"/>
+    <rect x="52" width="57" height="20" fill="#5a9e6f"/>
+    <rect width="109" height="20" fill="url(#s)"/>
+  </g>
+  <a target="_blank" rel="noopener" xlink:href="https://looptech-ai.github.io/understand-quickly/" href="https://looptech-ai.github.io/understand-quickly/"><g fill="#fff" text-anchor="middle" font-family="Verdana, Geneva, DejaVu Sans, sans-serif" text-rendering="geometricPrecision" font-size="110" transform="scale(.1)">
+    <text aria-hidden="true" x="260" y="150" fill="#010101" fill-opacity=".3" textLength="415">indexed</text>
+    <text x="260" y="140" textLength="415">indexed</text>
+    <text aria-hidden="true" x="805" y="150" fill="#010101" fill-opacity=".3" textLength="465">3 entries</text>
+    <text x="805" y="140" textLength="465">3 entries</text>
+  </g></a>
+</svg>

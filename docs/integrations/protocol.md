@@ -163,7 +163,15 @@ Drift fields (`source_sha`, `head_sha`, `commits_behind`, `drift_checked_at`) ar
 
 To debug a single entry without waiting for the nightly sync, fire the dispatch in §4 with the entry id; the workflow logs the per-entry result publicly under [Actions → sync](https://github.com/looptech-ai/understand-quickly/actions/workflows/sync.yml).
 
-## 10. Licensing of submitted data
+## 10. Embeddable status badge
+
+Every registered entry gets a public SVG badge at:
+
+  https://looptech-ai.github.io/understand-quickly/badges/<owner>--<repo>.svg
+
+It updates on every sync. Status flips colors automatically. Wrap it in a link to the live entry view to give your README readers a one-click jump into the registry browser.
+
+## 11. Licensing of submitted data
 
 When a Producer ships a `--publish` flag, they are arranging for their users' graphs and bundles to be ingested by the registry. Each ingestion is governed by [`DATA-LICENSE.md`](../../DATA-LICENSE.md) — the **Understand-Quickly Data License 1.0**. In short:
 
