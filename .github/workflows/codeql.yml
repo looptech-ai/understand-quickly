@@ -5,6 +5,10 @@ name: CodeQL
 #
 # Languages covered: JavaScript/TypeScript (scripts/, mcp/, cli/, site/).
 # We do not scan vendored third-party assets under site/vendor/.
+#
+# Suppression policy: NONE. All findings are fixed, not suppressed.
+# Tea leaf from upstream PR reviews: bigger projects gate on CodeQL clean,
+# and we want our own house in order before pitching integrations.
 
 on:
   push:
