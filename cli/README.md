@@ -1,16 +1,16 @@
-# @understand-quickly/cli
+# understand-quickly-cli
 
-[![npm version](https://img.shields.io/npm/v/@understand-quickly/cli)](https://www.npmjs.com/package/@understand-quickly/cli)
-[![node engines](https://img.shields.io/node/v/@understand-quickly/cli)](https://nodejs.org)
+[![npm version](https://img.shields.io/npm/v/understand-quickly-cli)](https://www.npmjs.com/package/understand-quickly-cli)
+[![node engines](https://img.shields.io/node/v/understand-quickly-cli)](https://nodejs.org)
 
 Add your repo to the [understand-quickly registry](https://looptech-ai.github.io/understand-quickly/) without touching JSON.
 
 ## Install
 
 ```bash
-npm install -g @understand-quickly/cli
+npm install -g understand-quickly-cli
 # or, no install:
-npx @understand-quickly/cli add
+npx understand-quickly-cli add
 ```
 
 ## What it does

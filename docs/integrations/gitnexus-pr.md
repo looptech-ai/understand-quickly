@@ -23,7 +23,7 @@ Paste the body below into the PR description on that repo. The author should con
 - Add a `--publish` flag (or equivalent — `--register`, `--publish-to-uq`) to the GitNexus CLI surface that writes `.gitnexus/graph.json`. If the shared graph package exposes a programmatic `emit()` / `export()` entry point, accept the same option there.
 - After the existing graph emit step, when `--publish` is set: fire a `repository_dispatch` event at `looptech-ai/understand-quickly` using a token from `$UNDERSTAND_QUICKLY_TOKEN`.
 - Embed `metadata.commit = $(git rev-parse HEAD)`, `metadata.tool_version`, and `metadata.generated_at` in the emitted graph (the `gitnexus@1` schema already declares these fields).
-- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @understand-quickly/cli add` or the wizard and exit cleanly.
+- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx understand-quickly-cli add` or the wizard and exit cleanly.
 - Add a "Publishing to understand-quickly" paragraph to the README near the existing CLI docs.
 
 For users who don't want a flag and just want CI-driven publishing, a one-step **GitHub Action** ([`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action)) ships the same dispatch + metadata stamping. Recommend it in the README as the "set and forget" path; the `--publish` flag stays the right answer for local one-off invocations.
@@ -57,7 +57,7 @@ Full template at [`docs/integrations/sample-publish-workflow.yml`](https://githu
 - [ ] Default invocation writes `.gitnexus/graph.json` exactly as before.
 - [ ] `... --publish` with `UNDERSTAND_QUICKLY_TOKEN` unset writes the file and prints an informational message; exit code 0.
 - [ ] `... --publish` with the token set and the repo registered fires the dispatch and the registry's `sync.yml` runs within roughly a minute.
-- [ ] `... --publish` with the token set but the repo unregistered prints `register it once with: npx @understand-quickly/cli add`; exit code 0.
+- [ ] `... --publish` with the token set but the repo unregistered prints `register it once with: npx understand-quickly-cli add`; exit code 0.
 - [ ] Emitted graph contains `metadata.tool == "gitnexus"`, `metadata.tool_version`, `metadata.generated_at`, and `metadata.commit` (40-hex sha).
 
 ## Notes for the maintainer

@@ -27,7 +27,7 @@ Wiring a `--publish` flag means any user who generates a tutorial for their repo
   1. Emit a small JSON knowledge graph at `.pocketflow/tutorial.json` capturing the chapters / concepts / source-file pointers as `nodes` and the chapter-to-source / cross-references as `edges` (matches `generic@1`).
   2. Embed `metadata.commit = $(git rev-parse HEAD)`, `metadata.tool == "pocketflow-tutorial-codebase-knowledge"`, `metadata.tool_version`, and `metadata.generated_at`.
   3. If `$UNDERSTAND_QUICKLY_TOKEN` is set, fire a `repository_dispatch` event at `looptech-ai/understand-quickly`. Otherwise, write the file locally and exit cleanly.
-- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @understand-quickly/cli add` or the wizard and exit cleanly — don't fail the parent run.
+- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx understand-quickly-cli add` or the wizard and exit cleanly — don't fail the parent run.
 - Add a "Publishing to understand-quickly" paragraph to the README.
 
 ## Schema fit
