@@ -27,6 +27,12 @@ jobs:
       - name: Install
         run: npm install --no-audit
 
+      - name: Verify version matches tag
+        working-directory: '.'
+        env:
+          GH_REF: ${{ github.ref }}
+        run: node scripts/check-versions.mjs --tag "$GH_REF"
+
       - name: Pack (sanity check)
         run: npm pack --dry-run
 

@@ -22,6 +22,11 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org/'
+      - name: Verify version matches tag
+        working-directory: '.'
+        env:
+          GH_REF: ${{ github.ref }}
+        run: node scripts/check-versions.mjs --tag "$GH_REF"
       - name: Install
         run: npm install --no-audit
       - name: Build
