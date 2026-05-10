@@ -23,6 +23,9 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 [![npm MCP](https://img.shields.io/npm/v/@looptech-ai/understand-quickly-mcp?label=npm%20mcp)](https://www.npmjs.com/package/@looptech-ai/understand-quickly-mcp)
 [![PyPI](https://img.shields.io/pypi/v/understand-quickly)](https://pypi.org/project/understand-quickly/)
 [![Marketplace](https://img.shields.io/badge/marketplace-uq--publish--action-orange)](https://github.com/marketplace/actions/understand-quickly-publish)
+[![npm downloads CLI](https://img.shields.io/npm/dm/@looptech-ai/understand-quickly-cli?label=cli%20dl%2Fmo)](https://www.npmjs.com/package/@looptech-ai/understand-quickly-cli)
+[![npm downloads MCP](https://img.shields.io/npm/dm/@looptech-ai/understand-quickly-mcp?label=mcp%20dl%2Fmo)](https://www.npmjs.com/package/@looptech-ai/understand-quickly-mcp)
+[![PyPI downloads](https://img.shields.io/pypi/dm/understand-quickly?label=pypi%20dl%2Fmo)](https://pypi.org/project/understand-quickly/)
 
 > **Latest:** v0.1.0 + 4 packages live (cli, mcp, pysdk, GH Action). [CHANGELOG →](CHANGELOG.md)
 
@@ -277,6 +280,43 @@ npm run render     # regenerate README table
 [`CONTRIBUTING.md`](CONTRIBUTING.md) walks through every contribution flow. Trusted authors can land registry-only PRs without review — see [`docs/verified-publishers.md`](docs/verified-publishers.md). By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: [`SECURITY.md`](SECURITY.md). Security model: see [threat-model](docs/threat-model.md).
 
 For questions, ideas, or showing off your registered graph: [GitHub Discussions](https://github.com/looptech-ai/understand-quickly/discussions).
+
+## Special thanks
+
+To the maintainers who carry this protocol upstream.
+
+### Adopters (merged)
+
+- [`abhigyanpatwari/GitNexus`](https://github.com/abhigyanpatwari/GitNexus) — first project to ship native `gitnexus publish` integration. Thanks to [@magyargergo](https://github.com/magyargergo) for the thorough review and [@abhigyanpatwari](https://github.com/abhigyanpatwari) for the project.
+
+### Integrations in flight
+
+| Project | PR |
+|---|---|
+| [`tirth8205/code-review-graph`](https://github.com/tirth8205/code-review-graph) | [#449](https://github.com/tirth8205/code-review-graph/pull/449) |
+| [`AsyncFuncAI/deepwiki-open`](https://github.com/AsyncFuncAI/deepwiki-open) | [#517](https://github.com/AsyncFuncAI/deepwiki-open/pull/517) |
+| [`punkpeye/awesome-mcp-servers`](https://github.com/punkpeye/awesome-mcp-servers) | [#6148](https://github.com/punkpeye/awesome-mcp-servers/pull/6148) |
+| [`yamadashy/repomix`](https://github.com/yamadashy/repomix) | [#1563](https://github.com/yamadashy/repomix/pull/1563) |
+| [`coderamp-labs/gitingest`](https://github.com/coderamp-labs/gitingest) | [#577](https://github.com/coderamp-labs/gitingest/pull/577) |
+| [`kamilstanuch/codebase-digest`](https://github.com/kamilstanuch/codebase-digest) | [#7](https://github.com/kamilstanuch/codebase-digest/pull/7) |
+| [`safishamsi/graphify`](https://github.com/safishamsi/graphify) | [#802](https://github.com/safishamsi/graphify/pull/802) |
+| [`The-Pocket/PocketFlow-Tutorial-Codebase-Knowledge`](https://github.com/The-Pocket/PocketFlow-Tutorial-Codebase-Knowledge) | [#185](https://github.com/The-Pocket/PocketFlow-Tutorial-Codebase-Knowledge/pull/185) |
+| [`DeusData/codebase-memory-mcp`](https://github.com/DeusData/codebase-memory-mcp) | [#332](https://github.com/DeusData/codebase-memory-mcp/pull/332) |
+| [`AIDotNet/OpenDeepWiki`](https://github.com/AIDotNet/OpenDeepWiki) | [#361](https://github.com/AIDotNet/OpenDeepWiki/pull/361) |
+
+### Upstream tools we build on
+
+- [Understand-Anything](https://github.com/Lum1104/Understand-Anything) — first-class graph format.
+- [GitNexus](https://github.com/abhigyanpatwari/GitNexus) — first-class graph format + first adopter.
+- [code-review-graph](https://github.com/tirth8205/code-review-graph) — first-class graph format.
+- [vis-network](https://github.com/visjs/vis-network) — graph rendering on the Pages site.
+- [Ajv](https://github.com/ajv-validator/ajv) — JSON Schema validation.
+
+PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Star history
+
+[![Star History Chart](https://api.star-history.com/svg?repos=looptech-ai/understand-quickly&type=Date)](https://www.star-history.com/#looptech-ai/understand-quickly&Date)
 
 ## License
 
