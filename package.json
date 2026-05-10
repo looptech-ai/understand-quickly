@@ -17,7 +17,7 @@
     "url": "https://github.com/looptech-ai/understand-quickly/issues"
   },
   "type": "module",
-  "engines": { "node": ">=20.0.0" },
+  "engines": { "node": ">=18.0.0" },
   "scripts": {
     "validate": "node scripts/validate.mjs",
     "sync": "node scripts/sync.mjs",
