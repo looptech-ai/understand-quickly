@@ -15,6 +15,7 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![issues](https://img.shields.io/github/issues/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/issues)
 [![last commit](https://img.shields.io/github/last-commit/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/commits/main)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/looptech-ai/understand-quickly/badge)](https://scorecard.dev/viewer/?uri=github.com/looptech-ai/understand-quickly)
 
 <!-- Row 2 — distribution surfaces -->
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-blue)](https://registry.modelcontextprotocol.io)

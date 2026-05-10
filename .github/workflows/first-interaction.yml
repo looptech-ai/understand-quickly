@@ -1,0 +1,37 @@
+name: First interaction
+
+# Welcome first-time contributors with a friendly note pointing them at the
+# right docs. The action only runs the FIRST time someone interacts with the
+# repo, so we don't pester returning folks.
+
+on:
+  pull_request_target:
+    types: [opened]
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # pin: v3.1.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-message: >
+            Thanks for your first PR to understand-quickly! A maintainer will
+            review shortly. If this adds a new entry to `registry.json`, the
+            validate workflow will fetch your graph_url + check schema; if it
+            adds a new graph format, `CONTRIBUTING.md` walks through the schema
+            authoring flow. Questions:
+            [Discussions](https://github.com/looptech-ai/understand-quickly/discussions).
+          issue-message: >
+            Thanks for opening your first issue! For "add my repo" requests,
+            the [wizard](https://looptech-ai.github.io/understand-quickly/add.html)
+            is often faster. For protocol questions, see
+            [CKGP v1](https://github.com/looptech-ai/understand-quickly/blob/main/docs/spec/code-graph-protocol.md)
+            or open a Discussions thread.

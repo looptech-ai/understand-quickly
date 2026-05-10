@@ -1,0 +1,54 @@
+# lychee link-checker config. Used by .github/workflows/lychee.yml.
+# Docs: https://lychee.cli.rs/
+
+# Network behavior
+max_redirects = 10
+max_concurrency = 8
+timeout = 20
+retry_wait_time = 2
+max_retries = 2
+
+# Treat these statuses as OK. Many sites block bot UAs with 403/429 even when
+# the URL itself is fine — we don't want flaky failures on link-check.
+accept = [200, 201, 202, 204, 206, 301, 302, 303, 304, 307, 308, 403, 429]
+
+# Don't try to dereference these — they're either local-only, intentional
+# placeholders in spec text, or rate-limited social platforms that hate bots.
+exclude = [
+  # Loopbacks and placeholders
+  "^https?://localhost",
+  "^https?://127\\.0\\.0\\.1",
+  "^https?://0\\.0\\.0\\.0",
+  "^https?://\\[::1\\]",
+  "^file://",
+
+  # Registry / spec example placeholders
+  "^https://raw\\.githubusercontent\\.com/yourname/",
+  "^https://github\\.com/yourname/",
+  "^https://example\\.com",
+  "^https://your-org\\.",
+
+  # Rate-limited / bot-hostile domains
+  "^https?://([a-z0-9-]+\\.)?linkedin\\.com",
+  "^https?://([a-z0-9-]+\\.)?twitter\\.com",
+  "^https?://([a-z0-9-]+\\.)?x\\.com",
+  "^https?://t\\.co",
+  "^https?://([a-z0-9-]+\\.)?facebook\\.com",
+  "^https?://([a-z0-9-]+\\.)?instagram\\.com",
+
+  # Anchors-only / mailto / tel
+  "^mailto:",
+  "^tel:",
+]
+
+# Use a polite, browser-ish UA. Some CDNs 403 the lychee default UA.
+user_agent = "Mozilla/5.0 (compatible; understand-quickly-linkcheck/1.0; +https://github.com/looptech-ai/understand-quickly)"
+
+# Cache between runs (workflow restores it)
+cache = true
+max_cache_age = "1d"
+
+# Where to scan when no explicit input is given (the workflow passes inputs
+# directly, but these are the defaults).
+include_verbatim = false
+no_progress = true

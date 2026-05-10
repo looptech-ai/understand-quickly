@@ -1,0 +1,93 @@
+# Release-drafter configuration.
+# Used by .github/workflows/release-drafter.yml to auto-build draft release
+# notes whenever a PR merges into main.
+
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+
+categories:
+  - title: "🚀 Features"
+    labels:
+      - "feat"
+      - "feature"
+      - "type:feature"
+  - title: "🐛 Fixes"
+    labels:
+      - "fix"
+      - "bug"
+      - "type:bug"
+  - title: "📝 Docs"
+    labels:
+      - "docs"
+      - "area:docs"
+      - "documentation"
+  - title: "♻️ Refactor"
+    labels:
+      - "refactor"
+      - "type:refactor"
+  - title: "⚡ Performance"
+    labels:
+      - "perf"
+      - "performance"
+  - title: "🧪 Tests"
+    labels:
+      - "test"
+      - "tests"
+      - "area:tests"
+  - title: "🔒 Security"
+    labels:
+      - "security"
+  - title: "🤖 Dependencies"
+    labels:
+      - "dependencies"
+      - "dependabot"
+  - title: "🧹 Chore"
+    labels:
+      - "chore"
+      - "ci"
+      - "build"
+      - "area:ci"
+
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+change-title-escapes: '\<*_&'
+
+# Exclude unsigned/no-op work and label-only edits from the changelog body.
+exclude-labels:
+  - "skip-changelog"
+  - "duplicate"
+  - "invalid"
+  - "wontfix"
+
+version-resolver:
+  major:
+    labels:
+      - "breaking-change"
+      - "major"
+  minor:
+    labels:
+      - "feat"
+      - "feature"
+      - "minor"
+  patch:
+    labels:
+      - "fix"
+      - "bug"
+      - "docs"
+      - "chore"
+      - "ci"
+      - "build"
+      - "refactor"
+      - "perf"
+      - "test"
+      - "dependencies"
+      - "security"
+      - "patch"
+  default: patch
+
+# Build the draft body. Sections only render when they have entries.
+template: |
+  ## What's changed
+
+  $CHANGES
+
+  **Full changelog:** https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION

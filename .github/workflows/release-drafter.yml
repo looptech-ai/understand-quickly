@@ -1,0 +1,33 @@
+name: Release drafter
+
+# Maintains a permanent draft of the next GitHub Release. Every merged PR
+# bumps the resolved version and appends its title to the right category in
+# the release body, based on PR labels.
+#
+# Config lives in .github/release.yml.
+#
+# Cutting a release: edit the draft (rename/tag if needed), then Publish. The
+# tag created kicks off any tag-driven publish workflows.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: release-drafter/release-drafter@67e173cadb2fbd3de94f4a861e0c48c913b462ae # pin: v6.4.0
+        with:
+          config-name: release.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
