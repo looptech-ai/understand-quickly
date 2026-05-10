@@ -32,7 +32,7 @@ Embed in the exported JSON:
 - `metadata.generated_at` (ISO-8601)
 - `metadata.commit` (40-hex `git rev-parse HEAD` of the source repo when known)
 
-If the user's repo isn't yet in the registry, log a friendly one-liner pointing at `npx understand-quickly-cli add` or the wizard — don't fail the parent run.
+If the user's repo isn't yet in the registry, log a friendly one-liner pointing at `npx @understand-quickly/cli add` or the wizard — don't fail the parent run.
 
 ## Schema fit
 
@@ -61,7 +61,7 @@ Drop-in workflow at [`docs/integrations/sample-publish-workflow.yml`](https://gi
 - [ ] Default OpenDeepWiki behavior unchanged with the publish hook disabled.
 - [ ] With the publish hook enabled but no token, OpenDeepWiki writes the export file and logs an informational message; no network call.
 - [ ] With the token set and the repo registered, the dispatch fires and the registry's `sync.yml` runs within roughly a minute.
-- [ ] With the token set but the repo unregistered, the log message points at `npx understand-quickly-cli add`; no failure.
+- [ ] With the token set but the repo unregistered, the log message points at `npx @understand-quickly/cli add`; no failure.
 - [ ] Exported JSON contains `metadata.tool == "opendeepwiki"`, `metadata.tool_version`, `metadata.generated_at`, and `metadata.commit` (40-hex sha when known).
 
 ## Notes for the maintainer

@@ -2,7 +2,7 @@
 
 This document is the canonical contract for tools that emit code-knowledge graphs and want their users' graphs to appear in [`looptech-ai/understand-quickly`](https://github.com/looptech-ai/understand-quickly) automatically.
 
-It is written for the **maintainers of upstream tools** (Understand-Anything, GitNexus, code-review-graph, and any future producer). End users of those tools follow the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx understand-quickly-cli add` — they should never need to read this file.
+It is written for the **maintainers of upstream tools** (Understand-Anything, GitNexus, code-review-graph, and any future producer). End users of those tools follow the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @understand-quickly/cli add` — they should never need to read this file.
 
 ## 1. What this gives upstream tools
 
@@ -45,7 +45,7 @@ A minimal compliant graph file:
 
 There are three paths your tool's docs can advertise to its users. Pick whichever maps best to your audience — they are equivalent.
 
-1. **CLI (recommended).** `npx understand-quickly-cli add` — auto-detects the graph file, format, and repo metadata, opens a PR against the registry. Zero config.
+1. **CLI (recommended).** `npx @understand-quickly/cli add` — auto-detects the graph file, format, and repo metadata, opens a PR against the registry. Zero config.
 2. **Wizard.** `https://looptech-ai.github.io/understand-quickly/add.html` — fills the `add-repo` issue template; the registry bot opens the PR.
 3. **Manual PR.** Append an entry to `registry.json`. Steps in the registry [`CONTRIBUTING.md`](../../CONTRIBUTING.md#1-add-your-repo-to-the-registry).
 
@@ -81,7 +81,7 @@ The `id` field MUST match the `id` in `registry.json` (i.e. `owner/repo` shape).
 
 ```
 [understand-quickly] this repo is not yet registered.
-[understand-quickly] register it once with: npx understand-quickly-cli add
+[understand-quickly] register it once with: npx @understand-quickly/cli add
 [understand-quickly] or use the wizard: https://looptech-ai.github.io/understand-quickly/add.html
 ```
 

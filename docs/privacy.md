@@ -23,7 +23,7 @@ profile, no per-user state.
 ## What is NOT collected
 
 - No cookies (Cloudflare Analytics is cookieless).
-- No telemetry from the CLI (`npx understand-quickly-cli add`) or MCP
+- No telemetry from the CLI (`npx @understand-quickly/cli add`) or MCP
   server beyond the dispatch you explicitly configure.
 - No fingerprinting, no canvas/WebGL probes, no behavioural tracking.
 

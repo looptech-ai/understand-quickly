@@ -36,7 +36,7 @@ Or browse it visually at <https://looptech-ai.github.io/understand-quickly/>.
 Easiest paths, in order of effort:
 
 1. **Wizard** — fill four fields at <https://looptech-ai.github.io/understand-quickly/add.html>; the bot opens the PR.
-2. **CLI** — `npx understand-quickly-cli add` from inside your repo.
+2. **CLI** — `npx @understand-quickly/cli add` from inside your repo.
 3. **Issue** — open the [Add my repo](https://github.com/looptech-ai/understand-quickly/issues/new?template=add-repo.yml) issue template; a maintainer translates it into a PR.
 4. **Direct PR** — fork, append an entry to `registry.json`, open a PR. See [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 

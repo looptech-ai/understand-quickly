@@ -60,7 +60,7 @@ Unit tests added in `tests/test_publish.py` cover:
 - [x] `build_publish_payload()` embeds `metadata.tool == "code-review-graph"`, `metadata.tool_version`, and an ISO-8601 `metadata.generated_at`. `metadata.commit` is a 40-hex sha when present.
 - [x] `--publish-to-uq` with `UNDERSTAND_QUICKLY_TOKEN` unset writes the JSON and prints `UNDERSTAND_QUICKLY_TOKEN not set; skipping repository_dispatch` — `urlopen` is never called.
 - [x] `--publish-to-uq` with the token set fires a single POST to `https://api.github.com/repos/looptech-ai/understand-quickly/dispatches` with body `{"event_type":"sync-entry","client_payload":{"id":"<owner>/<repo>"}}` and an `Authorization: Bearer ...` header (mocked `urlopen`).
-- [x] HTTPError from the dispatch (e.g. unregistered repo, 422) is soft-failed: the run still writes the JSON, prints `dispatch failed ... npx understand-quickly-cli add`, and exits 0.
+- [x] HTTPError from the dispatch (e.g. unregistered repo, 422) is soft-failed: the run still writes the JSON, prints `dispatch failed ... npx @understand-quickly/cli add`, and exits 0.
 - [x] `git remote get-url origin` parsing handles both `https://github.com/owner/repo(.git)` and `git@github.com:owner/repo(.git)` shapes.
 
 Manual smoke (run by maintainer if desired): `code-review-graph build && code-review-graph visualize --format json` writes `.code-review-graph/graph.json`; opening the file shows `metadata.commit` matching `git rev-parse HEAD`.

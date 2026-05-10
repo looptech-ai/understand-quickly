@@ -1,6 +1,6 @@
 {
-  "name": "understand-quickly-cli",
-  "version": "0.1.1",
+  "name": "@understand-quickly/cli",
+  "version": "0.1.0",
   "description": "One-shot CLI to register a repo with the understand-quickly registry.",
   "type": "module",
   "bin": {
