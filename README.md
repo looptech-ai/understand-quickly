@@ -68,6 +68,19 @@ Pick the path that fits:
 
 Tools: `list_repos`, `get_graph`, `search_concepts`. See [`mcp/README.md`](mcp/README.md).
 
+### I'm a Python developer
+
+```bash
+pip install understand-quickly
+```
+
+```python
+from understand_quickly import Registry
+print(Registry().list(status="ok"))
+```
+
+See [`python-sdk/README.md`](python-sdk/README.md).
+
 ### I'm a developer / contributor
 
 ```bash

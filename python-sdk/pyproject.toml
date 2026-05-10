@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "understand-quickly"
+version = "0.1.0"
+description = "Thin Python SDK for the understand-quickly registry of code-knowledge graphs."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+  { name = "Alex Macdonald-Smith", email = "Alex.Mac@LoopTech.AI" },
+]
+keywords = [
+  "code-knowledge-graph",
+  "registry",
+  "ai-agents",
+  "mcp",
+  "understand-quickly",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "httpx>=0.25",
+]
+
+[project.urls]
+Homepage = "https://looptech-ai.github.io/understand-quickly/"
+Repository = "https://github.com/looptech-ai/understand-quickly"
+Issues = "https://github.com/looptech-ai/understand-quickly/issues"
+Releases = "https://github.com/looptech-ai/understand-quickly/releases"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7",
+  "pytest-asyncio>=0.21",
+  "build>=1.0",
+  "twine>=4.0",
+]
+
+[project.scripts]
+understand-quickly = "understand_quickly.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["understand_quickly"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "understand_quickly",
+  "tests",
+  "README.md",
+  "LICENSE",
+  "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
