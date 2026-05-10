@@ -98,4 +98,4 @@ See the project [release notes](https://github.com/looptech-ai/understand-quickl
 
 ## License
 
-[MIT](LICENSE) — Copyright (c) 2026 Alex Macdonald-Smith.
+[Apache 2.0](LICENSE) — Copyright (c) 2026 Alex Macdonald-Smith. Registry data covered by the [Understand-Quickly Data License 1.0](../DATA-LICENSE.md).
