@@ -1,9 +1,9 @@
-name: publish-cli
+name: publish-mcp
 
 on:
   push:
     tags:
-      - 'cli-v*'
+      - 'mcp-v*'
   workflow_dispatch:
 
 permissions:
@@ -15,33 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: cli
+        working-directory: mcp
     steps:
       - uses: actions/checkout@v6
-
       - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org/'
-
       - name: Install
         run: npm install --no-audit
-
-      - name: Verify version matches tag
-        working-directory: '.'
-        env:
-          GH_REF: ${{ github.ref }}
-        run: node scripts/check-versions.mjs --tag "$GH_REF"
-
-      - name: Pack (sanity check)
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: npm test
+      - name: Pack sanity
         run: npm pack --dry-run
-
-      - name: Publish to npm
+      - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ -z "${NODE_AUTH_TOKEN}" ]; then
-            echo "::warning::NPM_TOKEN secret is not set; skipping npm publish. Set NPM_TOKEN (Automation token) on the repo to enable publishing."
+            echo "::warning::NPM_TOKEN not set; skipping."
             exit 0
           fi
           npm publish --access public --provenance
