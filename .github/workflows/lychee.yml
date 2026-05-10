@@ -1,0 +1,71 @@
+name: Link check
+
+# Weekly sweep of every Markdown file + the live Pages site. Also runs on PRs
+# that touch README/docs so broken links never reach main.
+#
+# On scheduled-run failures we open (or reuse) a tracking issue rather than
+# failing silently. PR runs surface results as a job summary - no spammy issue.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/*.md"
+      - "docs/**"
+      - ".lychee.toml"
+      - ".github/workflows/lychee.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  link-check:
+    name: lychee
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # pin: v5.0.0
+
+      - name: Restore lychee cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # pin: v4.3.0
+        with:
+          path: .lycheecache
+          key: lychee-${{ github.run_id }}
+          restore-keys: lychee-
+
+      - name: Run lychee
+        id: lychee
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # pin: v2.8.0
+        with:
+          args: >-
+            --config .lychee.toml
+            --cache
+            --no-progress
+            --verbose
+            './**/*.md'
+            'https://looptech-ai.github.io/understand-quickly/'
+          output: ./lychee/out.md
+          fail: false
+          format: markdown
+          jobSummary: true
+
+      - name: Open or update tracking issue on scheduled failures
+        if: steps.lychee.outputs.exit_code != 0 && github.event_name == 'schedule'
+        uses: peter-evans/create-issue-from-file@e8ef132d6df98ed982188e460ebb3b5d4ef3a9cd # pin: v5.0.1
+        with:
+          title: "Link check: broken links detected"
+          content-filepath: ./lychee/out.md
+          labels: |
+            area:docs
+            status:link-rot
+
+      - name: Fail job if links broken on PR
+        if: steps.lychee.outputs.exit_code != 0 && github.event_name == 'pull_request'
+        run: |
+          echo "::error::lychee reported broken links - see job summary."
+          exit 1

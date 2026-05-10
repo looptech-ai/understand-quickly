@@ -1,0 +1,63 @@
+name: Stale
+
+# Auto-close inactive issues and PRs to keep the queue actionable.
+#
+# Policy:
+#   - Issues: 60 days idle -> mark stale + comment; close 15 days after that.
+#   - PRs:    30 days idle -> mark stale + comment; close 15 days after that.
+#   - Exempt anything pinned, security-tagged, an epic, or attached to a milestone.
+#   - Dependabot PRs are managed by Dependabot itself, so skip those entirely.
+#
+# Hand-edits an issue/PR? The stale label is removed automatically by actions/stale.
+
+on:
+  schedule:
+    - cron: "30 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # pin: v9.1.0
+        with:
+          days-before-issue-stale: 60
+          days-before-issue-close: 15
+          stale-issue-label: "status:stale"
+          stale-issue-message: >
+            This issue has been inactive for 60 days. Marking it `status:stale`
+            so it stays visible. If it's still relevant, drop a comment or remove
+            the label - otherwise it will close in 15 days. Thanks for taking
+            the time to file it.
+          close-issue-message: >
+            Closing this as stale. If you'd like to revisit, leave a comment and
+            we'll happily reopen.
+
+          days-before-pr-stale: 30
+          days-before-pr-close: 15
+          stale-pr-label: "status:stale"
+          stale-pr-message: >
+            This PR has been inactive for 30 days. Marking it `status:stale`.
+            A maintainer (or you) can push a new commit or drop a comment to
+            keep it open - otherwise it will auto-close in 15 days.
+          close-pr-message: >
+            Closing this as stale. Reopen any time once you're ready to pick it
+            back up - we don't delete the branch.
+
+          exempt-issue-labels: "pinned,security,epic"
+          exempt-pr-labels: "pinned,security,epic,dependencies"
+          exempt-all-milestones: true
+          exempt-draft-pr: true
+
+          # Don't antagonize Dependabot - it sweeps its own PRs.
+          exempt-pr-authors: "dependabot[bot],dependabot-preview[bot]"
+
+          operations-per-run: 100
+          ascending: true
+          remove-stale-when-updated: true

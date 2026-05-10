@@ -1,0 +1,55 @@
+# Path-based PR labels for actions/labeler@v5.
+# Schema: <label>: [ { changed-files: [{ any-glob-to-any-file: [globs...] }] } ]
+
+"area:schemas":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "schemas/**"
+
+"area:scripts":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "scripts/**"
+
+"area:mcp":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "mcp/**"
+
+"area:cli":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "cli/**"
+
+"area:python-sdk":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "python-sdk/**"
+
+"area:site":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "site/**"
+
+"area:docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "README.md"
+          - "CONTRIBUTING.md"
+          - "CHANGELOG.md"
+
+"area:ci":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - ".github/labeler.yml"
+          - ".github/release.yml"
+
+"area:tests":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**"
+          - "**/__tests__/**"
+          - "**/*.test.*"
+          - "**/*.spec.*"

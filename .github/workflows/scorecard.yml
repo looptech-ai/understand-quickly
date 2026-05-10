@@ -1,0 +1,49 @@
+name: OpenSSF Scorecard
+
+# Runs the OpenSSF Scorecard checks against this repo. Results are uploaded
+# as SARIF (visible under the Security tab) and published publicly so the
+# README badge can resolve them.
+#
+# Publish-results: requires the workflow to run from the default branch with
+# id-token write so the upstream can verify our identity. This is the
+# standard OSSF wiring.
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "12 4 * * 2"   # Tuesdays 04:12 UTC
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write   # upload SARIF to Code Scanning
+      id-token: write          # publish_results: true
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # pin: v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@99c09fe975337306107572b4fdf4db224cf8e2f2 # pin: v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@52485aec7be33610227643b0fe83936b8b5f061a # pin: v3.27.0
+        with:
+          sarif_file: results.sarif
+          category: ossf-scorecard
