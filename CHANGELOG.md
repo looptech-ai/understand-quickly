@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/looptech-ai/understand-quickly/compare/v0.2.0...v0.3.0) (2026-05-10)
+
+
+### Features
+
+* **release:** release-please automation + bump cli/mcp/pysdk patch versions ([d88b53e](https://github.com/looptech-ai/understand-quickly/commit/d88b53ef17432c9853f641222130410b254f5dc8))
+
 ## [Unreleased]
 
 ### Component releases — 2026-05-10
