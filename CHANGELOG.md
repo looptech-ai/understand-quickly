@@ -137,4 +137,14 @@ First public release.
 - MCP server in `mcp/` exposing `list_repos`, `get_graph`, `search_concepts` over stdio.
 - Sharded read-path support (`entries/<a-z>.json`) for scaling beyond a single file.
 
+### Distribution
+
+Four packages went live alongside v0.1.0:
+
+- **MCP Registry** — `io.github.looptech-ai/understand-quickly` listed in <https://registry.modelcontextprotocol.io>.
+- **npm CLI** — [`@looptech-ai/understand-quickly-cli`](https://www.npmjs.com/package/@looptech-ai/understand-quickly-cli).
+- **npm MCP server** — [`@looptech-ai/understand-quickly-mcp`](https://www.npmjs.com/package/@looptech-ai/understand-quickly-mcp) (bin: `understand-quickly-mcp`).
+- **PyPI SDK** — [`understand-quickly`](https://pypi.org/project/understand-quickly/) (`pip install understand-quickly`).
+- **GitHub Action** — [`looptech-ai/uq-publish-action@v0.1.0`](https://github.com/marketplace/actions/understand-quickly-publish) on the Marketplace.
+
 [0.1.0]: https://github.com/looptech-ai/understand-quickly/releases/tag/v0.1.0
