@@ -1,0 +1,35 @@
+name: audit
+
+# Weekly post-merge npm audit so a CVE published against an existing
+# dependency after the validate.yml PR-gate ran still surfaces. Mirrors
+# the audit step on validate.yml; failure opens an issue via the standard
+# Actions failure notification path.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        path: ['.', 'mcp', 'cli']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
+      - name: npm audit ${{ matrix.path }}
+        working-directory: ${{ matrix.path }}
+        run: |
+          npm ci
+          npm audit --audit-level=high

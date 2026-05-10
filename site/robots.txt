@@ -1,0 +1,7 @@
+# robots.txt for understand-quickly
+# Public registry — everything is indexable.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://looptech-ai.github.io/understand-quickly/sitemap.xml

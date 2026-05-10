@@ -45,6 +45,16 @@ jobs:
           # Copy static site assets (index.html, app.js, viewer.js, styles.css, about.html)
           cp -r site/. _site/
 
+          # Generate sitemap.xml from registry.json. The renderer always
+          # writes the file (no content-compare short-circuit) — `_site/` is
+          # a fresh staging dir per run, so write avoidance buys nothing. The
+          # output is content-deterministic for a given (registry, date)
+          # pair: identical inputs produce identical XML, which is what
+          # actually matters for crawler ETag caching downstream.
+          # robots.txt and /.well-known/security.txt are static and were
+          # copied with the rest of site/.
+          node scripts/render-sitemap.mjs --registry registry.json --out _site/sitemap.xml
+
           # Pre-render README -> _site/about.html, splicing the rendered body
           # between the BEGIN/END markers in site/about.html.
           npx -y marked@14 README.md > _readme.html

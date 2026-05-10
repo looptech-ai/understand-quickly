@@ -15,7 +15,7 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 [![issues](https://img.shields.io/github/issues/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/issues)
 [![last commit](https://img.shields.io/github/last-commit/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/commits/main)
 
-[**Browse →**](https://looptech-ai.github.io/understand-quickly/) · [**Add your repo (wizard)**](https://looptech-ai.github.io/understand-quickly/add.html) · [**Quickstart**](#quickstart) · [**FAQ (plain English)**](docs/faq.md) · [**Contributing**](CONTRIBUTING.md)
+[**Browse →**](https://looptech-ai.github.io/understand-quickly/) · [**Add your repo (wizard)**](https://looptech-ai.github.io/understand-quickly/add.html) · [**Quickstart**](#quickstart) · [**FAQ (plain English)**](docs/faq.md) · [**Alternatives**](docs/alternatives.md) · [**Badge**](docs/badge.md) · [**Contributing**](CONTRIBUTING.md)
 
 </div>
 

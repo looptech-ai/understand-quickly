@@ -25,6 +25,15 @@ jobs:
           cache: 'npm'
       - run: npm ci
 
+      - name: npm audit (high+critical only, dev deps allowed)
+        # Surface known-vulnerable transitive deps in CI without blocking
+        # on lower-severity advisories that we'll handle via Dependabot.
+        # `--audit-level=high` exits 1 only on high/critical findings;
+        # `--omit=dev` is intentionally NOT set because devDeps run in CI
+        # too. The grace flag `|| true` is deliberately absent — high CVEs
+        # should fail the run.
+        run: npm audit --audit-level=high
+
       - name: Compute changed registry entry ids
         id: changed
         # Set CHANGED_IDS to the set of registry entry ids that changed in

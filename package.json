@@ -25,6 +25,7 @@
     "aggregate": "node scripts/aggregate.mjs",
     "badges": "node scripts/render-badges.mjs --registry registry.json --out site/badges",
     "well-known": "node scripts/well-known.mjs --registry registry.json --out site/.well-known",
+    "sitemap": "node scripts/render-sitemap.mjs",
     "test": "node --test 'scripts/__tests__/*.test.mjs'",
     "test:coverage": "c8 --check-coverage --lines 90 --functions 90 --branches 80 node --test 'scripts/__tests__/*.test.mjs'",
     "smoke": "node scripts/sync.mjs --registry tests/registry-smoke.json --dry-run",

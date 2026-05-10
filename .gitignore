@@ -5,3 +5,9 @@ coverage/
 test-results/
 tests/playwright/report/
 playwright/.cache/
+
+# Generated at deploy time by scripts/render-sitemap.mjs. The pages.yml
+# workflow regenerates this against the current registry, so a tracked
+# copy can drift if a contributor forgets to run `npm run sitemap` after
+# editing registry.json. Easier to ignore than to police.
+site/sitemap.xml
