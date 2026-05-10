@@ -39,6 +39,39 @@ exclude = [
   # Anchors-only / mailto / tel
   "^mailto:",
   "^tel:",
+
+  # Demo registry entries — these are placeholder owners under the
+  # `understand-quickly/` org (the demo repos don't exist as real GitHub
+  # repos; their graph fixtures live in this same repo under
+  # `schemas/__fixtures__/`). Rendered into the README's BEGIN/END ENTRIES
+  # table by `scripts/render-readme.mjs` from `registry.json`.
+  "^https://github\\.com/understand-quickly/demo-",
+
+  # Marketplace listing exists for `looptech-ai/uq-publish-action` (v0.1.0
+  # is published) but the human-readable slug
+  # `/marketplace/actions/understand-quickly-publish` resolves 404 from the
+  # public CDN. Keeping the link in the README because the action *is* on
+  # Marketplace; suppressing the false positive until GitHub propagates.
+  "^https://github\\.com/marketplace/actions/understand-quickly-publish$",
+
+  # Pages directory listings (`/badges/`) without a specific entry
+  # 404 — only the per-entry SVG URLs resolve. This shows up when lychee
+  # decodes the angle-bracket placeholder in templated badge markup.
+  "^https://looptech-ai\\.github\\.io/understand-quickly/badges/?$",
+
+  # Auth-required GitHub settings URL — referenced in
+  # `docs/ops/npm-org-setup.md` as a "go here to do X" instruction.
+  "^https://github\\.com/looptech-ai/understand-quickly/settings/",
+
+  # Marketing/promotion-targets submission forms that periodically
+  # disappear or change paths upstream; not load-bearing for the registry.
+  "^https://tldr\\.tech/ai/submit-tip$",
+  "^https://bensbites\\.com/submit$",
+  "^https://latent\\.space/p/contact$",
+
+  # npmjs.com 403s the lychee UA — package pages are well-known surfaces
+  # and the same URLs are reachable from any browser.
+  "^https://www\\.npmjs\\.com/package/",
 ]
 
 # Use a polite, browser-ish UA. Some CDNs 403 the lychee default UA.

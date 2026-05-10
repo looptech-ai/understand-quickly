@@ -27,7 +27,7 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 [![npm downloads MCP](https://img.shields.io/npm/dm/@looptech-ai/understand-quickly-mcp?label=mcp%20dl%2Fmo)](https://www.npmjs.com/package/@looptech-ai/understand-quickly-mcp)
 [![PyPI downloads](https://img.shields.io/pypi/dm/understand-quickly?label=pypi%20dl%2Fmo)](https://pypi.org/project/understand-quickly/)
 
-> **Latest:** v0.1.0 + 4 packages live (cli, mcp, pysdk, GH Action). [CHANGELOG →](CHANGELOG.md)
+> **Latest:** **v0.2.0** — CLI `0.1.2`, MCP `0.1.2`, Python SDK `0.1.1`, GH Action `v0.1.0`. Releases automated via [release-please](docs/ops/release-process.md). [CHANGELOG →](CHANGELOG.md)
 
 [**Browse →**](https://looptech-ai.github.io/understand-quickly/) · [**Add your repo (wizard)**](https://looptech-ai.github.io/understand-quickly/add.html) · [**Quickstart**](#quickstart) · [**FAQ (plain English)**](docs/faq.md) · [**Alternatives**](docs/alternatives.md) · [**Badge**](docs/badge.md) · [**Contributing**](CONTRIBUTING.md)
 
@@ -176,13 +176,13 @@ The Action stamps `metadata.{tool, tool_version, generated_at, commit}` into the
 
 ### Embed an indexed-by badge
 
-Once registered, link a status badge in your repo's README:
+Once registered, link a status badge in your repo's README. Lower-case the owner/repo and replace `/` with `--` — for example `looptech-ai/uq-publish-action` becomes `looptech-ai--uq-publish-action`:
 
 ```markdown
-[![indexed by understand-quickly](https://looptech-ai.github.io/understand-quickly/badges/<owner>--<repo>.svg)](https://looptech-ai.github.io/understand-quickly/?entry=<owner>/<repo>)
+[![indexed by understand-quickly](https://looptech-ai.github.io/understand-quickly/badges/OWNER--REPO.svg)](https://looptech-ai.github.io/understand-quickly/?entry=OWNER/REPO)
 ```
 
-Lower-case the owner/repo and replace `/` with `--`. The badge auto-updates as your entry's status changes.
+The badge auto-updates as your entry's status changes. See [`docs/badge.md`](docs/badge.md) for the full reference.
 
 ### Discovery (`.well-known/code-graph`)
 
@@ -193,7 +193,7 @@ curl -fsSL https://looptech-ai.github.io/understand-quickly/.well-known/repos.js
 # returns { schema_version, repos: [{id, format, graph_url, last_synced, status, source_sha}] }
 ```
 
-To make YOUR repo discoverable without registering here, publish a `.well-known/code-graph.json` at the root of your repo. See the [Code-Knowledge-Graph Protocol spec](docs/spec/code-graph-protocol.md).
+To make YOUR repo discoverable without registering here, publish a `.well-known/code-graph.json` at the root of your repo. See the [Code-Knowledge-Graph Protocol (CKGP v1) spec](docs/spec/code-graph-protocol.md).
 
 ## Distribution
 
@@ -274,6 +274,12 @@ npm run sync       # resync all entries (writes registry.json)
 npm run smoke      # dry-run sync against tests/registry-smoke.json
 npm run render     # regenerate README table
 ```
+
+Test suites at HEAD: 132 root + 25 CLI + 27 MCP + 54 Python SDK + 15 Playwright = **253 tests**.
+
+### Releases
+
+Automated via [release-please](https://github.com/googleapis/release-please). Conventional Commits (`feat:` / `fix:`) on `main` → release-please opens a per-component Release PR → merging the PR tags and publishes the affected component (CLI, MCP, Python SDK). See [`docs/ops/release-process.md`](docs/ops/release-process.md) for the full flow, tag prefixes, and rollback recipes.
 
 ## Contributing
 
