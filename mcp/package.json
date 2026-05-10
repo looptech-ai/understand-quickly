@@ -1,6 +1,6 @@
 {
   "name": "@looptech-ai/understand-quickly-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "mcpName": "io.github.looptech-ai/understand-quickly",
   "private": false,
   "publishConfig": {

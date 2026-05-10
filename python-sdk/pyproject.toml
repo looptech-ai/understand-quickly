@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "understand-quickly"
-version = "0.1.0"
+version = "0.1.1"
 description = "Thin Python SDK for the understand-quickly registry of code-knowledge graphs."
 readme = "README.md"
 license = { file = "LICENSE" }

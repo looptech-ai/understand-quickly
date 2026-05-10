@@ -4,6 +4,34 @@ All notable changes to this project will be documented here. The format follows 
 
 ## [Unreleased]
 
+### Component releases — 2026-05-10
+
+- **`@looptech-ai/understand-quickly-cli@0.1.2`** — Node 18/20 test glob
+  expansion fix (`tests/*.test.mjs` now passes on all supported Node
+  versions, not just 22+); inherits publish-time version regression guard.
+- **`@looptech-ai/understand-quickly-mcp@0.1.2`** — publish-time version
+  regression guard via `scripts/check-versions.mjs` (no functional change to
+  the MCP server itself); `mcp/server.json` version mirrored for MCP
+  Registry consistency.
+- **`understand-quickly` (PyPI) @ 0.1.1** — publish workflow now runs
+  `scripts/check-versions.mjs` as a regression guard so a `pysdk-vX.Y.Z` tag
+  can never publish a wheel whose `pyproject.toml` says a different
+  version (no functional change to the SDK itself).
+
+### Added (release automation)
+
+- **`release-please-config.json` + `.release-please-manifest.json` +
+  `.github/workflows/release-please.yml`** — `googleapis/release-please-action@v4`
+  drives per-component release PRs (`root`, `cli`, `mcp`, `pysdk`) on every
+  push to `main`. Merging a release PR creates the matching
+  `<component>-v<version>` tag, which fires the existing `publish-*.yml`
+  workflows. See [`docs/ops/release-process.md`](docs/ops/release-process.md)
+  for the full flow + manual-override fallback.
+- **`scripts/check-versions.mjs` + `scripts/__tests__/check-versions.test.mjs`**
+  (from #15) — pre-publish regression guard. Wired into `publish-cli`,
+  `publish-mcp`, `publish-pysdk` so a malformed semver or a tag/version
+  mismatch fails the workflow before anything reaches the registry.
+
 ## [0.2.0] — 2026-05-10
 
 Distribution + protocol + producer integrations. Same registry shape (`schema_version: 1`), additive only.

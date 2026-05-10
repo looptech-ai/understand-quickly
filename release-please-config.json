@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "@understand-quickly/registry",
+      "tag-separator": "-",
+      "component": "root",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "draft": false,
+      "prerelease": false
+    },
+    "cli": {
+      "release-type": "node",
+      "package-name": "@looptech-ai/understand-quickly-cli",
+      "component": "cli",
+      "tag-separator": "-",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "mcp": {
+      "release-type": "node",
+      "package-name": "@looptech-ai/understand-quickly-mcp",
+      "component": "mcp",
+      "tag-separator": "-",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "python-sdk": {
+      "release-type": "python",
+      "package-name": "understand-quickly",
+      "component": "pysdk",
+      "tag-separator": "-",
+      "changelog-path": "CHANGELOG.md"
+    }
+  },
+  "release-type": "node",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
+  "draft": false,
+  "prerelease": false,
+  "plugins": [
+    {
+      "type": "node-workspace"
+    }
+  ]
+}

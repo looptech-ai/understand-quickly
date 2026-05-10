@@ -2,6 +2,11 @@
 
 This is the one-time setup required to publish our scoped packages (`@looptech-ai/understand-quickly-cli` and `@looptech-ai/understand-quickly-mcp`) to npm.
 
+> [!TIP]
+> Looking for the **day-to-day release flow** (cut a new version, ship to
+> npm / PyPI)? See [`release-process.md`](release-process.md). This doc is
+> only for the one-time setup of the npm org + tokens.
+
 ## Why scoped (`@looptech-ai/...`)
 
 - Locks the namespace to LoopTech AI — nobody else can squat on `@looptech-ai/anything`.
