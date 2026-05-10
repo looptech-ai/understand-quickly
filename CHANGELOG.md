@@ -4,6 +4,55 @@ All notable changes to this project will be documented here. The format follows 
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-10
+
+Distribution + protocol + producer integrations. Same registry shape (`schema_version: 1`), additive only.
+
+### Added (distribution surface — 4 new packages live)
+
+- **MCP Registry** — `io.github.looptech-ai/understand-quickly` listed at <https://registry.modelcontextprotocol.io>.
+- **npm CLI** — `@looptech-ai/understand-quickly-cli` (`npx @looptech-ai/understand-quickly-cli add`).
+- **npm MCP server** — `@looptech-ai/understand-quickly-mcp` (bin: `understand-quickly-mcp`).
+- **PyPI SDK** — `pip install understand-quickly`.
+- **GitHub Action** — `looptech-ai/uq-publish-action@v0.1.0` on the Marketplace.
+
+### Added (protocol)
+
+- **CKGP v1 spec** — RFC-style protocol doc at `docs/spec/code-graph-protocol.md`. Multi-vendor framing.
+- **`.well-known/code-graph` discovery** — agents probe a stable URI for graph pointers without going through the registry.
+- **`stats.json`** — cross-graph aggregate (totals, kinds, languages, concepts) via `scripts/aggregate.mjs`.
+- **MCP tool `find_graph_for_repo`** — agent-ergonomic lookup by GitHub URL.
+- **MCP `search_concepts`** — wired to precomputed `stats.json` (no fan-out).
+
+### Added (formats + entry fields)
+
+- New first-class format `bundle@1` for repo-context packers (Repomix, gitingest, codebase-digest).
+- Entry fields (all optional, additive): `nodes_count`, `edges_count`, `top_kinds[]`, `languages[]`, `source_sha`, `head_sha`, `commits_behind`, `drift_checked_at`.
+- New status `revoked` — maintainer-only retraction; agents must skip.
+
+### Added (producer ecosystem)
+
+- **`looptech-ai/uq-publish-action@v0.1.0`** — drops integration PR diff to ~5 lines of YAML.
+- 12 upstream PRs opened across the producer ecosystem (1 merged into GitNexus, 1 closed, 10 awaiting review).
+- Producer protocol docs + `_template.md` + 9 ready-to-paste PR drafts under `docs/integrations/`.
+
+### Added (community + marketing)
+
+- **GitHub Discussions** enabled with 5 seed threads (announcement + 2 Q&A + show-and-tell + ideas).
+- Marketing pack staged in `docs/marketing/`: tweet thread, Bluesky thread, Reddit drafts, dev.to blog, final Show HN, ranked promotion-target list.
+- README polished: 13-badge two-row layout, distribution table, three-way MCP install snippet.
+
+### Added (Pages + UX)
+
+- Vendored `vis-network` locally — no CDN dependency.
+- Cloudflare Web Analytics integration (token-gated, free).
+- Mobile fixes: topbar stacking, sidebar strip, legend collapse, hide-minimap < 700px, label clipping.
+- Desktop tour upgrade: side panel + neighbors + outline + step strip.
+- Per-entry SVG status badges + aggregate count badge for upstream README embedding.
+- Playwright smoke tests (chromium + webkit) on PR.
+
+### Added (security + supply chain — see prior Unreleased entries from v0.2 follow-ups for full detail)
+
 ### Added (v0.2 follow-ups — discoverability + supply chain + producer ergonomics)
 
 - **`scripts/render-sitemap.mjs`** + `npm run sitemap` — generates
@@ -148,3 +197,5 @@ Four packages went live alongside v0.1.0:
 - **GitHub Action** — [`looptech-ai/uq-publish-action@v0.1.0`](https://github.com/marketplace/actions/understand-quickly-publish) on the Marketplace.
 
 [0.1.0]: https://github.com/looptech-ai/understand-quickly/releases/tag/v0.1.0
+
+[0.2.0]: https://github.com/looptech-ai/understand-quickly/releases/tag/v0.2.0
