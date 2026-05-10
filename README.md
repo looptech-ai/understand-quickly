@@ -275,6 +275,8 @@ npm run render     # regenerate README table
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) walks through every contribution flow. Trusted authors can land registry-only PRs without review — see [`docs/verified-publishers.md`](docs/verified-publishers.md). By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: [`SECURITY.md`](SECURITY.md). Security model: see [threat-model](docs/threat-model.md).
 
+For questions, ideas, or showing off your registered graph: [GitHub Discussions](https://github.com/looptech-ai/understand-quickly/discussions).
+
 ## License
 
 - **Code** — [Apache License 2.0](LICENSE) © 2026 Alex Macdonald-Smith and LoopTech.AI. Includes a patent grant and contributor terms.
