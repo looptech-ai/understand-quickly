@@ -87,29 +87,16 @@ The `id` field MUST match the `id` in `registry.json` (i.e. `owner/repo` shape).
 
 ## 5. CI integration (recommended)
 
-Most users will not run `--publish` locally. The reliable path is a GitHub Action that fires the dispatch on every push that touches the graph file. Drop the snippet in [`sample-publish-workflow.yml`](./sample-publish-workflow.yml) into the user's repo as `.github/workflows/understand-quickly-publish.yml`.
+Most users will not run `--publish` locally. The reliable path is a GitHub Action that fires the dispatch on every push that touches the graph file.
 
-Excerpt:
+The first-class integration is the **[`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action)** Marketplace Action. It stamps `metadata.{tool, tool_version, generated_at, commit}` into the graph and posts the `sync-entry` dispatch in one step. The full snippet at [`sample-publish-workflow.yml`](./sample-publish-workflow.yml) drops into the user's repo as `.github/workflows/understand-quickly-publish.yml` — the publish step itself is five lines:
 
 ```yaml
-on:
-  push:
-    branches: [main]
-    paths:
-      - '.understand-anything/**'
-      - '.gitnexus/**'
-      - '.code-review-graph/**'
-
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
-          repository: looptech-ai/understand-quickly
-          event-type: sync-entry
-          client-payload: '{"id":"${{ github.repository }}"}'
+- uses: looptech-ai/uq-publish-action@v0.1.0
+  with:
+    graph-path: '.understand-anything/knowledge-graph.json'
+    format: 'understand-anything@1'
+    token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
 ```
 
 ### PAT setup
@@ -119,7 +106,11 @@ jobs:
 - **Repository access:** `looptech-ai/understand-quickly` only.
 - **Permissions:** `Contents: read`, `Metadata: read`, **`Repository dispatches: write`**. (Nothing else.)
 
-The user adds the PAT as a repo secret in their own repository (`Settings → Secrets and variables → Actions`). The secret is consumed by `peter-evans/repository-dispatch@v3`. No write access to the registry is needed; the registry only listens for the `sync-entry` event type.
+The user adds the PAT as a repo secret in their own repository (`Settings → Secrets and variables → Actions`). The Action consumes it via the `token` input. No write access to the registry is needed; the registry only listens for the `sync-entry` event type.
+
+### Fallback: raw dispatch
+
+For environments that can't use Marketplace Actions (private runners with restricted egress, non-GitHub CI), use the raw dispatch from §4 directly. Either `gh api repos/looptech-ai/understand-quickly/dispatches ...` or a plain `curl -X POST` against the same endpoint works; the Action is a thin wrapper around exactly that call plus metadata stamping.
 
 ## 6. Becoming a verified publisher
 
@@ -172,7 +163,21 @@ Drift fields (`source_sha`, `head_sha`, `commits_behind`, `drift_checked_at`) ar
 
 To debug a single entry without waiting for the nightly sync, fire the dispatch in §4 with the entry id; the workflow logs the per-entry result publicly under [Actions → sync](https://github.com/looptech-ai/understand-quickly/actions/workflows/sync.yml).
 
-## 10. Licensing of submitted data
+## 10. Embeddable status badge
+
+Every registered entry gets a public SVG badge at:
+
+  https://looptech-ai.github.io/understand-quickly/badges/<owner>--<repo>.svg
+
+It updates on every sync. Status flips colors automatically. Wrap it in a link to the live entry view to give your README readers a one-click jump into the registry browser.
+
+## 11. Discovery via `.well-known`
+
+Producers MAY publish a `.well-known/code-graph.json` at their repo root. Agents will probe this path before falling back to the registry. This makes a producer's graph discoverable even if their repo isn't yet registered with us.
+
+The full protocol spec lives at [`docs/spec/code-graph-protocol.md`](../spec/code-graph-protocol.md).
+
+## 12. Licensing of submitted data
 
 When a Producer ships a `--publish` flag, they are arranging for their users' graphs and bundles to be ingested by the registry. Each ingestion is governed by [`DATA-LICENSE.md`](../../DATA-LICENSE.md) — the **Understand-Quickly Data License 1.0**. In short:
 

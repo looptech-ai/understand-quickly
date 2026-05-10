@@ -26,6 +26,8 @@ Paste the body below into the PR description on that repo. The author should con
 - If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @understand-quickly/cli add` or the wizard and exit cleanly — don't fail the parent run.
 - Add a "Publishing to understand-quickly" paragraph to the README.
 
+For users who don't want a flag and just want CI-driven publishing, a one-step **GitHub Action** ([`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action)) ships the same dispatch + metadata stamping. Recommend it in the README as the "set and forget" path; the `--publish` flag stays the right answer for local one-off invocations.
+
 ## Schema fit
 
 deepwiki-open emits a structured wiki (sections, articles, links). Two paths:
@@ -46,7 +48,18 @@ The user adds a fine-grained GitHub PAT to their environment (or repo secrets, w
 - **Repository access:** `looptech-ai/understand-quickly` only.
 - **Permissions:** `Repository dispatches: write`. Nothing else.
 
-A drop-in workflow snippet lives at [`docs/integrations/sample-publish-workflow.yml`](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/sample-publish-workflow.yml).
+For CI-driven publishing — recommended for most users — drop the [`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action) Marketplace Action into a workflow:
+
+```yaml
+- uses: looptech-ai/uq-publish-action@v0.1.0
+  with:
+    graph-path: '.deepwiki/wiki.json'
+    format: 'generic@1'
+    tool-version: ${{ steps.gen.outputs.version }}
+    token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
+```
+
+(Switch `format` to `wiki@1` once that schema lands.) Full template at [`docs/integrations/sample-publish-workflow.yml`](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/sample-publish-workflow.yml).
 
 ## Test plan
 
@@ -69,5 +82,6 @@ A drop-in workflow snippet lives at [`docs/integrations/sample-publish-workflow.
 - Integration protocol: <https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/protocol.md>
 - `generic@1` schema (fast-path): <https://github.com/looptech-ai/understand-quickly/blob/main/schemas/generic@1.json>
 - Format authoring (for `wiki@1`): <https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/protocol.md#7-format-authoring>
+- Reusable Action: <https://github.com/looptech-ai/uq-publish-action>
 - Sample workflow: <https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/sample-publish-workflow.yml>
 - Verified publishers: <https://github.com/looptech-ai/understand-quickly/blob/main/docs/verified-publishers.md>

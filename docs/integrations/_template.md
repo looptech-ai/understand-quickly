@@ -22,7 +22,7 @@ Copy this file to `<tool>-pr.md`, fill in the `<TOOL>`, `<TOKEN_NAME>`, `<GRAPH_
 - After the existing graph generation step, when `--publish` is set: fire a `repository_dispatch` event at `looptech-ai/understand-quickly` using a token from the `<TOKEN_NAME>` env var (or a CLI-provided override).
 - Embed `metadata.commit = $(git rev-parse HEAD)`, `metadata.tool_version`, and `metadata.generated_at` in the emitted graph at `<GRAPH_PATH>` (if not already present) so the registry can do drift detection.
 - If the user's repo isn't in the registry yet, surface a one-line message pointing at `npx @understand-quickly/cli add` or the wizard and exit cleanly — don't fail the parent run.
-- Document the flag in the README with a one-paragraph "Publishing to understand-quickly" section.
+- Document the flag in the README with a one-paragraph "Publishing to understand-quickly" section. The recommended CI snippet is the [`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action) Marketplace Action, which collapses the publish step to ~5 lines of YAML for users.
 
 ## No-op default
 
@@ -35,7 +35,17 @@ Users add a fine-grained GitHub PAT to the env (or repo secrets, when run from C
 - **Repository access:** `looptech-ai/understand-quickly` only.
 - **Permissions:** `Repository dispatches: write`. Nothing else.
 
-A drop-in CI workflow snippet lives at [`docs/integrations/sample-publish-workflow.yml`](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/sample-publish-workflow.yml).
+The drop-in CI workflow uses the [`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action) Marketplace Action:
+
+```yaml
+- uses: looptech-ai/uq-publish-action@v0.1.0
+  with:
+    graph-path: '<GRAPH_PATH>'
+    format: '<FORMAT>'
+    token: ${{ secrets.<TOKEN_NAME> }}
+```
+
+The full template lives at [`docs/integrations/sample-publish-workflow.yml`](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/sample-publish-workflow.yml). For environments that can't use Marketplace Actions, the raw `gh api` / `curl` dispatch in [protocol §4](https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/protocol.md#4-auto-publish-tool-side) is the fallback.
 
 ## Test plan
 
@@ -56,5 +66,6 @@ A drop-in CI workflow snippet lives at [`docs/integrations/sample-publish-workfl
 
 - Registry: <https://github.com/looptech-ai/understand-quickly>
 - Integration protocol: <https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/protocol.md>
+- Reusable Action: <https://github.com/looptech-ai/uq-publish-action>
 - Sample workflow: <https://github.com/looptech-ai/understand-quickly/blob/main/docs/integrations/sample-publish-workflow.yml>
 - Verified publishers: <https://github.com/looptech-ai/understand-quickly/blob/main/docs/verified-publishers.md>

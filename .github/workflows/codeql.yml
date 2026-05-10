@@ -5,6 +5,10 @@ name: CodeQL
 #
 # Languages covered: JavaScript/TypeScript (scripts/, mcp/, cli/, site/).
 # We do not scan vendored third-party assets under site/vendor/.
+#
+# Suppression policy: NONE. All findings are fixed, not suppressed.
+# Tea leaf from upstream PR reviews: bigger projects gate on CodeQL clean,
+# and we want our own house in order before pitching integrations.
 
 on:
   push:
@@ -41,10 +45,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
@@ -55,6 +59,6 @@ jobs:
               - "**/dist/**"
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"

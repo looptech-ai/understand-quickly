@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>understand-quickly · .well-known/code-graph discovery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Discover code-knowledge graphs by repo. Static lookup against the understand-quickly registry; falls back to the producer's own .well-known/code-graph.json.">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="robots" content="index,follow">
+
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://looptech-ai.github.io https://raw.githubusercontent.com; frame-ancestors 'none'; base-uri 'self';">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
+
+  <link rel="stylesheet" href="../styles.css?v=20260509a">
+
+  <style>
+    .disc-shell {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: var(--space-6) var(--space-4);
+    }
+    .disc-back {
+      display: inline-block;
+      margin-bottom: var(--space-4);
+      color: var(--color-text-secondary);
+      font-size: 13px;
+    }
+    .disc-back:hover { color: var(--color-accent-bright); }
+    .disc-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-medium);
+      border-radius: var(--radius-panel);
+      padding: var(--space-5);
+      box-shadow: var(--shadow-card);
+    }
+    .disc-card + .disc-card { margin-top: var(--space-4); }
+    .disc-card h1 {
+      margin: 0 0 var(--space-2) 0;
+      font-family: var(--font-serif);
+      font-size: 28px;
+      color: var(--color-text-primary);
+    }
+    .disc-card h2 {
+      margin: 0 0 var(--space-2) 0;
+      font-size: 18px;
+      color: var(--color-text-primary);
+    }
+    .disc-card p {
+      margin: 0 0 var(--space-3) 0;
+      color: var(--color-text-secondary);
+    }
+    .disc-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+    }
+    .disc-form input[type="text"] {
+      flex: 1 1 240px;
+      min-width: 0;
+      background: var(--color-root);
+      color: var(--color-text-primary);
+      border: 1px solid var(--color-border-medium);
+      border-radius: var(--radius-button);
+      padding: var(--space-2) var(--space-3);
+      font-family: var(--font-mono);
+      font-size: 14px;
+    }
+    .disc-form input[type="text"]:focus-visible {
+      outline: 2px solid var(--color-accent-bright);
+      outline-offset: 1px;
+    }
+    .disc-button {
+      background: var(--color-accent);
+      color: var(--color-root);
+      border: 0;
+      border-radius: var(--radius-button);
+      padding: var(--space-2) var(--space-4);
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .disc-button:hover { background: var(--color-accent-bright); }
+    .disc-button.secondary {
+      background: transparent;
+      color: var(--color-accent);
+      border: 1px solid var(--color-border-medium);
+    }
+    .disc-button.secondary:hover {
+      border-color: var(--color-border-strong);
+      color: var(--color-accent-bright);
+    }
+    .disc-row {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      margin-top: var(--space-3);
+    }
+    .disc-result {
+      margin-top: var(--space-4);
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-elevated);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-card);
+    }
+    .disc-result.ok { border-color: var(--color-success); }
+    .disc-result.warn { border-color: var(--color-warning); }
+    .disc-result.error { border-color: var(--color-error); }
+    .disc-kv {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: var(--space-1) var(--space-3);
+      font-size: 13px;
+      margin: var(--space-3) 0 0 0;
+    }
+    .disc-kv dt {
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+    }
+    .disc-kv dd {
+      margin: 0;
+      color: var(--color-text-primary);
+      word-break: break-all;
+    }
+    .disc-kv dd code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--color-text-primary);
+    }
+    .disc-pre {
+      background: var(--color-root);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-card);
+      padding: var(--space-3);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--color-text-primary);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 360px;
+      overflow-y: auto;
+      margin: var(--space-3) 0 0 0;
+    }
+    .disc-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      background: var(--color-elevated);
+      color: var(--color-accent);
+      border: 1px solid var(--color-border-medium);
+      vertical-align: middle;
+    }
+    .disc-help li { margin-bottom: var(--space-1); color: var(--color-text-secondary); }
+    .disc-help code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--color-accent);
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <a class="brand" href="../" aria-label="understand-quickly home">
+      <span class="brand-mark"><span class="brand-emoji" aria-hidden="true">&#129504;</span>understand-quickly</span>
+    </a>
+    <span></span>
+    <nav class="topbar-actions" aria-label="Site">
+      <a href="../">Registry</a>
+      <a href="https://github.com/looptech-ai/understand-quickly" rel="noopener">GitHub</a>
+      <a class="cta-add-repo" href="../add.html" aria-label="Add your repo">
+        <span class="cta-add-repo-text">+ Add your repo</span>
+        <span class="cta-add-repo-icon" aria-hidden="true">+</span>
+      </a>
+    </nav>
+  </header>
+
+  <main class="disc-shell">
+    <a class="disc-back" href="../">&larr; Back to registry</a>
+
+    <section class="disc-card">
+      <h1>.well-known/code-graph discovery</h1>
+      <p>
+        Look up a repo's code-knowledge graph without parsing the full
+        <a href="../registry.json" rel="noopener">registry.json</a>. This page is part of the
+        <a href="../docs/spec/code-graph-protocol.md" rel="noopener">Code-Knowledge-Graph Protocol (CKGP)</a>.
+      </p>
+      <form class="disc-form" id="lookup-form" autocomplete="off">
+        <input
+          type="text"
+          id="repo-input"
+          name="repo"
+          placeholder="owner/repo  (e.g. looptech-ai/understand-quickly)"
+          spellcheck="false"
+          aria-label="Repository (owner/repo)">
+        <button class="disc-button" type="submit">Look up</button>
+      </form>
+      <p style="margin-top: var(--space-3); font-size: 13px;">
+        Add <code>?format=json</code> to get the result as inline JSON.
+      </p>
+    </section>
+
+    <section class="disc-card" id="result-card" hidden>
+      <h2>Result <span class="disc-status" id="result-status">&mdash;</span></h2>
+      <div id="result-body"></div>
+    </section>
+
+    <section class="disc-card disc-help">
+      <h2>How this works</h2>
+      <ol>
+        <li>We first check our aggregator index at <code>/.well-known/repos.json</code>.</li>
+        <li>If the repo isn't registered here, we probe the producer's own
+          <code>https://raw.githubusercontent.com/&lt;owner&gt;/&lt;repo&gt;/&lt;branch&gt;/.well-known/code-graph.json</code>.</li>
+        <li>If neither exists, you can <a href="../add.html">add the repo</a>.</li>
+      </ol>
+      <p style="margin-top: var(--space-3); font-size: 13px;">
+        Programmatic alternative for agents:
+        <code>curl -fsSL https://looptech-ai.github.io/understand-quickly/.well-known/repos.json</code>
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <a href="https://github.com/looptech-ai/understand-quickly/blob/main/LICENSE" rel="noopener">Apache 2.0</a>
+    <span>&middot;</span>
+    <a href="https://github.com/looptech-ai/understand-quickly/blob/main/DATA-LICENSE.md" rel="noopener">Data License 1.0</a>
+    <span>&middot;</span>
+    <a href="../docs/spec/code-graph-protocol.md" rel="noopener">CKGP spec</a>
+    <span>&middot;</span>
+    <a href="../registry.json" rel="noopener">registry.json</a>
+  </footer>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ---- DOM handles -------------------------------------------------
+      const form = document.getElementById('lookup-form');
+      const input = document.getElementById('repo-input');
+      const card = document.getElementById('result-card');
+      const status = document.getElementById('result-status');
+      const body = document.getElementById('result-body');
+
+      // RFC-3986-ish: GitHub allows alphanumerics, dash, underscore, dot.
+      // Reject anything else early so we don't shape malformed URLs.
+      const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+
+      // Endpoint base discovered from this page's location, so the same file
+      // works when copied to a fork's gh-pages without rewriting URLs.
+      const REPOS_URL = new URL('./repos.json', window.location.href).toString();
+
+      // ---- Safe DOM helpers --------------------------------------------
+      // Everything renders via createElement + textContent. We never assign
+      // user-controlled strings to innerHTML — the discovery page accepts
+      // input from `?repo=` and from the producer's `.well-known/code-graph.json`,
+      // both of which are untrusted.
+
+      function el(tag, opts, children) {
+        const node = document.createElement(tag);
+        if (opts) {
+          if (opts.text != null) node.textContent = String(opts.text);
+          if (opts.cls) node.className = opts.cls;
+          if (opts.attrs) {
+            for (const k in opts.attrs) {
+              if (Object.prototype.hasOwnProperty.call(opts.attrs, k) && opts.attrs[k] != null) {
+                node.setAttribute(k, String(opts.attrs[k]));
+              }
+            }
+          }
+          if (opts.on) {
+            for (const k in opts.on) {
+              if (Object.prototype.hasOwnProperty.call(opts.on, k)) {
+                node.addEventListener(k, opts.on[k]);
+              }
+            }
+          }
+        }
+        if (children) {
+          for (let i = 0; i < children.length; i++) {
+            const c = children[i];
+            if (c == null) continue;
+            node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+          }
+        }
+        return node;
+      }
+
+      function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+      function setStatus(label, kind) {
+        status.textContent = label;
+        card.hidden = false;
+        card.classList.remove('disc-result', 'ok', 'warn', 'error');
+        if (kind) card.classList.add(kind);
+      }
+
+      function copyText(text) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text);
+          }
+        } catch (_) { /* fall through */ }
+        // Legacy fallback for very old WebKit / restricted contexts.
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } finally { document.body.removeChild(ta); }
+        return Promise.resolve();
+      }
+
+      function repoLink(repo) {
+        // Always link via the registry browser so deep-links survive future
+        // graph_url moves (the registry is the canonical pointer, not us).
+        const u = new URL('../', window.location.href);
+        u.searchParams.set('entry', String(repo.id || ''));
+        return u.toString();
+      }
+
+      function kvRow(key, value, asCode) {
+        const dd = el('dd');
+        if (asCode) dd.appendChild(el('code', { text: value }));
+        else dd.textContent = String(value);
+        return [el('dt', { text: key }), dd];
+      }
+
+      function kvLink(key, href) {
+        const dd = el('dd');
+        dd.appendChild(el('a', { text: href, attrs: { href: href, rel: 'noopener' } }));
+        return [el('dt', { text: key }), dd];
+      }
+
+      function renderHit(repo, source) {
+        clear(body);
+        const link = repoLink(repo);
+        const sourceLabel = source === 'aggregator'
+          ? 'Found in this aggregator.'
+          : 'Found via producer .well-known/code-graph.json.';
+
+        body.appendChild(el('p', { text: sourceLabel }));
+
+        const dl = el('dl', { cls: 'disc-kv' });
+        kvRow('id', repo.id || '(unknown)', true).forEach(n => dl.appendChild(n));
+        kvRow('format', repo.format || '(unknown)', true).forEach(n => dl.appendChild(n));
+        if (repo.graph_url) {
+          kvLink('graph_url', repo.graph_url).forEach(n => dl.appendChild(n));
+        }
+        if (repo.last_synced) {
+          kvRow('last_synced', repo.last_synced, false).forEach(n => dl.appendChild(n));
+        }
+        if (repo.source_sha) {
+          kvRow('source_sha', repo.source_sha, true).forEach(n => dl.appendChild(n));
+        }
+        body.appendChild(dl);
+
+        const row = el('div', { cls: 'disc-row' });
+        row.appendChild(el('a', {
+          text: 'Continue to graph viewer →',
+          cls: 'disc-button',
+          attrs: { href: link }
+        }));
+        const copyBtn = el('button', {
+          text: 'Copy graph_url',
+          cls: 'disc-button secondary',
+          attrs: { type: 'button' },
+          on: {
+            click: function () {
+              copyText(String(repo.graph_url || ''));
+              copyBtn.textContent = 'Copied';
+              setTimeout(function () { copyBtn.textContent = 'Copy graph_url'; }, 1500);
+            }
+          }
+        });
+        row.appendChild(copyBtn);
+        body.appendChild(row);
+      }
+
+      function renderJson(obj) {
+        clear(body);
+        body.appendChild(el('pre', {
+          cls: 'disc-pre',
+          text: JSON.stringify(obj, null, 2)
+        }));
+      }
+
+      function renderMiss(repo) {
+        clear(body);
+        const addUrl = new URL('../add.html', window.location.href).toString();
+        body.appendChild(el('p', {
+          text: 'No entry found in this aggregator and no .well-known/code-graph.json exposed at the producer’s repo root.'
+        }));
+
+        const explain = el('p');
+        explain.appendChild(document.createTextNode('If you maintain '));
+        explain.appendChild(el('code', { text: repo }));
+        explain.appendChild(document.createTextNode(', you can:'));
+        body.appendChild(explain);
+
+        const ul = el('ul', { cls: 'disc-help' });
+        const li1 = el('li');
+        li1.appendChild(document.createTextNode('Register it here via the '));
+        li1.appendChild(el('a', { text: 'wizard', attrs: { href: addUrl } }));
+        li1.appendChild(document.createTextNode(' (no code).'));
+        ul.appendChild(li1);
+
+        const li2 = el('li');
+        li2.appendChild(document.createTextNode('Or publish '));
+        li2.appendChild(el('code', { text: '.well-known/code-graph.json' }));
+        li2.appendChild(document.createTextNode(' at the root of your repo. See the '));
+        li2.appendChild(el('a', { text: 'CKGP spec', attrs: { href: '../docs/spec/code-graph-protocol.md', rel: 'noopener' } }));
+        li2.appendChild(document.createTextNode('.'));
+        ul.appendChild(li2);
+
+        body.appendChild(ul);
+      }
+
+      function setMessage(text) {
+        clear(body);
+        body.appendChild(el('p', { text: text }));
+      }
+
+      async function lookupAggregator(id) {
+        const res = await fetch(REPOS_URL, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return null;
+        const doc = await res.json();
+        const repos = Array.isArray(doc && doc.repos) ? doc.repos : [];
+        return repos.find(function (r) { return r && r.id === id; }) || null;
+      }
+
+      async function lookupProducer(owner, repo) {
+        // Probe the producer's own well-known. This is CORS-safe for raw.gh
+        // (responds with `access-control-allow-origin: *`). Try `main` first,
+        // then `master`. We deliberately don't list every possible default
+        // branch — agents that need bullet-proof discovery should resolve
+        // the default branch from the GH API.
+        const branches = ['main', 'master'];
+        for (let i = 0; i < branches.length; i++) {
+          const url = 'https://raw.githubusercontent.com/' + owner + '/' + repo + '/' + branches[i] + '/.well-known/code-graph.json';
+          try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) continue;
+            const doc = await res.json();
+            const graphs = Array.isArray(doc && doc.graphs) ? doc.graphs : [];
+            const first = graphs[0];
+            if (first && first.graph_url) {
+              return {
+                id: owner + '/' + repo,
+                format: first.format,
+                graph_url: first.graph_url,
+                last_synced: null,
+                source_sha: first.source_sha || null,
+                tool_version: first.tool_version || null,
+                generated_at: first.generated_at || null,
+                _producerWellKnown: url
+              };
+            }
+          } catch (_) { /* continue */ }
+        }
+        return null;
+      }
+
+      async function lookup(id, asJson) {
+        if (!REPO_RE.test(id)) {
+          setStatus('invalid input', 'error');
+          setMessage('Repo must look like owner/repo (alphanumerics, dash, underscore, dot).');
+          return;
+        }
+        setStatus('looking up…', 'warn');
+        setMessage('Querying aggregator and producer…');
+
+        let hit = null;
+        let source = null;
+        try {
+          hit = await lookupAggregator(id);
+          if (hit) source = 'aggregator';
+        } catch (_) { /* swallow; try producer */ }
+
+        if (!hit) {
+          const parts = id.split('/');
+          try {
+            hit = await lookupProducer(parts[0], parts[1]);
+            if (hit) source = 'producer';
+          } catch (_) { /* fall through to miss */ }
+        }
+
+        if (!hit) {
+          setStatus('not found', 'error');
+          if (asJson) renderJson({ schema_version: 1, found: false, id: id });
+          else renderMiss(id);
+          return;
+        }
+
+        setStatus('found ' + (source === 'aggregator' ? '(aggregator)' : '(producer)'), 'ok');
+        if (asJson) {
+          renderJson({ schema_version: 1, found: true, source: source, repo: hit });
+        } else {
+          renderHit(hit, source);
+        }
+      }
+
+      function readQuery() {
+        const params = new URLSearchParams(window.location.search);
+        return {
+          repo: (params.get('repo') || '').trim(),
+          json: params.get('format') === 'json'
+        };
+      }
+
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        const id = (input.value || '').trim();
+        const url = new URL(window.location.href);
+        if (id) url.searchParams.set('repo', id); else url.searchParams.delete('repo');
+        history.replaceState(null, '', url.toString());
+        if (id) lookup(id, false);
+      });
+
+      const q = readQuery();
+      if (q.repo) {
+        input.value = q.repo;
+        lookup(q.repo, q.json);
+      }
+    }());
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+name: publish-pysdk
+
+# Triggered when a GitHub Release is published with a tag like
+# `pysdk-vX.Y.Z`. Using a published-release trigger so the release
+# notes are already in place when artifacts upload, and so the
+# sdist/wheel attach to the release page itself.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag or branch to build (must match pysdk-v*)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write   # upload assets onto the GitHub release
+  id-token: write   # reserved if we ever switch to trusted-publishing
+
+jobs:
+  build-and-publish:
+    name: Build + publish python-sdk
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'pysdk-v') }}
+
+    defaults:
+      run:
+        working-directory: python-sdk
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip hatchling build twine
+
+      - name: Build sdist + wheel
+        run: python -m build .
+
+      - name: Twine check
+        run: python -m twine check dist/*
+
+      - name: Upload artifacts to workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-sdk-dist
+          path: python-sdk/dist/*
+          if-no-files-found: error
+
+      - name: Attach wheel + sdist to GitHub release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: python-sdk/dist/*
+
+      - name: Publish to PyPI (skip cleanly if PYPI_API_TOKEN unset)
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -z "${TWINE_PASSWORD}" ]; then
+            echo "::warning::PYPI_API_TOKEN secret is not set; skipping PyPI publish. Set PYPI_API_TOKEN on the repo to enable publishing."
+            exit 0
+          fi
+          python -m twine upload --skip-existing dist/*

@@ -68,6 +68,19 @@ Pick the path that fits:
 
 Tools: `list_repos`, `get_graph`, `search_concepts`. See [`mcp/README.md`](mcp/README.md).
 
+### I'm a Python developer
+
+```bash
+pip install understand-quickly
+```
+
+```python
+from understand_quickly import Registry
+print(Registry().list(status="ok"))
+```
+
+See [`python-sdk/README.md`](python-sdk/README.md).
+
 ### I'm a developer / contributor
 
 ```bash
@@ -119,6 +132,41 @@ Adding a new format: PR `schemas/<name>@<int>.json` + an `ok` and `bad` fixture 
 
 Upstream tools that produce these formats can integrate via [the integration protocol](docs/integrations/protocol.md). PR templates are in `docs/integrations/`.
 
+### Integrating an upstream tool
+
+Easiest path: drop the [`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action) into your release/build workflow.
+
+```yaml
+- uses: looptech-ai/uq-publish-action@v0.1.0
+  with:
+    graph-path: '.your-tool/graph.json'
+    format: 'your-format@1'
+    token: ${{ secrets.UNDERSTAND_QUICKLY_TOKEN }}
+```
+
+The Action stamps `metadata.{tool, tool_version, generated_at, commit}` into the graph and fires a `repository_dispatch` (`event_type=sync-entry`) at this registry. See [`docs/integrations/protocol.md`](docs/integrations/protocol.md) for the full producer contract.
+
+### Embed an indexed-by badge
+
+Once registered, link a status badge in your repo's README:
+
+```markdown
+[![indexed by understand-quickly](https://looptech-ai.github.io/understand-quickly/badges/<owner>--<repo>.svg)](https://looptech-ai.github.io/understand-quickly/?entry=<owner>/<repo>)
+```
+
+Lower-case the owner/repo and replace `/` with `--`. The badge auto-updates as your entry's status changes.
+
+### Discovery (`.well-known/code-graph`)
+
+Agents can discover this registry's contents without going through `registry.json`:
+
+```bash
+curl -fsSL https://looptech-ai.github.io/understand-quickly/.well-known/repos.json
+# returns { schema_version, repos: [{id, format, graph_url, last_synced, status, source_sha}] }
+```
+
+To make YOUR repo discoverable without registering here, publish a `.well-known/code-graph.json` at the root of your repo. See the [Code-Knowledge-Graph Protocol spec](docs/spec/code-graph-protocol.md).
+
 ## Add your repo
 
 The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @understand-quickly/cli add`. The manual flow:
@@ -152,9 +200,9 @@ Drop [`docs/publish-template.yml`](docs/publish-template.yml) into your repo as 
 <!-- BEGIN ENTRIES -->
 | Repo | Format | Description | Status | Last synced |
 | --- | --- | --- | :---: | --- |
-| [understand-quickly/demo-code-review-graph](https://github.com/understand-quickly/demo-code-review-graph) | `code-review-graph@1` | Demo entry: a sample code-review-graph export covering files, classes, and tests. | ✅ ok | 2026-05-08 |
-| [understand-quickly/demo-gitnexus](https://github.com/understand-quickly/demo-gitnexus) | `gitnexus@1` | Demo entry: a sample GitNexus graph modeled on its own codebase. | ✅ ok | 2026-05-08 |
-| [understand-quickly/demo-understand-anything](https://github.com/understand-quickly/demo-understand-anything) | `understand-anything@1` | Demo entry: a hand-built sample knowledge graph in the understand-anything@1 shape. | ✅ ok | 2026-05-08 |
+| [understand-quickly/demo-code-review-graph](https://github.com/understand-quickly/demo-code-review-graph) | `code-review-graph@1` | Demo entry: a sample code-review-graph export covering files, classes, and tests. | ✅ ok | 2026-05-10 |
+| [understand-quickly/demo-gitnexus](https://github.com/understand-quickly/demo-gitnexus) | `gitnexus@1` | Demo entry: a sample GitNexus graph modeled on its own codebase. | ✅ ok | 2026-05-10 |
+| [understand-quickly/demo-understand-anything](https://github.com/understand-quickly/demo-understand-anything) | `understand-anything@1` | Demo entry: a hand-built sample knowledge graph in the understand-anything@1 shape. | ✅ ok | 2026-05-10 |
 <!-- END ENTRIES -->
 
 ## Status legend
