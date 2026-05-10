@@ -57,7 +57,7 @@ Full template at [`docs/integrations/sample-publish-workflow.yml`](https://githu
 - [ ] Default invocation writes `.understand-anything/knowledge-graph.json` exactly as before.
 - [ ] `... --publish` with `UNDERSTAND_QUICKLY_TOKEN` unset writes the file and prints an informational message; exit code 0.
 - [ ] `... --publish` with the token set and the repo registered fires the dispatch and the registry's `sync.yml` runs within roughly a minute.
-- [ ] `... --publish` with the token set but the repo unregistered prints `register it once with: npx @understand-quickly/cli add`; exit code 0.
+- [ ] `... --publish` with the token set but the repo unregistered prints `register it once with: npx @looptech-ai/understand-quickly-cli add`; exit code 0.
 - [ ] Emitted graph contains `metadata.tool == "understand-anything"`, `metadata.tool_version`, `metadata.generated_at`, and `metadata.commit` (40-hex sha).
 
 ## Notes for the maintainer

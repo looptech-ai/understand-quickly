@@ -471,12 +471,12 @@ describe('publishCommand response branches', () => {
 ```diff
 - With the token set but the repo unregistered, the registry's sync workflow
 - no-ops and logs the unknown id; the CLI surfaces a fix-it hint pointing at
-- `npx @understand-quickly/cli add` and exits 0.
+- `npx @looptech-ai/understand-quickly-cli add` and exits 0.
 + With the token set, GitHub returns 204 once it has accepted the dispatch.
 + Whether the registry workflow then finds an entry for the id is logged at
 + https://github.com/looptech-ai/understand-quickly/actions/workflows/sync.yml
 + — the CLI cannot know synchronously. If you haven't registered the repo
-+ yet, follow `npx @understand-quickly/cli add` first.
++ yet, follow `npx @looptech-ai/understand-quickly-cli add` first.
 ```
 
 ---
@@ -588,7 +588,7 @@ group in the regex.)
 >    in place of any inherent rights of the contributor.
 >
 > Your call on which is most useful. The patch as written carries no
-> dependency on `@understand-quickly/cli`, no telemetry, and no upload —
+> dependency on `@looptech-ai/understand-quickly-cli`, no telemetry, and no upload —
 > the registry on the receiving side is at `looptech-ai/understand-quickly`
 > (Apache 2.0 + Data License 1.0). Whatever PolyForm requires for inbound
 > contributions is fine.

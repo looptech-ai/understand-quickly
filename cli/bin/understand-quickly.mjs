@@ -4,7 +4,7 @@
 import { runAdd, helpText } from '../src/add.mjs';
 
 const TOPLEVEL_HELP = [
-  '@understand-quickly/cli — list your repo in the public registry of code-knowledge graphs.',
+  '@looptech-ai/understand-quickly-cli — list your repo in the public registry of code-knowledge graphs.',
   '',
   'Usage:',
   '  understand-quickly <command> [flags]',

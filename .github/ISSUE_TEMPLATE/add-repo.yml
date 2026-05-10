@@ -15,7 +15,7 @@ body:
         **Faster paths** if you're comfortable with them:
 
         - 🖱️ [Wizard](https://looptech-ai.github.io/understand-quickly/add.html) — same fields, with auto-suggest and JSON preview.
-        - 💻 `npx @understand-quickly/cli add` — auto-detects everything from your repo.
+        - 💻 `npx @looptech-ai/understand-quickly-cli add` — auto-detects everything from your repo.
         - ✍️ Or open a PR directly per [CONTRIBUTING.md](https://github.com/looptech-ai/understand-quickly/blob/main/CONTRIBUTING.md).
 
         ---

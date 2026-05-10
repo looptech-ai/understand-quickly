@@ -83,7 +83,7 @@ export async function loadRegistry(
   const sv = (body as { schema_version?: unknown }).schema_version;
   if (sv !== undefined && sv !== 1) {
     throw new Error(
-      `Registry at ${source} reports schema_version=${String(sv)}; this MCP build supports schema_version=1. Upgrade @understand-quickly/mcp.`,
+      `Registry at ${source} reports schema_version=${String(sv)}; this MCP build supports schema_version=1. Upgrade @looptech-ai/understand-quickly-mcp.`,
     );
   }
   cache.set(cacheKey, { fetchedAt: now(), registry: body });

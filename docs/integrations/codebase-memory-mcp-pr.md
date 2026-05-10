@@ -24,7 +24,7 @@ Wiring a `--publish` flag (or a one-off `codebase-memory publish` subcommand) me
 
 - Add a `--publish` flag (or `codebase-memory publish` subcommand) that flushes the in-memory KG to a stable JSON file at `.codebase-memory/graph.json` and, if `$UNDERSTAND_QUICKLY_TOKEN` is set, fires a `repository_dispatch` event at `looptech-ai/understand-quickly`.
 - Embed `metadata.commit = $(git rev-parse HEAD)`, `metadata.tool == "codebase-memory-mcp"`, `metadata.tool_version`, and `metadata.generated_at` in the emitted graph.
-- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @understand-quickly/cli add` or the wizard and exit cleanly.
+- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @looptech-ai/understand-quickly-cli add` or the wizard and exit cleanly.
 - Add a "Publishing to understand-quickly" paragraph to the README near the existing MCP server docs.
 
 ## Schema fit
@@ -54,7 +54,7 @@ A drop-in workflow snippet lives at [`docs/integrations/sample-publish-workflow.
 - [ ] Default invocation behavior unchanged (no graph file written unless explicitly requested).
 - [ ] `... --publish` with `UNDERSTAND_QUICKLY_TOKEN` unset writes `.codebase-memory/graph.json` and prints an informational message; exit code 0.
 - [ ] `... --publish` with the token set and the repo registered fires the dispatch and the registry's `sync.yml` runs within roughly a minute.
-- [ ] `... --publish` with the token set but the repo unregistered prints `register it once with: npx @understand-quickly/cli add`; exit code 0.
+- [ ] `... --publish` with the token set but the repo unregistered prints `register it once with: npx @looptech-ai/understand-quickly-cli add`; exit code 0.
 - [ ] Emitted graph contains `metadata.tool == "codebase-memory-mcp"`, `metadata.tool_version`, `metadata.generated_at`, and `metadata.commit` (40-hex sha).
 
 ## Notes for the maintainer

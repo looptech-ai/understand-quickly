@@ -5,6 +5,7 @@ coverage/
 test-results/
 tests/playwright/report/
 playwright/.cache/
+.claude/
 
 # Generated at deploy time by scripts/render-sitemap.mjs. The pages.yml
 # workflow regenerates this against the current registry, so a tracked

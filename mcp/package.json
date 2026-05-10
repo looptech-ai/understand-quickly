@@ -1,7 +1,12 @@
 {
-  "name": "@understand-quickly/mcp",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@looptech-ai/understand-quickly-mcp",
+  "version": "0.1.1",
+  "mcpName": "io.github.looptech-ai/understand-quickly",
+  "private": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "description": "Thin MCP server exposing the understand-quickly registry as MCP tools.",
   "author": "Alex Macdonald-Smith <Alex.Mac@LoopTech.AI>",
   "contributors": [
@@ -32,8 +37,8 @@
     "zod": "^4.4.0"
   },
   "devDependencies": {
-    "@types/node": "^18.19.0",
+    "@types/node": "^25.6.2",
     "tsx": "^4.19.0",
-    "typescript": "^5.5.0"
+    "typescript": "^6.0.3"
   }
 }

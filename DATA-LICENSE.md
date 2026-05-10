@@ -102,7 +102,7 @@ The back-grant survives termination of the User's or Forker's use.
 
 When a Producer submits an entry to the Registry — by opening a pull
 request against `registry.json`, by firing a `repository_dispatch` event,
-by using `npx @understand-quickly/cli add`, or by any equivalent means —
+by using `npx @looptech-ai/understand-quickly-cli add`, or by any equivalent means —
 the Producer represents and warrants that they have the right to submit
 the linked content and grants the **Beneficiaries** and all **Users**
 (per §§ 2 and 3) the rights described in this License with respect to:

@@ -6,6 +6,7 @@
 
 Point AI agents at any indexed repo and they get a current, schema-validated graph — one URL, one fetch.
 
+<!-- Row 1 — repo health -->
 [![sync](https://github.com/looptech-ai/understand-quickly/actions/workflows/sync.yml/badge.svg)](https://github.com/looptech-ai/understand-quickly/actions/workflows/sync.yml)
 [![pages](https://github.com/looptech-ai/understand-quickly/actions/workflows/pages.yml/badge.svg)](https://looptech-ai.github.io/understand-quickly/)
 [![release](https://img.shields.io/github/v/release/looptech-ai/understand-quickly?label=release&sort=semver)](https://github.com/looptech-ai/understand-quickly/releases)
@@ -14,6 +15,15 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![issues](https://img.shields.io/github/issues/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/issues)
 [![last commit](https://img.shields.io/github/last-commit/looptech-ai/understand-quickly)](https://github.com/looptech-ai/understand-quickly/commits/main)
+
+<!-- Row 2 — distribution surfaces -->
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-blue)](https://registry.modelcontextprotocol.io)
+[![npm CLI](https://img.shields.io/npm/v/@looptech-ai/understand-quickly-cli?label=npm%20cli)](https://www.npmjs.com/package/@looptech-ai/understand-quickly-cli)
+[![npm MCP](https://img.shields.io/npm/v/@looptech-ai/understand-quickly-mcp?label=npm%20mcp)](https://www.npmjs.com/package/@looptech-ai/understand-quickly-mcp)
+[![PyPI](https://img.shields.io/pypi/v/understand-quickly)](https://pypi.org/project/understand-quickly/)
+[![Marketplace](https://img.shields.io/badge/marketplace-uq--publish--action-orange)](https://github.com/marketplace/actions/understand-quickly-publish)
+
+> **Latest:** v0.1.0 + 4 packages live (cli, mcp, pysdk, GH Action). [CHANGELOG →](CHANGELOG.md)
 
 [**Browse →**](https://looptech-ai.github.io/understand-quickly/) · [**Add your repo (wizard)**](https://looptech-ai.github.io/understand-quickly/add.html) · [**Quickstart**](#quickstart) · [**FAQ (plain English)**](docs/faq.md) · [**Alternatives**](docs/alternatives.md) · [**Badge**](docs/badge.md) · [**Contributing**](CONTRIBUTING.md)
 
@@ -50,15 +60,29 @@ Pick entries with `status: "ok"`. Fetch `entry.graph_url`. Cache by `last_sha`. 
 Pick the path that fits:
 
 - 🖱️ **Wizard:** [Add your repo →](https://looptech-ai.github.io/understand-quickly/add.html). Fills the issue for you; the bot opens the PR.
-- 💻 **CLI:** `npx @understand-quickly/cli add` — auto-detects everything. ([npm](https://www.npmjs.com/package/@understand-quickly/cli))
+- 💻 **CLI:** `npx @looptech-ai/understand-quickly-cli add` — auto-detects everything. ([npm](https://www.npmjs.com/package/@looptech-ai/understand-quickly-cli))
 - ✍️ **Manual PR:** see [Add your repo](#add-your-repo) below.
 
 ### I want to use it from Claude / Codex / Cursor (MCP)
 
+Three ways, pick whichever your MCP client likes best:
+
 ```jsonc
 {
   "mcpServers": {
+    // 1. Via the MCP Registry — package name; client resolves it.
     "understand-quickly": {
+      "package": "io.github.looptech-ai/understand-quickly"
+    },
+
+    // 2. Via npm — install once, run the bin.
+    //    npm i -g @looptech-ai/understand-quickly-mcp
+    "understand-quickly-npm": {
+      "command": "understand-quickly-mcp"
+    },
+
+    // 3. Via tsx — for hacking on the source in this repo.
+    "understand-quickly-dev": {
       "command": "npx",
       "args": ["tsx", "/path/to/understand-quickly/mcp/src/index.ts"]
     }
@@ -167,9 +191,22 @@ curl -fsSL https://looptech-ai.github.io/understand-quickly/.well-known/repos.js
 
 To make YOUR repo discoverable without registering here, publish a `.well-known/code-graph.json` at the root of your repo. See the [Code-Knowledge-Graph Protocol spec](docs/spec/code-graph-protocol.md).
 
+## Distribution
+
+| Channel | Install |
+|---|---|
+| Pages browser + JSON | <https://looptech-ai.github.io/understand-quickly/> |
+| MCP Registry | `io.github.looptech-ai/understand-quickly` (listed in <https://registry.modelcontextprotocol.io>) |
+| npm CLI | `npm i -g @looptech-ai/understand-quickly-cli` |
+| npm MCP server | `npm i -g @looptech-ai/understand-quickly-mcp` |
+| PyPI SDK | `pip install understand-quickly` |
+| GitHub Action | `looptech-ai/uq-publish-action@v0.1.0` |
+
+All MIT-or-Apache-2.0 source-licensed. All free to use. The registry data itself is covered by the [Understand-Quickly Data License 1.0](DATA-LICENSE.md).
+
 ## Add your repo
 
-The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @understand-quickly/cli add`. The manual flow:
+The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @looptech-ai/understand-quickly-cli add`. The manual flow:
 
 1. Run a [supported tool](#supported-formats) locally and commit its output to your repo.
 2. Fork this repo.
@@ -237,6 +274,8 @@ npm run render     # regenerate README table
 ## Contributing
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) walks through every contribution flow. Trusted authors can land registry-only PRs without review — see [`docs/verified-publishers.md`](docs/verified-publishers.md). By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: [`SECURITY.md`](SECURITY.md). Security model: see [threat-model](docs/threat-model.md).
+
+For questions, ideas, or showing off your registered graph: [GitHub Discussions](https://github.com/looptech-ai/understand-quickly/discussions).
 
 ## License
 
