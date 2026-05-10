@@ -5,7 +5,7 @@
       "id": "understand-quickly/demo-code-review-graph",
       "format": "code-review-graph@1",
       "graph_url": "https://looptech-ai.github.io/understand-quickly/schemas/__fixtures__/code-review-graph/real-sample.json",
-      "last_synced": "2026-05-09T04:09:10.746Z",
+      "last_synced": "2026-05-10T04:21:23.264Z",
       "status": "ok",
       "source_sha": null
     },
@@ -13,7 +13,7 @@
       "id": "understand-quickly/demo-gitnexus",
       "format": "gitnexus@1",
       "graph_url": "https://looptech-ai.github.io/understand-quickly/schemas/__fixtures__/gitnexus/real-sample.json",
-      "last_synced": "2026-05-09T04:09:10.629Z",
+      "last_synced": "2026-05-10T04:21:23.408Z",
       "status": "ok",
       "source_sha": null
     },
@@ -21,7 +21,7 @@
       "id": "understand-quickly/demo-understand-anything",
       "format": "understand-anything@1",
       "graph_url": "https://looptech-ai.github.io/understand-quickly/schemas/__fixtures__/understand-anything/real-sample.json",
-      "last_synced": "2026-05-09T04:09:10.475Z",
+      "last_synced": "2026-05-10T04:21:23.532Z",
       "status": "ok",
       "source_sha": null
     }
