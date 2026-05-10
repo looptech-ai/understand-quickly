@@ -50,7 +50,7 @@ Pick entries with `status: "ok"`. Fetch `entry.graph_url`. Cache by `last_sha`. 
 Pick the path that fits:
 
 - 🖱️ **Wizard:** [Add your repo →](https://looptech-ai.github.io/understand-quickly/add.html). Fills the issue for you; the bot opens the PR.
-- 💻 **CLI:** `npx @understand-quickly/cli add` — auto-detects everything. ([npm](https://www.npmjs.com/package/@understand-quickly/cli))
+- 💻 **CLI:** `npx @looptech-ai/understand-quickly-cli add` — auto-detects everything. ([npm](https://www.npmjs.com/package/@looptech-ai/understand-quickly-cli))
 - ✍️ **Manual PR:** see [Add your repo](#add-your-repo) below.
 
 ### I want to use it from Claude / Codex / Cursor (MCP)
@@ -169,7 +169,7 @@ To make YOUR repo discoverable without registering here, publish a `.well-known/
 
 ## Add your repo
 
-The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @understand-quickly/cli add`. The manual flow:
+The fastest path is the [wizard](https://looptech-ai.github.io/understand-quickly/add.html) or `npx @looptech-ai/understand-quickly-cli add`. The manual flow:
 
 1. Run a [supported tool](#supported-formats) locally and commit its output to your repo.
 2. Fork this repo.

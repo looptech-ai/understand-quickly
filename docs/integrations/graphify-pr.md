@@ -23,7 +23,7 @@ Paste the body below into the PR description on that repo. The author should con
 - Add a `--publish` flag (or equivalent — `--register`, `--publish-to-uq`) to the Graphify CLI surface that writes the graph file. If a programmatic API is exposed, accept the same option there.
 - After the existing graph emit step, when `--publish` is set: fire a `repository_dispatch` event at `looptech-ai/understand-quickly` using a token from `$UNDERSTAND_QUICKLY_TOKEN`.
 - Embed `metadata.commit = $(git rev-parse HEAD)`, `metadata.tool == "graphify"`, `metadata.tool_version`, and `metadata.generated_at` in the emitted graph.
-- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @understand-quickly/cli add` or the wizard and exit cleanly — don't fail the parent run.
+- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @looptech-ai/understand-quickly-cli add` or the wizard and exit cleanly — don't fail the parent run.
 - Add a "Publishing to understand-quickly" paragraph to the README near the existing CLI docs.
 
 ## Schema fit
@@ -53,7 +53,7 @@ A drop-in workflow snippet lives at [`docs/integrations/sample-publish-workflow.
 - [ ] Default invocation writes the graph file exactly as before.
 - [ ] `... --publish` with `UNDERSTAND_QUICKLY_TOKEN` unset writes the file and prints an informational message; exit code 0.
 - [ ] `... --publish` with the token set and the repo registered fires the dispatch and the registry's `sync.yml` runs within roughly a minute.
-- [ ] `... --publish` with the token set but the repo unregistered prints `register it once with: npx @understand-quickly/cli add`; exit code 0.
+- [ ] `... --publish` with the token set but the repo unregistered prints `register it once with: npx @looptech-ai/understand-quickly-cli add`; exit code 0.
 - [ ] Emitted graph contains `metadata.tool == "graphify"`, `metadata.tool_version`, `metadata.generated_at`, and `metadata.commit` (40-hex sha).
 
 ## Notes for the maintainer

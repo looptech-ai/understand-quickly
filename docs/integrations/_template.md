@@ -21,7 +21,7 @@ Copy this file to `<tool>-pr.md`, fill in the `<TOOL>`, `<TOKEN_NAME>`, `<GRAPH_
 - Add a `--publish` flag (opt-in) to `<CLI_INVOCATION>`.
 - After the existing graph generation step, when `--publish` is set: fire a `repository_dispatch` event at `looptech-ai/understand-quickly` using a token from the `<TOKEN_NAME>` env var (or a CLI-provided override).
 - Embed `metadata.commit = $(git rev-parse HEAD)`, `metadata.tool_version`, and `metadata.generated_at` in the emitted graph at `<GRAPH_PATH>` (if not already present) so the registry can do drift detection.
-- If the user's repo isn't in the registry yet, surface a one-line message pointing at `npx @understand-quickly/cli add` or the wizard and exit cleanly — don't fail the parent run.
+- If the user's repo isn't in the registry yet, surface a one-line message pointing at `npx @looptech-ai/understand-quickly-cli add` or the wizard and exit cleanly — don't fail the parent run.
 - Document the flag in the README with a one-paragraph "Publishing to understand-quickly" section. The recommended CI snippet is the [`looptech-ai/uq-publish-action`](https://github.com/looptech-ai/uq-publish-action) Marketplace Action, which collapses the publish step to ~5 lines of YAML for users.
 
 ## No-op default
@@ -52,7 +52,7 @@ The full template lives at [`docs/integrations/sample-publish-workflow.yml`](htt
 - [ ] `<CLI_INVOCATION> --publish` writes the graph file as before.
 - [ ] With `<TOKEN_NAME>` unset, `--publish` prints an informational message and exits 0.
 - [ ] With `<TOKEN_NAME>` set and the repo registered, `--publish` fires the dispatch and the registry's `sync.yml` workflow runs within ~minute.
-- [ ] With `<TOKEN_NAME>` set but the repo not registered, the message points at `npx @understand-quickly/cli add` and exits 0.
+- [ ] With `<TOKEN_NAME>` set but the repo not registered, the message points at `npx @looptech-ai/understand-quickly-cli add` and exits 0.
 - [ ] `metadata.commit`, `metadata.tool_version`, `metadata.generated_at` are present in the emitted graph.
 
 ## Notes for the maintainer

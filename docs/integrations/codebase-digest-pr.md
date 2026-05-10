@@ -26,7 +26,7 @@ Wiring a `--publish` flag means any user who runs codebase-digest can land in th
 - After the existing digest + analysis step, when `--publish` is set:
   1. Write a small JSON sidecar at `.codebase-digest/digest.bundle.json` that conforms to the registry's [`bundle@1`](https://github.com/looptech-ai/understand-quickly/blob/main/schemas/bundle@1.json) schema. The sidecar carries `manifest.tool = "codebase-digest"`, `tool_version`, `generated_at`, `commit`, `file_count`, `byte_count`, `token_estimate`, `format = "plaintext"`, and `content_url` pointing at the existing digest in the same repo. The analyzer metrics codebase-digest already computes map directly onto these fields.
   2. If `$UNDERSTAND_QUICKLY_TOKEN` is set, fire a `repository_dispatch` event at `looptech-ai/understand-quickly`. Otherwise, write the sidecar locally and exit cleanly.
-- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @understand-quickly/cli add` or the wizard and exit cleanly — don't fail the parent run.
+- If the user's repo isn't yet in the registry, print a friendly one-liner pointing at `npx @looptech-ai/understand-quickly-cli add` or the wizard and exit cleanly — don't fail the parent run.
 - Add a "Publishing to understand-quickly" paragraph to the codebase-digest README.
 
 ## Why a sidecar

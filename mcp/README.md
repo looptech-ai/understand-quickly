@@ -1,4 +1,4 @@
-# @understand-quickly/mcp
+# @looptech-ai/understand-quickly-mcp
 
 A thin [Model Context Protocol](https://modelcontextprotocol.io) server that
 exposes the [understand-quickly](https://looptech-ai.github.io/understand-quickly/)
