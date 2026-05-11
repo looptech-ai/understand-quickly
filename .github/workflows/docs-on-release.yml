@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: docs-on-release
@@ -15,6 +15,9 @@ concurrency:
 jobs:
   update-docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       # pin: v6.0.0 -- actions/checkout
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3

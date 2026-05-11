@@ -6,12 +6,14 @@ on:
     paths: ['registry.json']
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   render:
     if: github.actor != 'github-actions[bot]' || !startsWith(github.event.head_commit.message, 'docs(readme):')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       # pin: v6.0.0 -- actions/checkout
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
