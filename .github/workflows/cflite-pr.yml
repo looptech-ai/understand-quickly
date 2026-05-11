@@ -1,0 +1,54 @@
+name: ClusterFuzzLite PR fuzzing
+
+# Runs python fuzz harnesses against pull requests so regressions get
+# caught at review time. Time budget is intentionally short (2 min per
+# sanitizer) to keep PR CI fast. The batch workflow does longer soak
+# runs on a schedule.
+#
+# Findings surface as failed steps with reproducer artifacts on the
+# workflow run. Triage policy lives in CONTRIBUTING.md.
+#
+# No untrusted event inputs are used in any `run:` step in this file.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "python-sdk/**"
+      - "fuzz/**"
+      - ".clusterfuzzlite/**"
+      - ".github/workflows/cflite-pr.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+    steps:
+      # pin: v6.0.0 -- actions/checkout
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+
+      # pin: main -- google/clusterfuzzlite/actions/build_fuzzers
+      - name: Build fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1
+        with:
+          language: python
+          sanitizer: ${{ matrix.sanitizer }}
+
+      # pin: main -- google/clusterfuzzlite/actions/run_fuzzers
+      - name: Run fuzzers
+        if: steps.build.outcome == 'success'
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 120
+          mode: code-change
+          sanitizer: ${{ matrix.sanitizer }}
+          output-sarif: true

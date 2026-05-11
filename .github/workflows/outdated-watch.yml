@@ -70,11 +70,12 @@ jobs:
         working-directory: python-sdk
         run: |
           set -e
-          python -m pip install --quiet --upgrade pip
-          # Install the project's runtime + dev deps as defined in
-          # pyproject.toml, then ask pip for outdated. `|| true` so a
-          # missing optional extra never fails the scan.
-          python -m pip install --quiet -e ".[dev]" 2>/dev/null || python -m pip install --quiet -e . || true
+          # Hash-pinned install of the runtime + dev deps that ship in
+          # pyproject.toml. `pip list --outdated` then reports any of
+          # those that have newer versions on PyPI. We do not install
+          # the project itself; the outdated scan only cares about
+          # third-party packages.
+          python -m pip install --require-hashes -r requirements/dev.lock
           python -m pip list --outdated --format=json > /tmp/pip-pysdk.json || echo '[]' > /tmp/pip-pysdk.json
 
       - name: Build summary

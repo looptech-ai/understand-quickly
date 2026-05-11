@@ -1,0 +1,47 @@
+name: ClusterFuzzLite batch fuzzing
+
+# Daily batch fuzzing run with a longer soak. Uploads accumulated
+# corpus and any new crashes to a private GitHub storage repo
+# (configured via the ClusterFuzzLite storage-repo input if set).
+# When storage-repo is empty (default), corpus + crashes are kept as
+# workflow run artifacts.
+#
+# Findings file as GitHub issues automatically via the run_fuzzers
+# action. No untrusted event inputs are used in any run: step here.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  batch-fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+      - name: Build fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1
+        with:
+          language: python
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run fuzzers
+        if: steps.build.outcome == 'success'
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: batch
+          sanitizer: ${{ matrix.sanitizer }}
+          output-sarif: true

@@ -1,0 +1,3 @@
+# Project metadata for ClusterFuzzLite. Required by the runner.
+# Language selects the appropriate libFuzzer driver wrapper.
+language: python

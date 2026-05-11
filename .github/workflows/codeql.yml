@@ -15,12 +15,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-    paths:
-      - "scripts/**"
-      - "mcp/src/**"
-      - "cli/**"
-      - "site/**"
-      - ".github/workflows/codeql.yml"
+  merge_group:
   schedule:
     - cron: "23 5 * * 1"
 
