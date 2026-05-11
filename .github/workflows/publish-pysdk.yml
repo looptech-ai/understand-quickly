@@ -4,6 +4,18 @@ name: publish-pysdk
 # `pysdk-vX.Y.Z`. Using a published-release trigger so the release
 # notes are already in place when artifacts upload, and so the
 # sdist/wheel attach to the release page itself.
+#
+# Publishing path:
+#   1. Preferred: PyPI Trusted Publishing via OIDC. No token; the
+#      `pypa/gh-action-pypi-publish` step exchanges the workflow's OIDC
+#      ID-token for a short-lived PyPI upload token. Requires a Trusted
+#      Publisher entry on PyPI ("understand-quickly" project) bound to
+#      this exact workflow file. See docs/ops/pypi-trusted-publishing.md.
+#   2. Fallback: legacy PYPI_API_TOKEN secret. Engaged only if Trusted
+#      Publishing is not yet configured (the OIDC step will fail with
+#      "Trusted publisher not configured" which we tolerate via
+#      continue-on-error). Once the user has provisioned Trusted
+#      Publishing, the fallback step can be deleted along with the secret.
 
 on:
   release:
@@ -17,7 +29,7 @@ on:
 
 permissions:
   contents: write   # upload assets onto the GitHub release
-  id-token: write   # reserved if we ever switch to trusted-publishing
+  id-token: write   # required for PyPI Trusted Publishing (OIDC)
 
 jobs:
   build-and-publish:
@@ -30,17 +42,20 @@ jobs:
         working-directory: python-sdk
 
     steps:
-      - uses: actions/checkout@v4
+      # pin: v6.0.0 -- actions/checkout
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
 
+      # pin: v6.0.0 -- actions/setup-python
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
         with:
           python-version: '3.12'
 
+      # pin: v6.0.0 -- actions/setup-node
       - name: Set up Node (for version check)
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version-file: '.nvmrc'
 
@@ -59,26 +74,45 @@ jobs:
       - name: Twine check
         run: python -m twine check dist/*
 
+      # pin: v4.6.2 -- actions/upload-artifact
       - name: Upload artifacts to workflow
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: python-sdk-dist
           path: python-sdk/dist/*
           if-no-files-found: error
 
+      # pin: v2.2.1 -- softprops/action-gh-release
       - name: Attach wheel + sdist to GitHub release
         if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
         with:
           files: python-sdk/dist/*
 
-      - name: Publish to PyPI (skip cleanly if PYPI_API_TOKEN unset)
+      # Preferred path: PyPI Trusted Publishing (OIDC). The action will
+      # short-circuit if the project isn't configured for trusted publishing
+      # on PyPI's side, in which case we drop through to the token fallback.
+      # pin: v1.12.4 -- pypa/gh-action-pypi-publish
+      - name: Publish to PyPI (Trusted Publishing / OIDC)
+        id: pypi_oidc
+        if: github.event_name == 'release'
+        continue-on-error: true
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
+        with:
+          packages-dir: python-sdk/dist
+          skip-existing: true
+
+      # Fallback path: legacy API token. Only runs if OIDC step failed.
+      # Once Trusted Publishing is provisioned on PyPI, delete this step
+      # and the PYPI_API_TOKEN secret.
+      - name: Publish to PyPI (API token fallback)
+        if: github.event_name == 'release' && steps.pypi_oidc.outcome != 'success'
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           if [ -z "${TWINE_PASSWORD}" ]; then
-            echo "::warning::PYPI_API_TOKEN secret is not set; skipping PyPI publish. Set PYPI_API_TOKEN on the repo to enable publishing."
+            echo "::warning::OIDC trusted publishing not configured and PYPI_API_TOKEN is unset; nothing published. See docs/ops/pypi-trusted-publishing.md to enable OIDC."
             exit 0
           fi
           python -m twine upload --skip-existing dist/*

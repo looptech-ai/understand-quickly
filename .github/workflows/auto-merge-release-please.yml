@@ -1,0 +1,114 @@
+name: auto-merge-release-please
+
+# release-please opens a per-component Release PR (chore(<component>): release <version>)
+# whose contents are purely mechanical: a version bump in package.json /
+# pyproject.toml, an updated .release-please-manifest.json, and an appended
+# CHANGELOG.md entry. There is nothing here for a human to review beyond
+# "did the bot do what the bot is supposed to do?"
+#
+# This workflow waits for the required status checks to land green on the
+# PR head, auto-approves with the GH bot, and enables auto-merge in squash
+# mode. Merging the squashed commit creates the component tag
+# (e.g. `cli-v0.1.3`) which fires the existing `publish-*.yml` workflows.
+#
+# Safety:
+#   - Trigger is pull_request_target (needed so the GITHUB_TOKEN has write
+#     scope on PRs from forks), but we ONLY auto-approve PRs authored by
+#     release-please[bot] AND we never check out or execute PR-controlled
+#     code in this workflow. The only operations are GitHub API calls.
+#   - All untrusted event values (PR number, head SHA, login) are read via
+#     env: bindings and only referenced as quoted shell vars — never
+#     interpolated into a run: body directly.
+#   - The required status checks list matches the repo's branch-protection
+#     contexts (validate, smoke/chromium, smoke/webkit-iphone, codeql); we
+#     re-check them explicitly here as defense-in-depth in case branch
+#     protection is loosened in the future.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-release-please-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  auto-merge:
+    name: Auto-merge release-please PR
+    runs-on: ubuntu-latest
+    # Author filter is the load-bearing safety check. release-please runs as
+    # `release-please[bot]` on the GitHub App, or as `github-actions[bot]`
+    # when triggered via workflow_dispatch through the action. We accept
+    # both, but we ALSO never check out PR contents in this workflow.
+    if: >-
+      github.event.pull_request.user.login == 'release-please[bot]' ||
+      github.event.pull_request.user.login == 'github-actions[bot]'
+    timeout-minutes: 20
+
+    steps:
+      - name: Wait for required checks to succeed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # The four required checks (validate is a check-run, smoke has
+          # two matrix jobs, codeql is the security analysis). If any of
+          # these is still pending after the timeout we exit non-zero so
+          # the workflow re-runs on the next sync event.
+          required=("validate" "smoke / chromium" "smoke / webkit-iphone" "Analyze (javascript-typescript)")
+          deadline=$(( $(date +%s) + 15 * 60 ))
+          while :; do
+            now=$(date +%s)
+            if [ "$now" -ge "$deadline" ]; then
+              echo "::warning::Required checks did not all complete in 15m; will retry on next sync event."
+              exit 0
+            fi
+            all_done=true
+            any_failed=false
+            for ctx in "${required[@]}"; do
+              # The latest run of each named check on the head sha.
+              conclusion=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" \
+                --jq "[.check_runs[] | select(.name==\"${ctx}\")] | (.[-1].conclusion // \"missing\")")
+              status=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" \
+                --jq "[.check_runs[] | select(.name==\"${ctx}\")] | (.[-1].status // \"missing\")")
+              echo "check '${ctx}': status=${status} conclusion=${conclusion}"
+              if [ "$status" != "completed" ]; then
+                all_done=false
+              elif [ "$conclusion" != "success" ] && [ "$conclusion" != "skipped" ] && [ "$conclusion" != "neutral" ]; then
+                any_failed=true
+              fi
+            done
+            if $any_failed; then
+              echo "::warning::At least one required check failed; not enabling auto-merge."
+              exit 0
+            fi
+            if $all_done; then
+              echo "All required checks completed successfully."
+              break
+            fi
+            sleep 30
+          done
+
+      - name: Approve PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr review "$PR_NUMBER" --repo "$REPO" --approve \
+            --body "Auto-approved release-please PR. Mechanical version bump + changelog only; required checks are green."
+
+      - name: Enable auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash

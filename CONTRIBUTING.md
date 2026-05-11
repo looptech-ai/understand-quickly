@@ -126,6 +126,50 @@ A "format" is a versioned JSON Schema in `schemas/`. Adding one means downstream
 
 ---
 
+## Commit message conventions
+
+This repo uses [Conventional Commits][cc] to drive automated releases via
+`release-please`. The commit prefix on `main` decides which component
+(if any) bumps and by how much:
+
+| Prefix | Bump | Use for |
+|---|---|---|
+| `fix(cli): ...` | cli **patch** | bug fix in `cli/` |
+| `fix(mcp): ...` | mcp **patch** | bug fix in `mcp/` |
+| `fix(pysdk): ...` | pysdk **patch** | bug fix in `python-sdk/` |
+| `feat(cli): ...` | cli **minor** (or patch pre-1.0; see `release-please-config.json`) | new feature in `cli/` |
+| `feat(mcp): ...` | mcp **minor** | new feature in `mcp/` |
+| `feat(pysdk): ...` | pysdk **minor** | new feature in `python-sdk/` |
+| `feat!: ...` or `BREAKING CHANGE:` footer | **major** | any backwards-incompatible change |
+| `chore:`, `docs:`, `ci:`, `refactor:`, `test:`, `style:` | no bump | maintenance |
+
+Scopes follow the component directories: `cli`, `mcp`, `pysdk`, plus
+`root` / `registry` for changes to the registry data itself. A commit
+with no scope (e.g. `feat: ...`) applies to the root package only.
+
+**Examples:**
+
+```
+fix(cli): handle empty graph_url in --graph mode
+feat(mcp): add list_concepts MCP tool
+chore(deps-cli): bump zod from 3.22.4 to 3.23.0
+feat(pysdk)!: drop Python 3.10 support
+
+BREAKING CHANGE: minimum supported Python is now 3.11.
+```
+
+A landed commit on `main` is the trigger; the
+[`release-please`](./docs/ops/release-process.md) workflow opens a per-
+component Release PR within ~30s. That PR auto-merges once required
+checks pass, which creates the version tag, which triggers the
+`publish-*.yml` workflows. No manual `npm publish` / `twine upload`
+needed.
+
+The `semantic-pr` workflow enforces a Conventional Commit-shaped PR
+title on every PR.
+
+[cc]: https://www.conventionalcommits.org/en/v1.0.0/
+
 ## 3. Local development
 
 ```bash
