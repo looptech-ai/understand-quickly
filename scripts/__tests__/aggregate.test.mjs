@@ -6,8 +6,13 @@ import { aggregate } from '../aggregate.mjs';
 function startServer(routes) {
   return new Promise(resolve => {
     const srv = createServer((req, res) => {
-      const handler = routes[req.url];
-      if (!handler) { res.writeHead(404); res.end(); return; }
+      // Guard against prototype-chain lookups so a malformed URL like
+      // `/__proto__` can't invoke an inherited method as a handler.
+      // Hardens against js/unvalidated-dynamic-method-call.
+      const handler = Object.prototype.hasOwnProperty.call(routes, req.url)
+        ? routes[req.url]
+        : null;
+      if (typeof handler !== 'function') { res.writeHead(404); res.end(); return; }
       handler(req, res);
     });
     srv.listen(0, '127.0.0.1', () => resolve({ srv, port: srv.address().port }));

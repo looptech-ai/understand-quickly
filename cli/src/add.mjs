@@ -29,13 +29,26 @@ const KNOWN_FORMATS = [
 
 const DEFAULT_REGISTRY = 'looptech-ai/understand-quickly';
 
-/** Open a URL in the user's default browser. Best-effort. */
+/**
+ * Open a URL in the user's default browser. Best-effort.
+ *
+ * Defense in depth against js/indirect-command-line-injection: we only ever
+ * pass `url` through to a hardcoded executable via argv (never via shell), and
+ * we refuse anything that isn't a well-formed http(s) URL. Even on Windows
+ * where `cmd /c start "" <url>` interprets some characters in cmd.exe, the
+ * URL constructor + scheme allowlist ensures `url` has no `&|<>"` etc, and
+ * Node's child_process.spawn on Windows quotes argv automatically.
+ */
 function openUrl(url) {
+  let parsed;
+  try { parsed = new URL(url); } catch { return false; }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+  const safe = parsed.toString();
   const p = platform();
   try {
-    if (p === 'darwin') spawnDetached('open', [url]);
-    else if (p === 'win32') spawnDetached('cmd', ['/c', 'start', '', url]);
-    else spawnDetached('xdg-open', [url]);
+    if (p === 'darwin') spawnDetached('open', [safe]);
+    else if (p === 'win32') spawnDetached('cmd', ['/c', 'start', '', safe]);
+    else spawnDetached('xdg-open', [safe]);
     return true;
   } catch {
     return false;

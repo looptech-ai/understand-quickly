@@ -41,11 +41,15 @@ test('fetchLatest assembles values from npm / PyPI / GH responses', async () => 
   const calls = [];
   const fakeFetch = async (url) => {
     calls.push(url);
+    // Dispatch on URL hostname + path (not substring) so the mock can't be
+    // tricked by a hostile path segment. Hardened against the
+    // js/incomplete-url-substring-sanitization pattern.
+    const u = new URL(url);
     const body =
-      url.includes('understand-quickly-cli')        ? { version: '1.2.3' } :
-      url.includes('understand-quickly-mcp')        ? { version: '4.5.6' } :
-      url.includes('pypi.org')                      ? { info: { version: '7.8.9' } } :
-      url.includes('uq-publish-action')             ? { tag_name: 'v2.0.0' } :
+      u.hostname === 'registry.npmjs.org' && u.pathname.includes('understand-quickly-cli') ? { version: '1.2.3' } :
+      u.hostname === 'registry.npmjs.org' && u.pathname.includes('understand-quickly-mcp') ? { version: '4.5.6' } :
+      u.hostname === 'pypi.org'                                                            ? { info: { version: '7.8.9' } } :
+      u.hostname === 'api.github.com' && u.pathname.includes('uq-publish-action')          ? { tag_name: 'v2.0.0' } :
       {};
     return { ok: true, json: async () => body };
   };
