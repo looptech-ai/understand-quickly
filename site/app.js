@@ -753,6 +753,9 @@ function showDetail(entry) {
     actions.appendChild(raw);
   }
 
+  const useSection = renderUseSection(entry);
+  if (useSection) body.appendChild(useSection);
+
   body.appendChild(el('section', { className: 'detail-section' }, [
     el('h3', { text: 'Actions' }),
     actions,
@@ -802,6 +805,73 @@ function renderSelectedNodeCard(entry) {
     card.appendChild(link);
   }
   return card;
+}
+
+// Build the "Use this entry" section — copy-paste snippets that route an
+// agent or human to *this specific entry*. The snippets are populated with
+// the entry's id and graph_url so a reader gets value in three seconds
+// without re-typing identifiers. We surface four channels:
+//   1. MCP tool call    — for agents already running our MCP server.
+//   2. Python SDK       — for scripted consumers.
+//   3. Python CLI       — for shell/Makefile users.
+//   4. cURL             — for the lowest-common-denominator HTTP client.
+// Section is skipped entirely if the entry has no id; without an id no
+// snippet is meaningful.
+function renderUseSection(entry) {
+  if (!entry || !entry.id) return null;
+  const id = String(entry.id);
+  const graphUrl = entry.graph_url || '';
+  const snippets = [
+    {
+      label: 'MCP (in any agent running understand-quickly-mcp)',
+      body: `find_graph_for_repo({ repo: "${id}" })`,
+    },
+    {
+      label: 'Python SDK',
+      body: `from understand_quickly import Registry\ngraph = Registry().get_graph("${id}")`,
+    },
+    {
+      label: 'CLI',
+      body: `uvx understand-quickly get-graph ${id}`,
+    },
+  ];
+  if (graphUrl) {
+    snippets.push({
+      label: 'cURL (raw JSON)',
+      body: `curl -sL ${graphUrl}`,
+    });
+  }
+  const section = el('section', { className: 'detail-section detail-use' }, [
+    el('h3', { text: 'Use this entry' }),
+    el('p', { className: 'detail-use-hint', text: 'Copy-paste into your agent or shell. Routes straight to this entry.' }),
+  ]);
+  for (const s of snippets) section.appendChild(renderSnippetBlock(s.label, s.body));
+  return section;
+}
+
+function renderSnippetBlock(label, body) {
+  const block = el('div', { className: 'use-snippet' });
+  const head = el('div', { className: 'use-snippet-head' }, [
+    el('span', { className: 'use-snippet-label', text: label }),
+  ]);
+  const copyBtn = el('button', {
+    className: 'use-snippet-copy',
+    attrs: { type: 'button', 'aria-label': `Copy ${label}` },
+    text: 'Copy',
+  });
+  copyBtn.addEventListener('click', async () => {
+    const ok = await copyText(body);
+    const prev = copyBtn.textContent;
+    copyBtn.textContent = ok ? 'Copied' : 'Failed';
+    setTimeout(() => { copyBtn.textContent = prev; }, 1400);
+  });
+  head.appendChild(copyBtn);
+  const pre = el('pre', { className: 'use-snippet-body' }, [
+    el('code', { text: body }),
+  ]);
+  block.appendChild(head);
+  block.appendChild(pre);
+  return block;
 }
 
 function buildGithubUrlForNode(entry, normNode) {
