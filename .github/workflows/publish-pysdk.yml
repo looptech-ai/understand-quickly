@@ -28,14 +28,16 @@ on:
         default: ''
 
 permissions:
-  contents: write       # upload assets onto the GitHub release
-  id-token: write       # required for PyPI Trusted Publishing (OIDC) + Sigstore attestations
-  attestations: write   # required for actions/attest-build-provenance
+  contents: read
 
 jobs:
   build-and-publish:
     name: Build + publish python-sdk
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # upload assets onto the GitHub release
+      id-token: write       # required for PyPI Trusted Publishing (OIDC) + Sigstore attestations
+      attestations: write   # required for actions/attest-build-provenance
     if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'pysdk-v') }}
 
     defaults:

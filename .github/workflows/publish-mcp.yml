@@ -26,7 +26,7 @@ jobs:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org/'
       - name: Install
-        run: npm install --no-audit
+        run: npm ci --no-audit --ignore-scripts
       - name: Build
         run: npm run build
       - name: Test
