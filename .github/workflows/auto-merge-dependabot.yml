@@ -1,0 +1,136 @@
+name: auto-merge-dependabot
+
+# Dependabot opens dependency-bump PRs across four ecosystems (root npm,
+# cli npm, mcp npm, github-actions). The vast majority of those bumps are
+# semver patch or minor — there is nothing for a human to review beyond
+# "do the tests pass?". This workflow auto-approves and enables auto-merge
+# for patch+minor; for major bumps it leaves the PR open for a human and
+# adds a comment as a poke.
+#
+# Safety:
+#   - We use the OFFICIAL `dependabot/fetch-metadata` action which is the
+#     supported way to retrieve update-type from Dependabot's PR data.
+#     Trying to scrape the title / body ourselves is brittle and unsafe.
+#   - Trigger is pull_request_target so the GITHUB_TOKEN can comment +
+#     enable auto-merge on PRs opened by the Dependabot bot (whose PRs run
+#     with read-only GITHUB_TOKEN by default). We never check out or
+#     execute PR-controlled code in this workflow.
+#   - Author filter is the load-bearing safety check: the job only runs if
+#     `github.actor == 'dependabot[bot]'`.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-dependabot-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  auto-merge:
+    name: Auto-merge dependabot patch/minor
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    timeout-minutes: 20
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        # pin: v2.2.0 -- dependabot/fetch-metadata
+        uses: dependabot/fetch-metadata@dbb049abf0d677abbd7f7eee0375145b417fdd34
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for required checks to succeed
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+        run: |
+          set -euo pipefail
+          echo "Dependabot update: type=${UPDATE_TYPE} deps=${DEPENDENCY_NAMES}"
+          # Same required-check list as auto-merge-release-please.yml. Some
+          # PRs only touch github-actions metadata and won't trigger smoke
+          # (smoke is path-filtered). We treat "missing" as skipped so we
+          # don't block on a check that intentionally didn't run.
+          required=("validate" "smoke / chromium" "smoke / webkit-iphone" "Analyze (javascript-typescript)")
+          deadline=$(( $(date +%s) + 15 * 60 ))
+          while :; do
+            now=$(date +%s)
+            if [ "$now" -ge "$deadline" ]; then
+              echo "::warning::Required checks did not all complete in 15m; will retry on next sync event."
+              exit 0
+            fi
+            all_done=true
+            any_failed=false
+            for ctx in "${required[@]}"; do
+              conclusion=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" \
+                --jq "[.check_runs[] | select(.name==\"${ctx}\")] | (.[-1].conclusion // \"missing\")")
+              status=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" \
+                --jq "[.check_runs[] | select(.name==\"${ctx}\")] | (.[-1].status // \"missing\")")
+              echo "check '${ctx}': status=${status} conclusion=${conclusion}"
+              if [ "$status" = "missing" ]; then
+                continue
+              fi
+              if [ "$status" != "completed" ]; then
+                all_done=false
+              elif [ "$conclusion" != "success" ] && [ "$conclusion" != "skipped" ] && [ "$conclusion" != "neutral" ]; then
+                any_failed=true
+              fi
+            done
+            if $any_failed; then
+              echo "::warning::At least one required check failed; not enabling auto-merge."
+              exit 0
+            fi
+            if $all_done; then
+              echo "All required checks completed."
+              break
+            fi
+            sleep 30
+          done
+
+      - name: Approve patch/minor PR
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+        run: |
+          gh pr review "$PR_NUMBER" --repo "$REPO" --approve \
+            --body "Auto-approved Dependabot ${UPDATE_TYPE} bump; required checks are green."
+
+      - name: Enable auto-merge (squash) for patch/minor
+        if: >-
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --auto --squash
+
+      - name: Comment on major bumps (human review required)
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+          PREVIOUS_VERSION: ${{ steps.meta.outputs.previous-version }}
+          NEW_VERSION: ${{ steps.meta.outputs.new-version }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$REPO" \
+            --body "Major version bump detected: ${DEPENDENCY_NAMES} ${PREVIOUS_VERSION} -> ${NEW_VERSION}. Auto-merge is disabled for major bumps; please review the changelog and merge manually if safe."

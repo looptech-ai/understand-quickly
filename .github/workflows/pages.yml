@@ -25,9 +25,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      # pin: v6.0.0 -- actions/checkout
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
 
-      - uses: actions/setup-node@v6
+      # pin: v6.0.0 -- actions/setup-node
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version-file: '.nvmrc'
 
@@ -83,7 +85,8 @@ jobs:
             [ -f "$f" ] && sed -i 's/PLACEHOLDER_TOKEN/'"$CF_BEACON_TOKEN"'/g' "$f"
           done
 
-      - uses: actions/upload-pages-artifact@v5
+      # pin: v5.0.0 -- actions/upload-pages-artifact
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
           path: _site
 
@@ -94,5 +97,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      # pin: v5.0.0 -- actions/deploy-pages
       - id: deploy
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128

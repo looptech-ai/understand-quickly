@@ -1,0 +1,175 @@
+name: outdated-watch
+
+# Nightly nudge for transitively-outdated deps that Dependabot's grouping
+# might paper over. Posts (or updates) a single tracking issue summarising
+# what's behind in each of the four package manifests. Fail-soft: a
+# network blip or empty `npm outdated` result is not a failure, just a
+# no-op run.
+#
+# Cost: one ubuntu-latest run, < 90 seconds. Free-tier friendly.
+# Skip-condition: opens nothing if every ecosystem is up-to-date.
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'   # Monday 07:00 UTC, one day after the audit job
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: outdated-watch
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Scan + post outdated summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # pin: v6.0.0 -- actions/checkout
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+
+      # pin: v6.0.0 -- actions/setup-node
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version-file: '.nvmrc'
+
+      # pin: v6.0.0 -- actions/setup-python
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12'
+
+      - name: Collect npm outdated (root)
+        run: |
+          set -e
+          out=$(npm outdated --json --long 2>/dev/null || true)
+          echo "$out" > /tmp/npm-root.json
+          test -s /tmp/npm-root.json || echo '{}' > /tmp/npm-root.json
+
+      - name: Collect npm outdated (cli)
+        working-directory: cli
+        run: |
+          set -e
+          out=$(npm outdated --json --long 2>/dev/null || true)
+          echo "$out" > /tmp/npm-cli.json
+          test -s /tmp/npm-cli.json || echo '{}' > /tmp/npm-cli.json
+
+      - name: Collect npm outdated (mcp)
+        working-directory: mcp
+        run: |
+          set -e
+          out=$(npm outdated --json --long 2>/dev/null || true)
+          echo "$out" > /tmp/npm-mcp.json
+          test -s /tmp/npm-mcp.json || echo '{}' > /tmp/npm-mcp.json
+
+      - name: Collect pip outdated (python-sdk)
+        working-directory: python-sdk
+        run: |
+          set -e
+          python -m pip install --quiet --upgrade pip
+          # Install the project's runtime + dev deps as defined in
+          # pyproject.toml, then ask pip for outdated. `|| true` so a
+          # missing optional extra never fails the scan.
+          python -m pip install --quiet -e ".[dev]" 2>/dev/null || python -m pip install --quiet -e . || true
+          python -m pip list --outdated --format=json > /tmp/pip-pysdk.json || echo '[]' > /tmp/pip-pysdk.json
+
+      - name: Build summary
+        id: build
+        run: |
+          set -e
+          node -e '
+            const fs = require("fs");
+            function npmRows(label, path) {
+              let j;
+              try { j = JSON.parse(fs.readFileSync(path, "utf8")); }
+              catch (_e) { return []; }
+              return Object.entries(j).map(([name, info]) => ({
+                eco: "npm",
+                scope: label,
+                name,
+                current: info.current || "",
+                wanted: info.wanted || "",
+                latest: info.latest || "",
+                type: info.type || "",
+              }));
+            }
+            function pipRows(label, path) {
+              let arr;
+              try { arr = JSON.parse(fs.readFileSync(path, "utf8")); }
+              catch (_e) { return []; }
+              return (Array.isArray(arr) ? arr : []).map(p => ({
+                eco: "pip",
+                scope: label,
+                name: p.name,
+                current: p.version,
+                wanted: p.latest_version,
+                latest: p.latest_version,
+                type: p.latest_filetype || "",
+              }));
+            }
+            const rows = [
+              ...npmRows("root", "/tmp/npm-root.json"),
+              ...npmRows("cli",  "/tmp/npm-cli.json"),
+              ...npmRows("mcp",  "/tmp/npm-mcp.json"),
+              ...pipRows("python-sdk", "/tmp/pip-pysdk.json"),
+            ];
+            // Filter: only surface entries that are >= 1 minor behind. Patch-only
+            // drift is already handled by Dependabot weekly schedule.
+            function isAtLeastMinorBehind(cur, latest) {
+              if (!cur || !latest) return false;
+              const c = cur.replace(/[^0-9.].*$/, "").split(".").map(n => parseInt(n, 10));
+              const l = latest.replace(/[^0-9.].*$/, "").split(".").map(n => parseInt(n, 10));
+              if (c.length < 2 || l.length < 2) return false;
+              if (l[0] > c[0]) return true;
+              if (l[0] === c[0] && l[1] > c[1]) return true;
+              return false;
+            }
+            const interesting = rows.filter(r => isAtLeastMinorBehind(r.current, r.latest));
+            if (interesting.length === 0) {
+              fs.writeFileSync("/tmp/summary.md", "");
+              process.exit(0);
+            }
+            const lines = [
+              "## Outdated dependency summary",
+              "",
+              "Automated weekly scan. Filtering to packages at least one **minor** version behind (patch drift is handled by Dependabot).",
+              "",
+              "| Ecosystem | Scope | Package | Current | Latest | Type |",
+              "|---|---|---|---|---|---|",
+            ];
+            for (const r of interesting) {
+              lines.push("| " + [r.eco, r.scope, r.name, r.current, r.latest, r.type].join(" | ") + " |");
+            }
+            lines.push("");
+            lines.push("> Auto-generated by `.github/workflows/outdated-watch.yml`. Close this issue once everything in the table is bumped; the next run will reopen it if anything regresses.");
+            fs.writeFileSync("/tmp/summary.md", lines.join("\n"));
+          '
+          if [ -s /tmp/summary.md ]; then
+            echo "has_summary=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upsert tracking issue
+        if: steps.build.outputs.has_summary == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TITLE: "chore(deps): outdated dependency summary"
+        run: |
+          set -euo pipefail
+          # Find an open issue with this title (use search rather than list to
+          # avoid pagination corner-cases on busy repos).
+          existing=$(gh issue list --repo "$REPO" --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --repo "$REPO" --body-file /tmp/summary.md
+            echo "updated #$existing"
+          else
+            gh issue create --repo "$REPO" \
+              --title "$TITLE" \
+              --label "dependencies" \
+              --body-file /tmp/summary.md \
+              || gh issue create --repo "$REPO" --title "$TITLE" --body-file /tmp/summary.md
+          fi

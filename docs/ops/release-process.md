@@ -38,10 +38,18 @@ drive the bump:
    - The version bump in `package.json` / `pyproject.toml`.
    - A `.release-please-manifest.json` update.
    - A generated `CHANGELOG.md` entry.
-3. **Review + merge** the Release PR. release-please will:
-   - Create the tag `<component>-v<version>` automatically.
-   - For `pysdk`, also create a GitHub Release (required by
-     `publish-pysdk.yml` which triggers on `release: published`).
+3. **Review + merge** the Release PR. As of `ci/auto-merge-bots` this is
+   handled automatically:
+   - `.github/workflows/auto-merge-release-please.yml` waits for the
+     required status checks (`validate`, `smoke / chromium`,
+     `smoke / webkit-iphone`, `Analyze (javascript-typescript)`) to land
+     green, then auto-approves the PR and enables **squash auto-merge**.
+   - Once GitHub squash-merges the PR, release-please creates the tag
+     `<component>-v<version>` automatically.
+   - For `pysdk`, release-please also creates a GitHub Release (required
+     by `publish-pysdk.yml` which triggers on `release: published`).
+   - If you ever need to override, manual merge still works — the
+     auto-merge workflow is purely additive.
 4. **`publish-*.yml` fires** on the new tag/release:
    - `publish-cli.yml` — tag-trigger, runs `npm publish` after
      `scripts/check-versions.mjs --tag` regression guard.
@@ -162,8 +170,41 @@ The `docs-on-release` workflow runs on every `release: published` event and on `
 
 The workflow never fails — if any registry is unreachable, it falls back to the previous README content and exits 0. To force a regeneration manually: `gh workflow run docs-on-release.yml --repo looptech-ai/understand-quickly`.
 
+## Dependabot auto-merge
+
+`.github/workflows/auto-merge-dependabot.yml` handles dependency-update
+PRs from Dependabot:
+
+| Update type | Behaviour |
+|---|---|
+| `version-update:semver-patch` | auto-approve + squash auto-merge once checks pass |
+| `version-update:semver-minor` | auto-approve + squash auto-merge once checks pass |
+| `version-update:semver-major` | leave open; bot comments on the PR pointing at the changelog |
+
+The workflow uses the official `dependabot/fetch-metadata` action to
+identify the update type — never scrapes the PR title. PRs from any
+actor other than `dependabot[bot]` are skipped.
+
+## Outdated-dep watcher
+
+`.github/workflows/outdated-watch.yml` runs every Monday at 07:00 UTC
+and posts (or updates) a single tracking issue
+`chore(deps): outdated dependency summary` listing any package across
+the four manifests (root npm, cli, mcp, python-sdk) that is at least one
+**minor** version behind. Patch drift is intentionally filtered out —
+Dependabot handles that on its weekly schedule.
+
+## PyPI Trusted Publishing
+
+`publish-pysdk.yml` prefers OIDC trusted publishing over the legacy
+`PYPI_API_TOKEN` secret. See
+[`pypi-trusted-publishing.md`](pypi-trusted-publishing.md) for the
+one-time setup. The token fallback remains in place until you remove it
+so the transition is risk-free.
+
 ## See also
 
 - [`npm-org-setup.md`](npm-org-setup.md) — one-time npm org + token setup.
+- [`pypi-trusted-publishing.md`](pypi-trusted-publishing.md) — OIDC setup for PyPI.
 - [`../../CHANGELOG.md`](../../CHANGELOG.md) — human-curated changelog (release-please appends).
 - [release-please action docs](https://github.com/googleapis/release-please-action).
