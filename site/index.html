@@ -75,7 +75,7 @@
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap">
 
-  <link rel="stylesheet" href="./styles.css?v=20260507h">
+  <link rel="stylesheet" href="./styles.css?v=20260511a">
 </head>
 <body>
   <div class="app">
@@ -127,16 +127,139 @@
           <div id="graph-canvas" class="graph-state-graph" aria-label="Knowledge graph viewer" role="img"></div>
           <canvas id="graph-minimap" class="graph-state-graph" hidden aria-hidden="true"></canvas>
           <div class="graph-empty graph-state-empty" id="graph-empty">
-            <h2>A registry of knowledge graphs.</h2>
-            <p>Pick an entry on the left to load its graph. Each entry points to a public JSON file in the producer's own format — agents fetch the raw URL directly.</p>
-            <div class="endpoint-card" id="endpoint-card">
-              <strong>Agent endpoints</strong>
-              <div><code>GET <a href="./registry.json">./registry.json</a></code> — canonical index</div>
-              <div><code>GET <a href="./schemas/">./schemas/</a></code> — JSON Schemas</div>
-            </div>
-            <div class="actions">
-              <a class="btn btn-primary" href="./add.html">+ Add your repo</a>
-              <a class="btn btn-ghost" href="./about.html">Read the docs</a>
+            <div class="hero-band" id="hero-band">
+              <!-- Block 1: one-line intent + supporting tagline -->
+              <div class="hero-intent">
+                <h1 class="hero-headline">
+                  When AI agents need to understand a codebase, they ask us — instead of re-cloning and re-indexing every time.
+                </h1>
+                <p class="hero-tagline">
+                  Public registry of pre-computed code-knowledge graphs. Schema-validated, drift-tracked, MIT/Apache code, $0 to use.
+                </p>
+                <p class="hero-protocol">
+                  Built on the open
+                  <a href="https://github.com/looptech-ai/understand-quickly/blob/main/docs/spec/code-graph-protocol.md"
+                     rel="noopener noreferrer" target="_blank">Code-Knowledge-Graph Protocol v1</a>.
+                </p>
+              </div>
+
+              <!-- Block 5: find-your-repo search -->
+              <form class="hero-find" id="hero-find" role="search" aria-label="Find your repo">
+                <label class="visually-hidden" for="hero-find-input">GitHub URL or owner/repo</label>
+                <input
+                  type="text"
+                  id="hero-find-input"
+                  placeholder="Paste a GitHub URL or owner/repo to see if it's indexed…"
+                  autocomplete="off"
+                  spellcheck="false">
+                <button type="submit" class="btn btn-primary hero-find-btn">Find</button>
+                <p class="hero-find-result" id="hero-find-result" hidden role="status" aria-live="polite"></p>
+              </form>
+
+              <!-- Block 3: live counters -->
+              <ul class="hero-counters" id="hero-counters" aria-label="Registry stats at a glance">
+                <li>
+                  <span class="hero-counter-num" id="counter-repos" data-skeleton="true">—</span>
+                  <span class="hero-counter-label">indexed repos</span>
+                </li>
+                <li>
+                  <span class="hero-counter-num" id="counter-formats" data-skeleton="true">—</span>
+                  <span class="hero-counter-label">graph formats</span>
+                </li>
+                <li>
+                  <span class="hero-counter-num">4</span>
+                  <span class="hero-counter-label">packages live</span>
+                </li>
+                <li>
+                  <span class="hero-counter-num">10</span>
+                  <span class="hero-counter-label">upstream integrations in flight</span>
+                </li>
+              </ul>
+
+              <!-- Block 2: who-uses-this grid -->
+              <div class="hero-audiences" aria-label="Who uses understand-quickly">
+                <a class="hero-audience" href="#audience-agents" data-audience="agents">
+                  <header>
+                    <span class="hero-audience-emoji" aria-hidden="true">&#129302;</span>
+                    <h3>AI agents</h3>
+                  </header>
+                  <p>One URL = every public code graph we track.</p>
+                  <code class="hero-audience-code">curl https://looptech-ai.github.io/understand-quickly/registry.json</code>
+                </a>
+                <a class="hero-audience" href="#audience-tools" data-audience="tools">
+                  <header>
+                    <span class="hero-audience-emoji" aria-hidden="true">&#128736;&#65039;</span>
+                    <h3>Tool makers</h3>
+                  </header>
+                  <p>Add a 5-line GitHub workflow. Your users get indexed automatically.</p>
+                  <span class="hero-audience-code">
+                    <a href="https://github.com/marketplace/actions/understand-quickly-publish"
+                       rel="noopener noreferrer" target="_blank">looptech-ai/uq-publish-action &#8599;</a>
+                  </span>
+                </a>
+                <a class="hero-audience" href="./add.html" data-audience="devs">
+                  <header>
+                    <span class="hero-audience-emoji" aria-hidden="true">&#128104;&#8205;&#128187;</span>
+                    <h3>Developers</h3>
+                  </header>
+                  <p>Register your repo via the wizard or CLI. One PR. Schema validation built-in.</p>
+                  <code class="hero-audience-code">npx @looptech-ai/understand-quickly-cli add</code>
+                </a>
+              </div>
+
+              <!-- Block 4: copy-paste MCP install snippet -->
+              <section class="hero-mcp" id="audience-agents" aria-labelledby="hero-mcp-title">
+                <header class="hero-mcp-head">
+                  <div>
+                    <h3 id="hero-mcp-title">Drop this into your MCP config</h3>
+                    <p class="hero-mcp-sub">
+                      Get
+                      <code>list_repos</code>, <code>get_graph</code>, <code>search_concepts</code>,
+                      <code>find_graph_for_repo</code> as agent tools in Claude Desktop, Codex, Cursor — anything that speaks MCP.
+                    </p>
+                  </div>
+                  <button type="button" class="hero-mcp-copy" id="hero-mcp-copy"
+                          data-copy-target="hero-mcp-snippet"
+                          aria-label="Copy MCP config to clipboard">
+                    <span class="hero-mcp-copy-label">Copy</span>
+                  </button>
+                </header>
+<pre class="hero-mcp-snippet" id="hero-mcp-snippet"><code>{
+  "mcpServers": {
+    "understand-quickly": {
+      "command": "npx",
+      "args": ["-y", "@looptech-ai/understand-quickly-mcp"]
+    }
+  }
+}</code></pre>
+                <p class="hero-mcp-registry">
+                  Listed on the MCP Registry as
+                  <code>io.github.looptech-ai/understand-quickly</code>.
+                </p>
+              </section>
+
+              <!-- What is a code-knowledge graph (collapsible) -->
+              <details class="hero-explainer">
+                <summary>What is a code-knowledge graph?</summary>
+                <p>
+                  A code-knowledge graph is a structured map of a codebase — files, functions, classes,
+                  and their relationships — designed for AI agents to query. Tools like
+                  <a href="https://github.com/anysphere/understand-anything" rel="noopener" target="_blank">understand-anything</a>,
+                  <a href="https://github.com/AntonOsika/gitnexus" rel="noopener" target="_blank">GitNexus</a>, and
+                  <a href="https://github.com/looptech-ai/code-review-graph" rel="noopener" target="_blank">code-review-graph</a>
+                  produce them; we aggregate them.
+                </p>
+              </details>
+
+              <div class="endpoint-card" id="endpoint-card">
+                <strong>Agent endpoints</strong>
+                <div><code>GET <a href="./registry.json">./registry.json</a></code> — canonical index</div>
+                <div><code>GET <a href="./schemas/">./schemas/</a></code> — JSON Schemas</div>
+              </div>
+              <div class="actions">
+                <a class="btn btn-primary" href="./add.html">+ Add your repo</a>
+                <a class="btn btn-ghost" href="./about.html">Read the docs</a>
+              </div>
             </div>
           </div>
           <div class="graph-status graph-state-loading graph-state-error" id="graph-status"></div>
@@ -278,6 +401,19 @@
 
     <div class="ctx-menu" id="ctx-menu" role="menu" hidden></div>
 
+    <!-- First-visit onboarding overlay (dismiss persists in localStorage key `uq:onboarded`) -->
+    <div class="onboarding-overlay" id="onboarding-overlay" hidden role="dialog" aria-label="Quick tour" aria-modal="false">
+      <div class="onboarding-card" id="onboarding-card" tabindex="-1">
+        <button type="button" class="onboarding-skip" id="onboarding-skip" aria-label="Skip onboarding">Skip</button>
+        <div class="onboarding-step-num" id="onboarding-step-num">1 of 4</div>
+        <p class="onboarding-text" id="onboarding-text"></p>
+        <div class="onboarding-controls">
+          <button type="button" class="btn btn-ghost onboarding-prev" id="onboarding-prev">Back</button>
+          <button type="button" class="btn btn-primary onboarding-next" id="onboarding-next">Next</button>
+        </div>
+      </div>
+    </div>
+
     <div class="cheatsheet-overlay" id="cheatsheet-overlay" hidden role="dialog" aria-label="Keyboard shortcuts" aria-modal="true">
       <div class="cheatsheet" id="cheatsheet" tabindex="-1">
         <header class="cheatsheet-head">
@@ -302,7 +438,7 @@
     </div>
   </div>
 
-  <script type="module" src="./app.js?v=20260507h"></script>
+  <script type="module" src="./app.js?v=20260511a"></script>
   <script
     defer
     src="https://static.cloudflareinsights.com/beacon.min.js"

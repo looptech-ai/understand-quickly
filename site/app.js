@@ -10,9 +10,9 @@ import {
   clearGraph,
   getCurrentNetwork,
   getPrimaryViewer,
-} from './viewer.js?v=20260507h';
+} from './viewer.js?v=20260511a';
 
-const PAGE_VERSION = '20260507h';
+const PAGE_VERSION = '20260511a';
 const MOBILE_BREAKPOINT = 800;
 
 function isMobile() {
@@ -37,6 +37,18 @@ const STATUS_META = {
   transient_error:  { emoji: '\u{1F501}', label: 'transient' },
   dead:             { emoji: '\u{1F480}', label: 'dead' },
   renamed:          { emoji: '↪️', label: 'renamed' },
+};
+
+// One-sentence descriptions surfaced as native tooltips on every status chip.
+const STATUS_DESCRIPTIONS = {
+  ok:              'Graph fetched, schema-valid, and tracked at the current commit.',
+  pending:         'New entry — graph not yet fetched or validated by the sync job.',
+  missing:         'graph_url returned 404. The producer may have moved or deleted it.',
+  invalid:         'Graph fetched but failed schema validation. Producer needs to fix it.',
+  oversize:        'Graph exceeds the registry size budget; skipped to keep the index lean.',
+  transient_error: 'Last fetch failed with a retryable error (5xx, timeout). Will retry.',
+  dead:            'Repeated failures exceeded the miss budget. Entry will be removed soon.',
+  renamed:         'Repo was renamed upstream; pointer updated, awaiting next successful sync.',
 };
 
 const DEFAULT_STATUSES = new Set(['ok', 'pending']);
@@ -135,6 +147,7 @@ async function loadRegistry() {
     populateStatusFilter();
     applyFilters();
     renderEmptyMainStateIfNeeded();
+    updateHeroCounters();
     applyDeeplinkOnLoad();
   } catch (err) {
     console.error(err);
@@ -146,9 +159,265 @@ async function loadRegistry() {
     populateStatusFilter();
     applyFilters();
     renderEmptyMainStateIfNeeded(friendly);
+    updateHeroCounters();
   } finally {
     updateDiagPanel();
   }
+}
+
+// ---------- hero band: counters, MCP copy, find-your-repo, onboarding ----------
+
+function updateHeroCounters() {
+  const reposEl = document.getElementById('counter-repos');
+  const formatsEl = document.getElementById('counter-formats');
+  if (!reposEl || !formatsEl) return;
+  if (state.entries.length === 0) {
+    // Leave skeleton placeholders if fetch failed; otherwise show 0.
+    if (lastRegistryStatus.startsWith('error')) return;
+    reposEl.textContent = '0';
+    reposEl.removeAttribute('data-skeleton');
+    formatsEl.textContent = '0';
+    formatsEl.removeAttribute('data-skeleton');
+    return;
+  }
+  const formats = new Set(state.entries.map((e) => e.format).filter(Boolean));
+  reposEl.textContent = String(state.entries.length);
+  reposEl.removeAttribute('data-skeleton');
+  formatsEl.textContent = String(formats.size);
+  formatsEl.removeAttribute('data-skeleton');
+}
+
+function bindHeroMcpCopy() {
+  const btn = document.getElementById('hero-mcp-copy');
+  const pre = document.getElementById('hero-mcp-snippet');
+  if (!btn || !pre) return;
+  const label = btn.querySelector('.hero-mcp-copy-label');
+  btn.addEventListener('click', async () => {
+    const text = pre.textContent || '';
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for older Safari: select + execCommand
+        const range = document.createRange();
+        range.selectNodeContents(pre);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand('copy');
+        sel.removeAllRanges();
+      }
+      btn.classList.add('is-copied');
+      if (label) label.textContent = 'Copied!';
+      setTimeout(() => {
+        btn.classList.remove('is-copied');
+        if (label) label.textContent = 'Copy';
+      }, 1600);
+    } catch (err) {
+      console.error(err);
+      if (label) label.textContent = 'Copy failed';
+      setTimeout(() => { if (label) label.textContent = 'Copy'; }, 1600);
+    }
+  });
+}
+
+// Parse "owner/repo" out of either bare slug or any github.com URL. Returns
+// null if the input doesn't look like a github repo reference.
+function parseGithubInput(raw) {
+  if (!raw) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return null;
+  // owner/repo (no slashes besides the single one)
+  const slug = trimmed.match(/^([\w.\-]+)\/([\w.\-]+?)(?:\.git)?$/);
+  if (slug) return { owner: slug[1], repo: slug[2] };
+  // Any URL containing github.com/<owner>/<repo>
+  try {
+    const url = trimmed.startsWith('http') ? new URL(trimmed) : new URL('https://' + trimmed);
+    if (!/(^|\.)github\.com$/i.test(url.hostname)) return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts.length < 2) return null;
+    const owner = parts[0];
+    const repo = parts[1].replace(/\.git$/, '');
+    if (!owner || !repo) return null;
+    return { owner, repo };
+  } catch (_) {
+    return null;
+  }
+}
+
+function bindHeroFind() {
+  const form = document.getElementById('hero-find');
+  const input = document.getElementById('hero-find-input');
+  const result = document.getElementById('hero-find-result');
+  if (!form || !input || !result) return;
+  form.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    result.replaceChildren();
+    result.hidden = true;
+    result.classList.remove('is-found', 'is-missing');
+    const parsed = parseGithubInput(input.value);
+    if (!parsed) {
+      result.hidden = false;
+      result.classList.add('is-missing');
+      result.appendChild(document.createTextNode('Could not parse that — try '));
+      const code = el('code', { text: 'owner/repo' });
+      result.appendChild(code);
+      result.appendChild(document.createTextNode(' or a github.com URL.'));
+      return;
+    }
+    const wantId = `${parsed.owner}/${parsed.repo}`;
+    const hit = state.entries.find((e) => {
+      if (!e) return false;
+      if (e.id && e.id.toLowerCase() === wantId.toLowerCase()) return true;
+      if (e.owner && e.repo
+          && e.owner.toLowerCase() === parsed.owner.toLowerCase()
+          && e.repo.toLowerCase() === parsed.repo.toLowerCase()) return true;
+      return false;
+    });
+    result.hidden = false;
+    if (hit) {
+      result.classList.add('is-found');
+      result.appendChild(document.createTextNode('Found '));
+      const strong = el('strong', { text: hit.id });
+      result.appendChild(strong);
+      result.appendChild(document.createTextNode(' — '));
+      const open = el('a', {
+        text: 'open graph',
+        attrs: { href: `?entry=${encodeURIComponent(hit.id)}`, role: 'button' },
+      });
+      open.addEventListener('click', (e) => {
+        e.preventDefault();
+        selectEntry(hit);
+      });
+      const actions = el('span', { className: 'hero-find-actions' }, [open]);
+      result.appendChild(actions);
+    } else {
+      result.classList.add('is-missing');
+      result.appendChild(document.createTextNode('Not indexed yet — '));
+      const strong = el('strong', { text: wantId });
+      result.appendChild(strong);
+      result.appendChild(document.createTextNode('. Want to add it? '));
+      const wizard = el('a', {
+        text: 'Wizard',
+        attrs: { href: `./add.html?owner=${encodeURIComponent(parsed.owner)}&repo=${encodeURIComponent(parsed.repo)}` },
+      });
+      const cli = el('a', {
+        text: 'CLI',
+        attrs: {
+          href: 'https://www.npmjs.com/package/@looptech-ai/understand-quickly-cli',
+          target: '_blank',
+          rel: 'noopener noreferrer',
+        },
+      });
+      const manual = el('a', {
+        text: 'Manual PR',
+        attrs: {
+          href: 'https://github.com/looptech-ai/understand-quickly/blob/main/CONTRIBUTING.md',
+          target: '_blank',
+          rel: 'noopener noreferrer',
+        },
+      });
+      const actions = el('span', { className: 'hero-find-actions' }, [wizard, cli, manual]);
+      result.appendChild(actions);
+    }
+  });
+}
+
+// First-visit onboarding overlay. 4 steps, dismiss persists in localStorage.
+// Each step's `parts` is an array of strings (rendered as text) or
+// { kbd: '?' } objects (rendered as <kbd>) — we never use innerHTML so this
+// stays safe even though all values here are hardcoded literals.
+const ONBOARDING_KEY = 'uq:onboarded';
+const ONBOARDING_STEPS = [
+  { anchor: 'sidebar', parts: ['← Pick a repo from the sidebar to load its graph.'] },
+  { anchor: 'main',    parts: ['→ The graph viewer shows the code’s structure — files, functions, and how they connect.'] },
+  { anchor: 'hover',   parts: ['Hover any node to focus its neighbors. Right-click for more options.'] },
+  { anchor: 'keyboard', parts: [
+    'Press ', { kbd: '?' }, ' for keyboard shortcuts, or ', { kbd: '/' }, ' to focus search.',
+  ] },
+];
+
+function isOnboarded() {
+  try { return localStorage.getItem(ONBOARDING_KEY) === '1'; }
+  catch (_) { return false; }
+}
+
+function markOnboarded() {
+  try { localStorage.setItem(ONBOARDING_KEY, '1'); }
+  catch (_) { /* private mode — silently ignore */ }
+}
+
+function renderOnboardingStep(textEl, step) {
+  textEl.replaceChildren();
+  for (const part of step.parts) {
+    if (typeof part === 'string') {
+      textEl.appendChild(document.createTextNode(part));
+    } else if (part && part.kbd) {
+      textEl.appendChild(el('kbd', { text: part.kbd }));
+    }
+  }
+}
+
+function bindOnboarding() {
+  if (isOnboarded()) return;
+  // Skip if the visitor deep-linked to a specific entry — they already know
+  // what they're doing.
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    if (params.get('entry')) return;
+    // Also skip in automated/test contexts (Playwright, headless drivers) so
+    // the overlay never intercepts smoke-test clicks.
+    if (typeof navigator !== 'undefined' && navigator.webdriver) return;
+  } catch (_) { /* noop */ }
+
+  const overlay = document.getElementById('onboarding-overlay');
+  const card = document.getElementById('onboarding-card');
+  const textEl = document.getElementById('onboarding-text');
+  const stepEl = document.getElementById('onboarding-step-num');
+  const prevBtn = document.getElementById('onboarding-prev');
+  const nextBtn = document.getElementById('onboarding-next');
+  const skipBtn = document.getElementById('onboarding-skip');
+  if (!overlay || !card || !textEl || !stepEl || !prevBtn || !nextBtn || !skipBtn) return;
+
+  let idx = 0;
+
+  function render() {
+    const step = ONBOARDING_STEPS[idx];
+    if (!step) return;
+    card.setAttribute('data-anchor', step.anchor);
+    stepEl.textContent = `${idx + 1} of ${ONBOARDING_STEPS.length}`;
+    renderOnboardingStep(textEl, step);
+    prevBtn.disabled = idx === 0;
+    nextBtn.textContent = idx === ONBOARDING_STEPS.length - 1 ? 'Got it' : 'Next';
+  }
+
+  function close() {
+    overlay.hidden = true;
+    markOnboarded();
+  }
+
+  prevBtn.addEventListener('click', () => {
+    if (idx > 0) { idx -= 1; render(); }
+  });
+  nextBtn.addEventListener('click', () => {
+    if (idx < ONBOARDING_STEPS.length - 1) { idx += 1; render(); }
+    else close();
+  });
+  skipBtn.addEventListener('click', close);
+  document.addEventListener('keydown', (ev) => {
+    if (overlay.hidden) return;
+    if (ev.key === 'Escape') { close(); }
+    else if (ev.key === 'ArrowRight') { nextBtn.click(); }
+    else if (ev.key === 'ArrowLeft') { prevBtn.click(); }
+  });
+
+  // Show after a short delay so the page settles first.
+  setTimeout(() => {
+    if (isOnboarded()) return;
+    overlay.hidden = false;
+    render();
+    try { card.focus(); } catch (_) { /* noop */ }
+  }, 600);
 }
 
 function renderEmptyMainStateIfNeeded(msg) {
@@ -277,7 +546,12 @@ function renderCard(entry) {
     el('span', { className: 'format-pill', text: entry.format || 'unknown' }),
     el('span', {
       className: 'status-chip',
-      attrs: { 'data-status': status, title: `status: ${statusMeta.label}` },
+      attrs: {
+        'data-status': status,
+        title: STATUS_DESCRIPTIONS[status]
+          ? `${statusMeta.label} — ${STATUS_DESCRIPTIONS[status]}`
+          : `status: ${statusMeta.label}`,
+      },
       text: `${statusMeta.emoji} ${statusMeta.label}`,
     }),
   ]);
@@ -356,7 +630,12 @@ function showDetail(entry) {
     el('p', {}, [
       el('span', {
         className: 'status-chip',
-        attrs: { 'data-status': status },
+        attrs: {
+          'data-status': status,
+          title: STATUS_DESCRIPTIONS[status]
+            ? `${statusMeta.label} — ${STATUS_DESCRIPTIONS[status]}`
+            : `status: ${statusMeta.label}`,
+        },
         text: `${statusMeta.emoji} ${statusMeta.label}`,
       }),
     ]),
@@ -2248,6 +2527,9 @@ document.addEventListener('DOMContentLoaded', () => {
     bindRestoreHidden();
     bindCheatsheet();
     bindGlobalKeys();
+    bindHeroMcpCopy();
+    bindHeroFind();
+    bindOnboarding();
     loadRegistry();
     updateDiagPanel();
   } catch (err) {
