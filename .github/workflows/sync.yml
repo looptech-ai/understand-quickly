@@ -157,14 +157,14 @@ jobs:
             site/badges
             site/.well-known
 
-      # pin: v3.0.0 -- peter-evans/enable-pull-request-automerge
-      - name: Enable auto-merge
-        if: steps.cpr.outputs.pull-request-number
-        uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
-          merge-method: squash
+      # Auto-merge intentionally NOT enabled here. GitHub's
+      # branch-protection bypass allowlist does not accept the built-in
+      # `github-actions` app slug, so the bot's PR cannot satisfy
+      # `require_code_owner_reviews`. The PR sits open until a
+      # codeowner (amacsmith) reviews and merges manually, OR until we
+      # wire a custom GitHub App or fine-grained PAT through
+      # `secrets.BOT_PAT` and re-enable the enable-pull-request-automerge
+      # step using that token.
 
       - name: Trigger pages redeploy (best-effort)
         if: steps.diff.outputs.changed == 'true'
