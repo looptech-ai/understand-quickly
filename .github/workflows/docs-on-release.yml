@@ -1,0 +1,53 @@
+name: docs-on-release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-on-release
+  cancel-in-progress: false
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+
+      # Refresh the "Latest" callout. Script is intentionally fail-soft (any
+      # registry timeout falls back to the previous values already in README).
+      - name: Render latest callout
+        run: node scripts/render-latest.mjs
+
+      # Re-render the entries table — no-op unless registry.json changed
+      # since the last render, but cheap enough to run every release.
+      - name: Render README entry table (idempotent)
+        run: node scripts/render-readme.mjs
+
+      - name: Commit changes
+        run: |
+          if git diff --quiet README.md; then
+            echo "no doc changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "docs: refresh latest versions in README (auto)"
+          git push
+
+      - name: Trigger pages redeploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh workflow run pages.yml --repo "$REPO" --ref main || true

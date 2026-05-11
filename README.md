@@ -27,7 +27,9 @@ Point AI agents at any indexed repo and they get a current, schema-validated gra
 [![npm downloads MCP](https://img.shields.io/npm/dm/@looptech-ai/understand-quickly-mcp?label=mcp%20dl%2Fmo)](https://www.npmjs.com/package/@looptech-ai/understand-quickly-mcp)
 [![PyPI downloads](https://img.shields.io/pypi/dm/understand-quickly?label=pypi%20dl%2Fmo)](https://pypi.org/project/understand-quickly/)
 
-> **Latest:** **v0.2.0** — CLI `0.1.2`, MCP `0.1.2`, Python SDK `0.1.1`, GH Action `v0.1.0`. Releases automated via [release-please](docs/ops/release-process.md). [CHANGELOG →](CHANGELOG.md)
+<!-- LATEST-START -->
+> **Latest:** v0.3.0 — CLI 0.1.2, MCP 0.1.2, Python SDK 0.1.1, GH Action v0.1.0. [CHANGELOG →](CHANGELOG.md)
+<!-- LATEST-END -->
 
 [**Browse →**](https://looptech-ai.github.io/understand-quickly/) · [**Add your repo (wizard)**](https://looptech-ai.github.io/understand-quickly/add.html) · [**Quickstart**](#quickstart) · [**FAQ (plain English)**](docs/faq.md) · [**Alternatives**](docs/alternatives.md) · [**Badge**](docs/badge.md) · [**Contributing**](CONTRIBUTING.md)
 

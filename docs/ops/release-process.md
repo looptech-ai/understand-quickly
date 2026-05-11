@@ -150,6 +150,18 @@ Tests live at
 | release-please doesn't open a Release PR | No Conventional Commits touched the component since last tag | Land a `fix:` / `feat:` commit; or use manual override |
 | release-please opens an empty PR | All commits since last tag were `chore:` / `docs:` | Squash them under a `fix:` if a release is genuinely needed |
 
+## Docs automation
+
+The `docs-on-release` workflow runs on every `release: published` event and on `workflow_dispatch`. It:
+
+1. Reads the latest version of every published package (npm CLI, npm MCP, PyPI, GH Action) from each registry's public API.
+2. Regenerates the `<!-- LATEST-START -->` … `<!-- LATEST-END -->` callout in README.md.
+3. Re-renders the auto-generated registry table (idempotent via existing `scripts/render-readme.mjs`).
+4. Commits + pushes any changes as `github-actions[bot]`.
+5. Triggers a Pages redeploy so the live site reflects the change.
+
+The workflow never fails — if any registry is unreachable, it falls back to the previous README content and exits 0. To force a regeneration manually: `gh workflow run docs-on-release.yml --repo looptech-ai/understand-quickly`.
+
 ## See also
 
 - [`npm-org-setup.md`](npm-org-setup.md) — one-time npm org + token setup.

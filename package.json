@@ -24,6 +24,7 @@
     "validate": "node scripts/validate.mjs",
     "sync": "node scripts/sync.mjs",
     "render": "node scripts/render-readme.mjs",
+    "render:latest": "node scripts/render-latest.mjs",
     "aggregate": "node scripts/aggregate.mjs",
     "badges": "node scripts/render-badges.mjs --registry registry.json --out site/badges",
     "well-known": "node scripts/well-known.mjs --registry registry.json --out site/.well-known",
