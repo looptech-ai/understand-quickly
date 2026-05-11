@@ -11,12 +11,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       # pin: v4.1.5 -- googleapis/release-please-action
       - uses: googleapis/release-please-action@5792afc6b46e9bb55deda9eda973a18c226bc3fc

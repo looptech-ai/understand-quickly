@@ -5,13 +5,15 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  pull-requests: write
-  contents: write
-  checks: read
+  contents: read
 
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: read
     steps:
       # pin: v6.0.0 -- actions/checkout
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3

@@ -18,8 +18,7 @@ on:
         default: false
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
 
 concurrency:
   group: sync-${{ github.event.client_payload.id || github.event.inputs.id || 'all' }}
@@ -28,6 +27,9 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       # pin: v6.0.0 -- actions/checkout
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3

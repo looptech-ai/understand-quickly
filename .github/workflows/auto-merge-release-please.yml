@@ -30,7 +30,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: auto-merge-release-please-${{ github.event.pull_request.number }}
@@ -40,6 +39,9 @@ jobs:
   auto-merge:
     name: Auto-merge release-please PR
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     # Author filter is the load-bearing safety check. release-please runs as
     # `release-please[bot]` on the GitHub App, or as `github-actions[bot]`
     # when triggered via workflow_dispatch through the action. We accept

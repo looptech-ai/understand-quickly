@@ -16,13 +16,16 @@ on:
       - synchronize
 
 permissions:
-  pull-requests: read
+  contents: read
 
 jobs:
   validate:
     name: Validate PR title
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: amannn/action-semantic-pull-request@e32d7e603df1aa1ba07e981f2a23455dee596825 # pin: v5.5.3
         env:
