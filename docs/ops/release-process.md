@@ -202,9 +202,80 @@ Dependabot handles that on its weekly schedule.
 one-time setup. The token fallback remains in place until you remove it
 so the transition is risk-free.
 
+## Build attestations (Sigstore)
+
+Every `publish-*.yml` workflow generates a **Sigstore build provenance
+attestation** for the artifact it ships, using
+[`actions/attest-build-provenance@v3`](https://github.com/actions/attest-build-provenance)
+(SHA-pinned). The attestation is a signed statement, recorded in the
+GitHub attestations API and Sigstore's public transparency log, that
+says: "this exact byte-for-byte artifact was built by this exact
+workflow run on this commit". It's how the OpenSSF Scorecard
+`Signed-Releases` check verifies our releases.
+
+| Workflow | Subject attested | When |
+|---|---|---|
+| `publish-cli.yml` | `cli/*.tgz` (output of `npm pack`) | after pack, before `npm publish` |
+| `publish-mcp.yml` | `mcp/*.tgz` (output of `npm pack`) | after pack, before `npm publish` |
+| `publish-pysdk.yml` | `python-sdk/dist/*` (sdist + wheel) | after `python -m build`, before PyPI upload |
+
+For the npm packages the attestation is **complementary** to npm's own
+`--provenance` flag — that one is recorded inside the npm registry, the
+Sigstore attestation is recorded on GitHub. Both verify, neither
+replaces the other.
+
+### Required permissions
+
+Each publish job carries:
+
+```yaml
+permissions:
+  contents: read       # (or write for pysdk to attach assets)
+  id-token: write      # OIDC token for Sigstore signing
+  attestations: write  # write to GitHub's attestations API
+```
+
+### Verifying a release
+
+Given a downloaded artifact (tarball, sdist, wheel):
+
+```bash
+# npm package (CLI or MCP)
+npm pack @looptech-ai/understand-quickly-cli   # downloads .tgz
+gh attestation verify ./looptech-ai-understand-quickly-cli-*.tgz \
+  --owner looptech-ai
+
+# PyPI artifact
+pip download --no-deps understand-quickly       # downloads .whl + sdist
+gh attestation verify ./understand_quickly-*.whl \
+  --owner looptech-ai
+gh attestation verify ./understand-quickly-*.tar.gz \
+  --owner looptech-ai
+```
+
+A successful verify proves: artifact digest matches a signed statement
+on Sigstore's Rekor log, the signing identity is a workflow in the
+`looptech-ai/understand-quickly` repo, and the workflow file matches one
+of our `publish-*.yml`.
+
+### When attestation fails the build
+
+The action fails the job (and therefore the publish) if:
+
+- The `subject-path` glob matches **zero** files. Cause: the prior `pack`
+  / `build` step changed its output location or filename. Fix the glob.
+- The `id-token: write` permission is missing. Fix: re-add to the job
+  permissions block.
+- Sigstore is unreachable. Rare; the action retries. If persistently
+  failing, re-run the workflow.
+
+There's no "skip on failure" — by design, a release that can't be
+attested doesn't ship.
+
 ## See also
 
 - [`npm-org-setup.md`](npm-org-setup.md) — one-time npm org + token setup.
 - [`pypi-trusted-publishing.md`](pypi-trusted-publishing.md) — OIDC setup for PyPI.
 - [`../../CHANGELOG.md`](../../CHANGELOG.md) — human-curated changelog (release-please appends).
 - [release-please action docs](https://github.com/googleapis/release-please-action).
+- [GitHub artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds).
