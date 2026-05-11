@@ -1,5 +1,15 @@
 name: sync
 
+# Daily registry sync. Re-runs every producer entry, regenerates the
+# README, stats, badges, and .well-known files, then opens a PR with the
+# diff for auto-merge once required checks pass. The PR path lets us
+# enforce branch protection (required status checks + codeowner review)
+# while still automating ingestion.
+#
+# Escape hatch: `workflow_dispatch` with `direct_push=true` skips the PR
+# and pushes straight to main. Use only when branch protection is
+# bypassed (admin) — auto-merge handles normal operation.
+
 on:
   schedule:
     - cron: '0 3 * * *'
@@ -16,6 +26,11 @@ on:
         required: false
         type: boolean
         default: false
+      direct_push:
+        description: 'Bypass PR; push directly to main (admin only)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
       actions: write
     steps:
       # pin: v6.0.0 -- actions/checkout
@@ -67,7 +83,7 @@ jobs:
             node scripts/sync.mjs
           fi
 
-      - name: Render README inline (default GITHUB_TOKEN push won't trigger render.yml)
+      - name: Render README inline
         run: npm run render
 
       - name: Aggregate cross-graph stats
@@ -79,23 +95,79 @@ jobs:
       - name: Render well-known
         run: node scripts/well-known.mjs --registry registry.json --out site/.well-known
 
-      - name: Commit changes
-        id: commit
+      - name: Check for diff
+        id: diff
         run: |
           if git diff --quiet registry.json README.md site/stats.json site/badges site/.well-known; then
-            echo "no changes"
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "no changes to commit"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # Direct push path (admin escape hatch). Used when
+      # workflow_dispatch.inputs.direct_push=true; bypasses the PR.
+      - name: Configure git (direct push only)
+        if: steps.diff.outputs.changed == 'true' && github.event.inputs.direct_push == 'true'
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push (direct push only)
+        if: steps.diff.outputs.changed == 'true' && github.event.inputs.direct_push == 'true'
+        run: |
           git add registry.json README.md site/stats.json site/badges site/.well-known
           git commit -m "chore(sync): update registry and README"
           git push
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger pages redeploy
-        if: steps.commit.outputs.pushed == 'true'
+      # PR path (default). create-pull-request stages the diff, opens
+      # or updates the bot/sync branch, and the next step enables
+      # auto-merge so it lands once branch protection's required checks
+      # go green.
+      # pin: v8.1.1 -- peter-evans/create-pull-request
+      - name: Open or update sync PR
+        if: steps.diff.outputs.changed == 'true' && github.event.inputs.direct_push != 'true'
+        id: cpr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: bot/sync
+          delete-branch: true
+          commit-message: 'chore(sync): update registry and README'
+          title: 'chore(sync): update registry and README'
+          body: |
+            Automated registry resync from `scripts/sync.mjs`.
+
+            Touches:
+            - `registry.json` — entry-level `head_sha`, `last_validated_at`,
+              and any newly drifted entries.
+            - `README.md` — rendered entry table.
+            - `site/stats.json`, `site/badges/`, `site/.well-known/` —
+              regenerated derivatives.
+
+            Auto-merges once required status checks pass.
+          labels: |
+            bot-sync
+            automerge
+            chore
+          add-paths: |
+            registry.json
+            README.md
+            site/stats.json
+            site/badges
+            site/.well-known
+
+      # pin: v3.0.0 -- peter-evans/enable-pull-request-automerge
+      - name: Enable auto-merge
+        if: steps.cpr.outputs.pull-request-number
+        uses: peter-evans/enable-pull-request-automerge@a660677d5469627102a1c1e11409dd063606628d
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
+
+      - name: Trigger pages redeploy (best-effort)
+        if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main

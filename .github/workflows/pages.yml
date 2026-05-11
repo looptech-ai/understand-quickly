@@ -10,6 +10,12 @@ on:
       - 'docs/**'
       - 'site/**'
       - '.github/workflows/pages.yml'
+  schedule:
+    # Daily safety-net rebuild. sync.yml opens a bot PR each morning;
+    # GITHUB_TOKEN-merged PRs don't trigger downstream workflows, so this
+    # cron guarantees the site catches up within 24h of any registry
+    # change even when the post-merge push doesn't fire pages.
+    - cron: '30 3 * * *'
   workflow_dispatch:
 
 permissions:
