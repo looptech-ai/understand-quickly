@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  attestations: write
 
 jobs:
   publish:
@@ -32,6 +33,13 @@ jobs:
         run: npm test
       - name: Pack sanity
         run: npm pack --dry-run
+      - name: Pack artifact
+        run: npm pack
+      # pin: v3.2.0 -- actions/attest-build-provenance
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
+        with:
+          subject-path: 'mcp/*.tgz'
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

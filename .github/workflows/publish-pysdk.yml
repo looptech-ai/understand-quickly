@@ -28,8 +28,9 @@ on:
         default: ''
 
 permissions:
-  contents: write   # upload assets onto the GitHub release
-  id-token: write   # required for PyPI Trusted Publishing (OIDC)
+  contents: write       # upload assets onto the GitHub release
+  id-token: write       # required for PyPI Trusted Publishing (OIDC) + Sigstore attestations
+  attestations: write   # required for actions/attest-build-provenance
 
 jobs:
   build-and-publish:
@@ -73,6 +74,12 @@ jobs:
 
       - name: Twine check
         run: python -m twine check dist/*
+
+      # pin: v3.2.0 -- actions/attest-build-provenance
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
+        with:
+          subject-path: 'python-sdk/dist/*'
 
       # pin: v4.6.2 -- actions/upload-artifact
       - name: Upload artifacts to workflow
