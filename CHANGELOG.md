@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/looptech-ai/understand-quickly/compare/v0.3.0...v0.4.0) (2026-05-12)
+
+
+### Features
+
+* **ci:** auto-merge release-please + dependabot PRs, supply-chain hardening ([#25](https://github.com/looptech-ai/understand-quickly/issues/25)) ([66a287b](https://github.com/looptech-ai/understand-quickly/commit/66a287b5fdbc3c566f47146142e3063830358d0a))
+* **ci:** docs-on-release workflow — auto-refresh README version refs on every release ([0cf992f](https://github.com/looptech-ai/understand-quickly/commit/0cf992ff8749a9ae291ead4d09133bddd6de027e))
+* **ci:** least-privilege token permissions per OpenSSF Scorecard + fix semantic-pr + first-interaction ([#27](https://github.com/looptech-ai/understand-quickly/issues/27)) ([ad67791](https://github.com/looptech-ai/understand-quickly/commit/ad67791815cf0acb308e89135ebe9732b84fc6fa))
+* **ci:** sigstore build provenance attestations on cli/mcp/pysdk publishes ([#26](https://github.com/looptech-ai/understand-quickly/issues/26)) ([88802c7](https://github.com/looptech-ai/understand-quickly/commit/88802c768bcf82ef259e0446d7ece303456fbd07))
+* **ci:** tier-1 community-repo polish — stale, semantic-pr, labeler, lychee, release-drafter, scorecard, first-interaction ([#22](https://github.com/looptech-ai/understand-quickly/issues/22)) ([5cc39a1](https://github.com/looptech-ai/understand-quickly/commit/5cc39a1fcc68548b57f80ecab28fb9dbbdf97f9b))
+* **pages:** intent-clarifying hero (audience grid + counters + MCP snippet + find-your-repo + onboarding) ([747004c](https://github.com/looptech-ai/understand-quickly/commit/747004c547f9db875fdb5346c289aa98165104c4))
+* **pages:** per-entry "Use this entry" install snippets ([146f7cb](https://github.com/looptech-ai/understand-quickly/commit/146f7cbd608e17e093aa64377629b03cdcdf2487))
+
+
+### Bug Fixes
+
+* **pages:** GitHub topbar/source links open in new tab (target=_blank) ([f423e78](https://github.com/looptech-ai/understand-quickly/commit/f423e78be605602d2a62644fa54223baf6f4b607))
+* **security:** codeql triage — harden test fixtures, validate openUrl input, fix scorecard pins ([25cee13](https://github.com/looptech-ai/understand-quickly/commit/25cee134eb575f74b691641b773ced51f01fad20))
+
 ## [0.3.0](https://github.com/looptech-ai/understand-quickly/compare/v0.2.0...v0.3.0) (2026-05-10)
 
 

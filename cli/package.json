@@ -1,6 +1,6 @@
 {
   "name": "@looptech-ai/understand-quickly-cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "One-shot CLI to register a repo with the understand-quickly registry.",
   "type": "module",
   "bin": {

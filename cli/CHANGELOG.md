@@ -1,5 +1,12 @@
 # @looptech-ai/understand-quickly-cli changelog
 
+## [0.1.3](https://github.com/looptech-ai/understand-quickly/compare/cli-v0.1.2...cli-v0.1.3) (2026-05-12)
+
+
+### Bug Fixes
+
+* **security:** codeql triage — harden test fixtures, validate openUrl input, fix scorecard pins ([25cee13](https://github.com/looptech-ai/understand-quickly/commit/25cee134eb575f74b691641b773ced51f01fad20))
+
 ## [0.1.2] — 2026-05-10
 - Fix Node 18/20 CI: `tests/*.test.mjs` is now quoted so the glob is
   expanded by the test runner, not the shell — previously, Node 18 and 20
