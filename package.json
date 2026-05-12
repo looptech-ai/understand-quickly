@@ -1,6 +1,6 @@
 {
   "name": "@understand-quickly/registry",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Public registry of code-knowledge graphs for AI agents.",
   "author": "Alex Macdonald-Smith <Alex.Mac@LoopTech.AI>",
