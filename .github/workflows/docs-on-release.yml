@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
       actions: write
     steps:
       # pin: v6.0.0 -- actions/checkout
@@ -39,19 +40,45 @@ jobs:
       - name: Render README entry table (idempotent)
         run: node scripts/render-readme.mjs
 
-      - name: Commit changes
+      - name: Check for diff
+        id: diff
         run: |
           if git diff --quiet README.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no doc changes"
-            exit 0
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          git commit -m "docs: refresh latest versions in README (auto)"
-          git push
 
-      - name: Trigger pages redeploy
+      # Branch protection requires PRs into main; the bot cannot direct-push.
+      # Open or update the bot/docs-on-release branch with the README diff.
+      # Codeowner reviews + merges manually until a GitHub App token lets
+      # the bot satisfy the codeowner-review rule via bypass.
+      # pin: v8.1.1 -- peter-evans/create-pull-request
+      - name: Open or update docs PR
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: bot/docs-on-release
+          delete-branch: true
+          commit-message: 'docs: refresh latest versions in README (auto)'
+          title: 'docs: refresh latest versions in README (auto)'
+          body: |
+            Automated README refresh triggered by a release publish.
+
+            Touches `README.md` only:
+              - "Latest" callout (`scripts/render-latest.mjs`)
+              - Entries table (`scripts/render-readme.mjs`, idempotent)
+
+            Mechanical — no human intent encoded. Merge once CI is green.
+          labels: |
+            bot-docs
+            chore
+          add-paths: |
+            README.md
+
+      - name: Trigger pages redeploy (best-effort)
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
