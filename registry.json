@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-05-11T22:48:05.659Z",
+  "generated_at": "2026-05-12T04:16:12.606Z",
   "entries": [
     {
       "id": "understand-quickly/demo-code-review-graph",
@@ -19,7 +19,7 @@
       "last_error": null,
       "last_sha": "db43045f1341c8ba1f20c666497bc78500fad64b411ed8a8b6836e958d58fb39",
       "size_bytes": 8545,
-      "last_synced": "2026-05-11T22:48:05.646Z",
+      "last_synced": "2026-05-12T04:16:12.605Z",
       "nodes_count": 7,
       "edges_count": 7,
       "top_kinds": [
@@ -46,7 +46,7 @@
       "source_sha": null,
       "head_sha": null,
       "commits_behind": null,
-      "drift_checked_at": "2026-05-11T22:48:05.568Z"
+      "drift_checked_at": "2026-05-12T04:16:12.504Z"
     },
     {
       "id": "understand-quickly/demo-gitnexus",
@@ -65,7 +65,7 @@
       "last_error": null,
       "last_sha": "5c9a843fa7ffda007cc4ef4fce80beb54bbdd5d8995db06b8db606980c07239a",
       "size_bytes": 8713,
-      "last_synced": "2026-05-11T22:48:05.659Z",
+      "last_synced": "2026-05-12T04:16:12.606Z",
       "nodes_count": 8,
       "edges_count": 10,
       "top_kinds": [
@@ -100,7 +100,7 @@
       "source_sha": null,
       "head_sha": null,
       "commits_behind": null,
-      "drift_checked_at": "2026-05-11T22:48:05.540Z"
+      "drift_checked_at": "2026-05-12T04:16:12.530Z"
     },
     {
       "id": "understand-quickly/demo-understand-anything",
@@ -117,7 +117,7 @@
       "miss_count": 0,
       "status": "ok",
       "last_error": null,
-      "last_synced": "2026-05-11T22:48:05.642Z",
+      "last_synced": "2026-05-12T04:16:12.604Z",
       "last_sha": "8076fa075a94ade41b2df7f3a8f1f6a8ace220f609ec5823be51e47ab30b418b",
       "size_bytes": 4366,
       "nodes_count": 10,
@@ -144,7 +144,7 @@
       "source_sha": null,
       "head_sha": null,
       "commits_behind": null,
-      "drift_checked_at": "2026-05-11T22:48:05.491Z"
+      "drift_checked_at": "2026-05-12T04:16:12.467Z"
     }
   ],
   "last_drift_index": 0
