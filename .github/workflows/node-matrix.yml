@@ -25,10 +25,10 @@ jobs:
         node-version: [18.x, 20.x, 22.x]
     steps:
       # pin: v6.0.0 -- actions/checkout
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       # pin: v6.0.0 -- actions/setup-node
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"

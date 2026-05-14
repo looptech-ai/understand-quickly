@@ -19,9 +19,9 @@ jobs:
         working-directory: mcp
     steps:
       # pin: v6.0.0 -- actions/checkout
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       # pin: v6.0.0 -- actions/setup-node
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org/'
@@ -37,7 +37,7 @@ jobs:
         run: npm pack
       # pin: v3.2.0 -- actions/attest-build-provenance
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
         with:
           subject-path: 'mcp/*.tgz'
       - name: Publish
