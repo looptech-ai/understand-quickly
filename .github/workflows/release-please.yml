@@ -21,7 +21,7 @@ jobs:
       pull-requests: write
     steps:
       # pin: v4.1.5 -- googleapis/release-please-action
-      - uses: googleapis/release-please-action@5792afc6b46e9bb55deda9eda973a18c226bc3fc
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

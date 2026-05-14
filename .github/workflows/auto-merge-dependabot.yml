@@ -43,7 +43,7 @@ jobs:
       - name: Fetch Dependabot metadata
         id: meta
         # pin: v2.2.0 -- dependabot/fetch-metadata
-        uses: dependabot/fetch-metadata@dbb049abf0d677abbd7f7eee0375145b417fdd34
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
