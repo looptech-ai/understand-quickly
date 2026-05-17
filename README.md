@@ -243,9 +243,9 @@ Drop [`docs/publish-template.yml`](docs/publish-template.yml) into your repo as 
 <!-- BEGIN ENTRIES -->
 | Repo | Format | Description | Status | Last synced |
 | --- | --- | --- | :---: | --- |
-| [understand-quickly/demo-code-review-graph](https://github.com/understand-quickly/demo-code-review-graph) | `code-review-graph@1` | Demo entry: a sample code-review-graph export covering files, classes, and tests. | ✅ ok | 2026-05-14 |
-| [understand-quickly/demo-gitnexus](https://github.com/understand-quickly/demo-gitnexus) | `gitnexus@1` | Demo entry: a sample GitNexus graph modeled on its own codebase. | ✅ ok | 2026-05-14 |
-| [understand-quickly/demo-understand-anything](https://github.com/understand-quickly/demo-understand-anything) | `understand-anything@1` | Demo entry: a hand-built sample knowledge graph in the understand-anything@1 shape. | ✅ ok | 2026-05-14 |
+| [understand-quickly/demo-code-review-graph](https://github.com/understand-quickly/demo-code-review-graph) | `code-review-graph@1` | Demo entry: a sample code-review-graph export covering files, classes, and tests. | ✅ ok | 2026-05-17 |
+| [understand-quickly/demo-gitnexus](https://github.com/understand-quickly/demo-gitnexus) | `gitnexus@1` | Demo entry: a sample GitNexus graph modeled on its own codebase. | ✅ ok | 2026-05-17 |
+| [understand-quickly/demo-understand-anything](https://github.com/understand-quickly/demo-understand-anything) | `understand-anything@1` | Demo entry: a hand-built sample knowledge graph in the understand-anything@1 shape. | ✅ ok | 2026-05-17 |
 <!-- END ENTRIES -->
 
 ## Status legend
