@@ -314,6 +314,7 @@ To the maintainers who carry this protocol upstream.
 
 ### Upstream tools we build on
 
+- [Ivy Tendril](https://github.com/Ivy-Interactive/Ivy-Tendril) - Open-source agentic software factory with an amazing UI that handles parallel Git worktrees for you, complete with programmatic verifications and fast review loops.
 - [Understand-Anything](https://github.com/Lum1104/Understand-Anything) — first-class graph format.
 - [GitNexus](https://github.com/abhigyanpatwari/GitNexus) — first-class graph format + first adopter.
 - [code-review-graph](https://github.com/tirth8205/code-review-graph) — first-class graph format.
